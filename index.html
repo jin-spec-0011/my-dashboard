@@ -1,0 +1,436 @@
+!DOCTYPE html
+html lang=ko
+head
+  meta charset=UTF-8
+  meta name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes
+  titleGOGO 스마트 매니저title
+  !-- Google Fonts --
+  link rel=preconnect href=httpsfonts.googleapis.com
+  link rel=preconnect href=httpsfonts.gstatic.com crossorigin
+  link href=httpsfonts.googleapis.comcss2family=Montserratwght@400;600;700;800&family=Noto+Sans+KRwght@300;400;500;700;800&display=swap rel=stylesheet
+  
+  !-- Leaflet Map CSS & JS --
+  link rel=stylesheet href=httpsunpkg.comleaflet@1.9.4distleaflet.css 
+  script src=httpsunpkg.comleaflet@1.9.4distleaflet.jsscript
+
+  !-- Firebase SDK --
+  script src=httpswww.gstatic.comfirebasejs8.10.1firebase-app.jsscript
+  script src=httpswww.gstatic.comfirebasejs8.10.1firebase-database.jsscript
+
+  !-- Custom CSS --
+  link rel=stylesheet href=cssstyle.css
+head
+body
+
+  !-- 0. 비밀번호 잠금 화면 --
+  div class=screen active id=screen-lock
+    div class=lock-card
+      div class=lock-icon🔒div
+      div class=lock-title가족 포털 잠금div
+      div class=lock-desc비밀번호 4자리를 입력하세요.div
+      input type=password id=pinInput class=pin-input maxlength=4 pattern=[0-9] inputmode=numeric placeholder=•••• onkeydown=if(event.key==='Enter') App.auth.checkPIN()
+      button type=button class=btn-unlock onclick=App.auth.checkPIN()입장하기button
+    div
+  div
+
+  !-- 1. 홈 런처 화면 --
+  div class=screen id=screen-home
+    div class=home-header
+      div class=home-title-group
+        div class=home-date-text id=homeTodayDate2026년 8월 21일 (금)div
+        h1스마트 포털h1
+      div
+      div class=status-badge id=cloudStatusBadge📱 로컬 모드div
+    div
+
+    !-- 실시간 세로 롤링 전광판 --
+    div class=home-ticker-wrapper
+      span class=ticker-badge-livespan class=live-dot●span LIVEspan
+      div class=ticker-vertical-box
+        div class=ticker-vertical-item id=tickerVerticalText데이터를 불러오는 중입니다...div
+      div
+    div
+
+    div class=launcher-list
+      !-- 달력 --
+      div class=launcher-card onclick=App.router.go('calendar')
+        div class=card-left
+          div class=app-icon icon-cal📅div
+          div class=card-text
+            div class=card-title-wrapdiv class=card-title만년 캘린더divdiv
+            div class=card-desc가족 일정·메모 & 공휴일 자동 플래너div
+          div
+        div
+        div style=color #94a3b8; font-weight bold; font-size 18px;➔div
+      div
+
+      !-- 주차 기록 --
+      div class=launcher-card onclick=App.router.go('parking')
+        div class=card-left
+          div class=app-icon icon-car🚗div
+          div class=card-text
+            div class=card-title-wrap
+              div class=card-title주차 위치 기록div
+              span class=badge-new id=badge-parking style=display none;NEWspan
+            div
+            div class=card-desc실시간 차량 위치 공유 & 차종별 최신 위치div
+          div
+        div
+        div style=color #94a3b8; font-weight bold; font-size 18px;➔div
+      div
+
+      !-- 메모장 --
+      div class=launcher-card onclick=App.router.go('memo')
+        div class=card-left
+          div class=app-icon icon-memo📝div
+          div class=card-text
+            div class=card-title-wrap
+              div class=card-title가족 장보기  메모div
+              span class=badge-new id=badge-memo style=display none;NEWspan
+            div
+            div class=card-desc실시간 체크리스트 & 포스트잇 메모div
+          div
+        div
+        div style=color #94a3b8; font-weight bold; font-size 18px;➔div
+      div
+
+      !-- 여행 지도 --
+      div class=launcher-card onclick=App.router.go('trip')
+        div class=card-left
+          div class=app-icon icon-trip✈️div
+          div class=card-text
+            div class=card-title-wrap
+              div class=card-title가족 여행 지도div
+              span class=badge-new id=badge-trip style=display none;NEWspan
+            div
+            div class=card-desc지도 핀 꽂기, 방문 날짜 & 사진 앨범div
+          div
+        div
+        div style=color #94a3b8; font-weight bold; font-size 18px;➔div
+      div
+
+      !-- 가계부 (준비중) --
+      div class=launcher-card disabled onclick=App.ui.alertReady('간편 가계부')
+        div class=card-left
+          div class=app-icon icon-money💰div
+          div class=card-text
+            div class=card-title간편 가계부div
+            div class=card-desc일별 지출 및 고정비 관리div
+          div
+        div
+        span class=badge-ready준비중span
+      div
+
+      !-- 화면 잠금 --
+      div class=launcher-card onclick=App.auth.lock()
+        div class=card-left
+          div class=app-icon icon-setting🔒div
+          div class=card-text
+            div class=card-title화면 잠그기div
+            div class=card-desc비밀번호 인증 초기화div
+          div
+        div
+        div style=color #94a3b8; font-weight bold; font-size 18px;➔div
+      div
+    div
+  div
+
+  !-- 2. 만년 달력 화면 --
+  div class=screen id=screen-calendar
+    div class=top-nav-bar
+      button class=btn-back-home onclick=App.router.go('home')← 홈으로button
+      span class=top-nav-title📅 만년 캘린더span
+      button class=btn btn-print onclick=window.print()인쇄PDFbutton
+    div
+
+    div class=control-panel
+      div class=control-group
+        label for=yearInput연도label
+        input type=number id=yearInput value=2026 min=1900 max=2100 style=width 65px;
+      div
+      
+      div class=control-group
+        label for=monthInput월label
+        select id=monthInput style=width 68px;
+          option value=11월optionoption value=22월optionoption value=33월option
+          option value=44월optionoption value=55월optionoption value=66월option
+          option value=77월optionoption value=88월optionoption value=99월option
+          option value=1010월optionoption value=1111월optionoption value=1212월option
+        select
+      div
+
+      div class=control-group
+        label for=gridDensity그리드label
+        select id=gridDensity onchange=App.calendar.updateGridStyle(this.value)
+          option value=light연하게option
+          option value=medium보통option
+          option value=dark selected진하게(먹색)option
+          option value=black아주 진하게option
+        select
+      div
+
+      div class=control-group
+        label for=fontSizeRange폰트(span id=fontSizeDisplay16spanpx)label
+        input type=range id=fontSizeRange min=10 max=50 value=16 oninput=App.calendar.syncFontSize(this.value)
+        input type=number id=fontSizeInput min=10 max=50 value=16 style=width 45px; oninput=App.calendar.syncFontSize(this.value)
+      div
+
+      div class=btn-group
+        button class=btn btn-primary onclick=App.calendar.generate()조회button
+        button class=btn btn-clear onclick=App.calendar.clearCurrentMonth()초기화button
+      div
+    div
+
+    div class=cal-page id=plannerPage
+      div class=cal-header
+        div class=cal-header-left
+          div class=cal-header-year-sub id=headerYearSub2026 OCTOBERdiv
+          div class=cal-header-title-wrap
+            span class=cal-header-month-num id=headerMonthNum10span
+            span class=cal-header-month-text id=headerMonthText2026년 10월span
+          div
+        div
+        div class=focus-box
+          strong🎯 목표strong 
+          input type=text class=editable-goal id=monthGoal placeholder=이달의 목표 입력... oninput=App.calendar.saveGoal()
+        div
+      div
+
+      div class=table-container
+        table
+          thead
+            tr
+              th class=sun일span class=eng-daySUNspanth
+              th class=weekday월span class=eng-dayMONspanth
+              th class=weekday화span class=eng-dayTUEspanth
+              th class=weekday수span class=eng-dayWEDspanth
+              th class=weekday목span class=eng-dayTHUspanth
+              th class=weekday금span class=eng-dayFRIspanth
+              th class=sat토span class=eng-daySATspanth
+            tr
+          thead
+          tbody id=calendarBodytbody
+        table
+      div
+
+      div class=memo-container
+        div class=memo-card
+          div class=memo-card-title📌 주요 일정 & To-Dodiv
+          textarea class=editable-bottom-memo id=bottomTodo placeholder=주요 일정 입력... oninput=App.calendar.saveBottomMemo('todo')textarea
+        div
+        div class=memo-card style=flex 0.85;
+          div class=memo-card-title💡 메모 & 아이디어div
+          textarea class=editable-bottom-memo id=bottomNotes placeholder=아이디어 메모... oninput=App.calendar.saveBottomMemo('notes')textarea
+        div
+      div
+    div
+  div
+
+  !-- 3. 주차 위치 기록기 화면 --
+  div class=screen id=screen-parking
+    div class=top-nav-bar
+      button class=btn-back-home onclick=App.router.go('home')← 홈으로button
+      span class=top-nav-title🚗 주차 위치 기록span
+      div style=width 60px;div
+    div
+
+    div class=parking-wrapper
+      div class=parking-card
+        div class=form-group
+          label1. 차종 선택label
+          div class=parking-btn-group id=carGroup
+            button type=button class=btn-toggle active onclick=App.parking.selectOption('car', 'x1')x1button
+            button type=button class=btn-toggle onclick=App.parking.selectOption('car', '엑센트')엑센트button
+          div
+        div
+
+        div class=form-group
+          label2. 주차장 유형label
+          div class=parking-btn-group id=typeGroup
+            button type=button class=btn-toggle active onclick=App.parking.selectOption('type', '지하 주차장')지하 주차장button
+            button type=button class=btn-toggle onclick=App.parking.selectOption('type', '야외')야외button
+          div
+        div
+
+        div class=form-group id=floorContainer
+          label3. 지하 층수label
+          div class=parking-btn-group id=floorGroup
+            button type=button class=btn-toggle active onclick=App.parking.selectOption('floor', 'B1')B1button
+            button type=button class=btn-toggle onclick=App.parking.selectOption('floor', 'B2')B2button
+            button type=button class=btn-toggle onclick=App.parking.selectOption('floor', 'B3')B3button
+          div
+        div
+
+        div id=outdoorMapSection
+          div class=map-header
+            span class=gps-status id=gpsStatus📍 GPS 위치 준비됨span
+            button type=button class=btn-gps onclick=App.parking.getCurrentLocation()🎯 내 위치 갱신button
+          div
+          div class=iframe-wrapper
+            iframe id=mapFrame src=httpsmaps.google.commapsq=37.5665,126.9780&z=17&output=embediframe
+          div
+        div
+
+        div class=grid-2
+          div class=form-group
+            label4. 열 선택 (A~Z)label
+            div class=select-wrapperselect class=parking-select id=colSelectselectdiv
+          div
+          div class=form-group
+            label5. 행 선택 (1~50)label
+            div class=select-wrapperselect class=parking-select id=rowSelectselectdiv
+          div
+        div
+
+        button type=button class=btn-save-parking onclick=App.parking.save()
+          span📌 위치 기록 및 저장span
+        button
+      div
+
+      div class=parking-card
+        div class=log-header
+          h2📋 차량별 현재 주차 위치h2
+          button type=button class=parking-clear-btn onclick=App.parking.clear()전체삭제button
+        div
+
+        div class=log-filter-bar
+          button type=button class=filter-btn active id=filter-all onclick=App.parking.setFilter('all')전체 보기button
+          button type=button class=filter-btn id=filter-x1 onclick=App.parking.setFilter('x1')x1 전용button
+          button type=button class=filter-btn id=filter-엑센트 onclick=App.parking.setFilter('엑센트')엑센트 전용button
+        div
+
+        div class=log-list id=logListdiv
+      div
+    div
+  div
+
+  !-- 4. 가족 공유 메모장 화면 --
+  div class=screen id=screen-memo
+    div class=top-nav-bar
+      button class=btn-back-home onclick=App.router.go('home')← 홈으로button
+      span class=top-nav-title📝 가족 메모 & 장보기span
+      div style=width 60px;div
+    div
+
+    div class=memo-section-wrapper
+      div class=log-filter-bar style=margin-bottom 6px;
+        button type=button class=filter-btn active id=tab-btn-todo onclick=App.memo.switchTab('todo')🛒 장보기  할 일button
+        button type=button class=filter-btn id=tab-btn-sticky onclick=App.memo.switchTab('sticky')📌 고정 메모button
+      div
+
+      div id=memo-todo-view style=display flex; flex-direction column; gap 12px;
+        div class=memo-input-card
+          div class=memo-input-row
+            input type=text id=todoInput class=memo-text-input placeholder=사야 할 물건이나 할 일 입력... onkeydown=if(event.key==='Enter' && !event.isComposing){ event.preventDefault(); App.memo.addTodo(); }
+            button type=button class=btn-add-memo onclick=App.memo.addTodo()+ 추가button
+          div
+          div class=memo-tag-selector
+            span style=font-size 11px; font-weight 700; color #64748b;작성자span
+            span class=tag-chip active id=tag-me onclick=App.memo.selectAuthor('나')나span
+            span class=tag-chip id=tag-spouse onclick=App.memo.selectAuthor('배우자')배우자span
+            span class=tag-chip id=tag-family onclick=App.memo.selectAuthor('가족')가족span
+          div
+        div
+
+        div style=display flex; justify-content space-between; align-items center; padding 0 4px;
+          span style=font-size 13px; font-weight 800; color #334155; id=todoCountLabel남은 항목 0개span
+          button type=button class=parking-clear-btn onclick=App.memo.clearCompletedTodos()완료 항목 정리button
+        div
+
+        div class=checklist-container id=todoListContainerdiv
+      div
+
+      div id=memo-sticky-view style=display none; flex-direction column; gap 12px;
+        div class=memo-input-card
+          textarea id=stickyInput class=memo-text-input style=height 70px; resize none; placeholder=계좌번호, 와이파이, 공유 정보 등...textarea
+          div style=display flex; justify-content space-between; align-items center;
+            div class=color-picker-row
+              span class=color-dot dot-yellow active onclick=App.memo.selectStickyColor('yellow')span
+              span class=color-dot dot-green onclick=App.memo.selectStickyColor('green')span
+              span class=color-dot dot-blue onclick=App.memo.selectStickyColor('blue')span
+              span class=color-dot dot-pink onclick=App.memo.selectStickyColor('pink')span
+            div
+            button type=button class=btn-add-memo onclick=App.memo.addSticky()📌 메모 붙이기button
+          div
+        div
+
+        div class=sticky-grid id=stickyGridContainerdiv
+      div
+    div
+  div
+
+  !-- 5. 가족 여행 기록 & 지도 화면 --
+  div class=screen id=screen-trip
+    div class=top-nav-bar
+      button class=btn-back-home onclick=App.router.go('home')← 홈으로button
+      span class=top-nav-title✈️ 가족 여행 지도span
+      div style=width 60px;div
+    div
+
+    div class=memo-section-wrapper
+      div id=travelMapdiv
+      div style=font-size 11px; color #64748b; font-weight 600; text-align center; margin-top -2px;
+        💡 지도를 터치하면 해당 위치에 바로 핀이 지정됩니다.
+      div
+
+      div class=parking-card
+        div class=form-group
+          label1. 여행지  장소명label
+          input type=text id=tripPlaceInput class=memo-text-input placeholder=예 제주 협재해수욕장, 속초 해변
+        div
+
+        div class=grid-2
+          div class=form-group
+            label2. 방문 날짜label
+            input type=date id=tripDateInput class=memo-text-input style=padding 10px;
+          div
+          div class=form-group
+            label3. 위치 좌표label
+            button type=button class=btn-gps style=padding 12px; font-size 13px; onclick=App.trip.getCurrentLocation()📍 현재 위치로 지정button
+          div
+        div
+
+        div class=form-group
+          label4. 추억 메모  한 줄 평label
+          input type=text id=tripMemoInput class=memo-text-input placeholder=날씨가 너무 좋았고 노을이 예뻤던 곳
+        div
+
+        div class=form-group
+          label5. 사진 첨부 (선택)label
+          div class=trip-photo-preview-wrap
+            div class=photo-preview-box onclick=document.getElementById('tripPhotoInput').click()
+              span id=photoPlaceholder style=font-size 20px;📷span
+              img id=photoPreviewImg style=display none;
+            div
+            input type=file id=tripPhotoInput accept=image style=display none; onchange=App.trip.handlePhoto(this)
+            label class=photo-input-btn for=tripPhotoInput앨범에서 사진 선택label
+            button type=button id=btnRemovePhoto style=displaynone; background#fee2e2; bordernone; color#dc2626; padding6px 10px; border-radius6px; font-size11px; font-weightbold; cursorpointer; onclick=App.trip.removePhoto()삭제button
+          div
+        div
+
+        button type=button class=btn-save-parking onclick=App.trip.save()
+          span📌 여행 기록 지도에 등록span
+        button
+      div
+
+      div class=parking-card
+        div class=log-header
+          h2 id=tripCountHeader📸 우리 가족 여행 앨범 (0곳)h2
+          button type=button class=parking-clear-btn onclick=App.trip.clear()전체삭제button
+        div
+        div class=trip-list-container id=tripListContainerdiv
+      div
+    div
+  div
+
+  div id=toast✅ 처리되었습니다!div
+
+  !-- JS 모듈 순차 로드 --
+  script src=jsauth.jsscript
+  script src=jscalendar.jsscript
+  script src=jsparking.jsscript
+  script src=jsmemo.jsscript
+  script src=jstrip.jsscript
+  script src=jsapp.jsscript
+body
+html
