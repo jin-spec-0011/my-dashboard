@@ -1,28 +1,46 @@
 window.App = window.App || {};
 
 App.auth = {
-  // PIN "1019" SHA-256 해시값
-  PIN_HASH: "b67c825a07ddf177c449339eef37b01b606d88f6153723de4a1d4715f21a4f00",
+  // 핀번호 설정 (기본값: 1019)
+  PIN: "1019",
 
-  async checkPIN() {
-    const input = document.getElementById('pinInput').value;
-    const inputHash = await sha256(input);
+  checkPIN() {
+    const inputEl = document.getElementById('pinInput');
+    const input = inputEl ? inputEl.value.trim() : '';
 
-    if (inputHash === App.auth.PIN_HASH) {
-      safeSet('gogo_auth_pass', 'true');
-      document.getElementById('pinInput').value = '';
-      App.router.go('home');
+    // 1019 일치 여부 즉시 검사
+    if (input === this.PIN) {
+      if (typeof safeSet === 'function') {
+        safeSet('gogo_auth_pass', 'true');
+      } else {
+        localStorage.setItem('gogo_auth_pass', 'true');
+      }
+      
+      if (inputEl) inputEl.value = '';
+      
+      // 홈 화면으로 즉시 이동
+      if (App.router && App.router.go) {
+        App.router.go('home');
+      }
     } else {
       alert('비밀번호가 올바르지 않습니다.');
-      document.getElementById('pinInput').value = '';
-      document.getElementById('pinInput').focus();
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+      }
     }
   },
 
   lock() {
     if (confirm('화면을 잠그시겠습니까?')) {
-      safeSet('gogo_auth_pass', 'false');
-      App.router.go('lock');
+      if (typeof safeSet === 'function') {
+        safeSet('gogo_auth_pass', 'false');
+      } else {
+        localStorage.setItem('gogo_auth_pass', 'false');
+      }
+      if (App.router && App.router.go) {
+        App.router.go('lock');
+      }
     }
   }
 };
