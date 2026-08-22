@@ -169,11 +169,14 @@
         </select>
       </div>
 
-      <div class="control-group">
-        <label for="fontSizeRange">폰트(<span id="fontSizeDisplay">16</span>px)</label>
-        <input type="range" id="fontSizeRange" min="10" max="50" value="16" oninput="App.calendar.syncFontSize(this.value)">
-        <input type="number" id="fontSizeInput" min="10" max="50" value="16" style="width: 45px;" oninput="App.calendar.syncFontSize(this.value)">
-      </div>
+    <div class="control-group">
+  <label for="fontSizeRange">폰트(<span id="fontSizeDisplay">16</span>px)</label>
+  <!-- 슬라이더 조절 시 -->
+  <input type="range" id="fontSizeRange" min="10" max="50" value="16" oninput="App.calendar.syncFontSize(this.value, false)">
+  <!-- 수동 숫자 입력 시 -->
+  <input type="number" id="fontSizeInput" min="10" max="50" value="16" style="width: 45px;" oninput="App.calendar.syncFontSize(this.value, true)" onchange="App.calendar.clampFontSize()">
+</div>
+
 
       <div class="btn-group">
         <button class="btn btn-primary" onclick="App.calendar.generate()">조회</button>
