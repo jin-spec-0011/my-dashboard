@@ -66,13 +66,37 @@ App.calendar = {
     root.style.setProperty('--grid-width', config.w);
   },
 
-  syncFontSize(val) {
-    let num = Math.max(10, Math.min(50, parseInt(val) || 16));
-    document.getElementById('fontSizeRange').value = num;
-    document.getElementById('fontSizeInput').value = num;
-    document.getElementById('fontSizeDisplay').innerText = num;
+    // ── 폰트 크기 실시간 동기화 (수동 입력 버그 해결) ──
+  syncFontSize(val, fromInput = false) {
+    const rangeEl = document.getElementById('fontSizeRange');
+    const inputEl = document.getElementById('fontSizeInput');
+    const displayEl = document.getElementById('fontSizeDisplay');
+
+    if (val === '') return; // 글자를 지우는 중간에는 덮어쓰지 않음
+    let num = parseInt(val, 10);
+    if (isNaN(num)) return;
+
+    if (displayEl) displayEl.innerText = num;
+    if (rangeEl && fromInput) rangeEl.value = Math.max(10, Math.min(50, num));
+    if (inputEl && !fromInput) inputEl.value = num;
+
+    // 달력 날짜 크기 실시간 반영
     document.querySelectorAll('.day-num').forEach(el => el.style.fontSize = num + 'px');
   },
+
+  // 입력 완료 시 10~50 범위 자동 보정
+  clampFontSize() {
+    const inputEl = document.getElementById('fontSizeInput');
+    const rangeEl = document.getElementById('fontSizeRange');
+    let num = parseInt(inputEl.value, 10);
+    if (isNaN(num) || num < 10) num = 10;
+    if (num > 50) num = 50;
+    
+    inputEl.value = num;
+    if (rangeEl) rangeEl.value = num;
+    this.syncFontSize(num);
+  },
+
 
   saveCellMemo(key, text) {
     safeSet(key, text);
