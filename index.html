@@ -229,83 +229,123 @@
     </div>
   </div>
 
-  <!-- 3. 주차 위치 기록기 화면 -->
-  <div class="screen" id="screen-parking">
-    <div class="top-nav-bar">
-      <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
-      <span class="top-nav-title">🚗 주차 위치 기록</span>
-      <div style="width: 60px;"></div>
-    </div>
+<!-- 🚗 주차 위치 관리 섹션 -->
+<section id="parking-section" class="card">
+  <div class="section-header">
+    <h2>🚗 주차 위치 기록</h2>
+    <!-- 현재 주차 상태 뱃지 표시 영역 -->
+    <div id="parking-current-badge" class="current-badge">조회 중...</div>
+  </div>
 
-    <div class="parking-wrapper">
-      <div class="parking-card">
-        <div class="form-group">
-          <label>1. 차종 선택</label>
-          <div class="parking-btn-group" id="carGroup">
-            <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'x1')">x1</button>
-            <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">엑센트</button>
-          </div>
-        </div>
+  <!-- 1. 차량 선택 (X1 / 엑센트) -->
+  <div class="car-selector-group">
+    <label class="car-radio-label">
+      <input type="radio" name="target-car" value="x1" checked>
+      <span class="radio-btn">BMW X1</span>
+    </label>
+    <label class="car-radio-label">
+      <input type="radio" name="target-car" value="accent">
+      <span class="radio-btn">엑센트</span>
+    </label>
+  </div>
 
-        <div class="form-group">
-          <label>2. 주차장 유형</label>
-          <div class="parking-btn-group" id="typeGroup">
-            <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('type', '지하 주차장')">지하 주차장</button>
-            <button type="button" class="btn-toggle" onclick="App.parking.selectOption('type', '야외')">야외</button>
-          </div>
-        </div>
-
-        <div class="form-group" id="floorContainer">
-          <label>3. 지하 층수</label>
-          <div class="parking-btn-group" id="floorGroup">
-            <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('floor', 'B1')">B1</button>
-            <button type="button" class="btn-toggle" onclick="App.parking.selectOption('floor', 'B2')">B2</button>
-            <button type="button" class="btn-toggle" onclick="App.parking.selectOption('floor', 'B3')">B3</button>
-          </div>
-        </div>
-
-        <div id="outdoorMapSection">
-          <div class="map-header">
-            <span class="gps-status" id="gpsStatus">📍 GPS 위치 준비됨</span>
-            <button type="button" class="btn-gps" onclick="App.parking.getCurrentLocation()">🎯 내 위치 갱신</button>
-          </div>
-          <div class="iframe-wrapper">
-            <iframe id="mapFrame" src="https://maps.google.com/maps?q=37.5665,126.9780&z=17&output=embed"></iframe>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="form-group">
-            <label>4. 열 선택 (A~Z)</label>
-            <div class="select-wrapper"><select class="parking-select" id="colSelect"></select></div>
-          </div>
-          <div class="form-group">
-            <label>5. 행 선택 (1~50)</label>
-            <div class="select-wrapper"><select class="parking-select" id="rowSelect"></select></div>
-          </div>
-        </div>
-
-        <button type="button" class="btn-save-parking" onclick="App.parking.save()">
-          <span>📌 위치 기록 및 저장</span>
-        </button>
-      </div>
-
-      <div class="parking-card">
-        <div class="log-header">
-          <h2>📋 차량별 현재 주차 위치</h2>
-          <button type="button" class="parking-clear-btn" onclick="App.parking.clear()">전체삭제</button>
-        </div>
-
-        <div class="log-filter-bar">
-          <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
-          <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('x1')">x1 전용</button>
-          <button type="button" class="filter-btn" id="filter-엑센트" onclick="App.parking.setFilter('엑센트')">엑센트 전용</button>
-        </div>
-
-        <div class="log-list" id="logList"></div>
-      </div>
+  <!-- 2. AI 사진 자동 인식 영역 -->
+  <div class="scan-action-container">
+    <input type="file" id="parking-photo-input" accept="image/*" capture="environment" style="display: none;" />
+    <button type="button" id="btn-scan-parking" class="btn-scan-action">
+      <span class="btn-icon">📷</span>
+      <span>기둥 사진으로 자동 인식</span>
+    </button>
+    
+    <!-- 실시간 진행 상태바 -->
+    <div id="ocr-status-box" class="ocr-status-box" style="display: none;">
+      <div class="ocr-spinner"></div>
+      <span id="ocr-status-text">이미지 분석 중...</span>
     </div>
   </div>
+
+  <!-- 3. 주차 유형 탭 (지하 주차장 vs 야외 주차) -->
+  <div class="parking-type-tabs">
+    <button type="button" class="tab-btn active" data-type="underground">🏢 지하 주차장</button>
+    <button type="button" class="tab-btn" data-type="outdoor">🌳 야외 주차장</button>
+  </div>
+
+  <!-- 4. 지하 주차장 수동/자동 연동 폼 -->
+  <form id="form-underground" class="parking-form-panel">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="parking-floor-select">층수</label>
+        <select id="parking-floor-select" class="form-input">
+          <option value="B1">지하 1층 (스카이블루)</option>
+          <option value="B2">지하 2층 (웜옐로우)</option>
+          <option value="B3">지하 3층 (라임그린)</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="parking-column-select">구역(열)</label>
+        <select id="parking-column-select" class="form-input">
+          <option value="A">A열</option>
+          <option value="B">B열</option>
+          <option value="C">C열</option>
+          <option value="D">D열</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="parking-number-input">기둥 번호</label>
+        <input type="number" id="parking-number-input" class="form-input" placeholder="숫자 (예: 20)" min="1" max="99" required />
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="parking-memo-input">상세 메모 (선택)</label>
+      <input type="text" id="parking-memo-input" class="form-input" placeholder="예: 엘리베이터 앞, 기둥 뒤" />
+    </div>
+
+    <button type="submit" class="btn-primary-save">💾 지하 주차 위치 저장</button>
+  </form>
+
+  <!-- 5. 야외 주차장 폼 (GPS 연동) -->
+  <form id="form-outdoor" class="parking-form-panel" style="display: none;">
+    <div class="outdoor-gps-box">
+      <button type="button" id="btn-get-gps" class="btn-gps-action">
+        📍 현재 GPS 위치 가져오기
+      </button>
+      <p id="gps-status-text" class="gps-status">위치 정보를 가져와주세요.</p>
+    </div>
+
+    <div class="form-field">
+      <label for="outdoor-location-input">위치 설명</label>
+      <input type="text" id="outdoor-location-input" class="form-input" placeholder="예: 104동 지상 주차장 3번 라인" required />
+    </div>
+
+    <button type="submit" class="btn-primary-save">💾 야외 주차 위치 저장</button>
+  </form>
+</section>
+
+<!-- 6. 사진 인식 결과 확인 모달 (오인식 검토용) -->
+<div id="parking-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>🚗 주차 위치 자동 인식 완료</h3>
+    </div>
+    
+    <div class="modal-body">
+      <div class="result-highlight-box">
+        <span class="result-badge" id="modal-detected-badge">지하 1층</span>
+        <div class="result-location" id="modal-detected-location">A열 20번</div>
+        <div class="result-car-info" id="modal-detected-car">차량: BMW X1</div>
+      </div>
+      <p class="modal-guide-text">인식 결과가 맞으면 <b>[원터치 저장]</b>, 틀렸다면 <b>[수동 수정]</b>을 눌러주세요.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" id="btn-modal-save" class="btn-modal-save">⚡ 원터치 바로 저장</button>
+      <button type="button" id="btn-modal-edit" class="btn-modal-edit">✏️ 수동 수정하기</button>
+    </div>
+  </div>
+</div>
 
   <!-- 4. 가족 공유 메모장 화면 -->
   <div class="screen" id="screen-memo">
