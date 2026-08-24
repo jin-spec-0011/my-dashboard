@@ -13,9 +13,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Tesseract.js OCR CDN (주차 기둥 사진 판독용) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -76,7 +73,7 @@
               <div class="card-title">주차 위치 기록</div>
               <span class="badge-new" id="badge-parking" style="display: none;">NEW</span>
             </div>
-            <div class="card-desc">실시간 차량 위치 공유 & 차종별 최신 위치</div>
+            <div class="card-desc">실시간 차량 위치 공유 & 기둥 사진 확인</div>
           </div>
         </div>
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
@@ -239,19 +236,6 @@
 
     <div class="parking-wrapper">
       <div class="parking-card">
-        <!-- 📷 AI 사진 인식 버튼 -->
-        <div class="scan-action-container">
-          <input type="file" id="parkingPhotoInput" accept="image/*" capture="environment" style="display: none;" onchange="App.parking.handlePhoto(this)" />
-          <button type="button" class="btn-scan-action" onclick="document.getElementById('parkingPhotoInput').click()">
-            <span>📷 기둥 사진으로 자동 인식</span>
-          </button>
-          
-          <div id="ocrStatusBox" class="ocr-status-box" style="display: none;">
-            <div class="ocr-spinner"></div>
-            <span id="ocrStatusText">이미지 분석 중...</span>
-          </div>
-        </div>
-
         <div class="form-group">
           <label>1. 차종 선택</label>
           <div class="parking-btn-group" id="carGroup">
@@ -298,8 +282,22 @@
           </div>
         </div>
 
+        <!-- 📸 주차 사진 첨부 영역 -->
+        <div class="form-group">
+          <label>6. 기둥 / 주차 위치 사진 (선택)</label>
+          <div class="trip-photo-preview-wrap">
+            <div class="photo-preview-box" onclick="document.getElementById('parkingPhotoInput').click()">
+              <span id="parkingPhotoPlaceholder" style="font-size: 20px;">📷</span>
+              <img id="parkingPhotoPreviewImg" style="display: none;">
+            </div>
+            <input type="file" id="parkingPhotoInput" accept="image/*" style="display: none;" onchange="App.parking.handlePhoto(this)">
+            <label class="photo-input-btn" for="parkingPhotoInput">사진 촬영 / 앨범 선택</label>
+            <button type="button" id="btnRemoveParkingPhoto" style="display:none; background:#fee2e2; border:none; color:#dc2626; padding:6px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="App.parking.removePhoto()">삭제</button>
+          </div>
+        </div>
+
         <button type="button" class="btn-save-parking" onclick="App.parking.save()">
-          <span>📌 위치 기록 및 저장</span>
+          <span>📌 위치 및 사진 저장</span>
         </button>
       </div>
 
@@ -435,29 +433,6 @@
           <button type="button" class="parking-clear-btn" onclick="App.trip.clear()">전체삭제</button>
         </div>
         <div class="trip-list-container" id="tripListContainer"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 6. 주차 사진 인식 결과 확인 모달 -->
-  <div id="parking-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">🚗 주차 위치 자동 인식 완료</h3>
-      </div>
-      
-      <div class="modal-body">
-        <div class="result-highlight-box">
-          <span class="result-badge" id="modalDetectedBadge">지하 1층 (B1)</span>
-          <div class="result-location" id="modalDetectedLocation">A열 20번</div>
-          <div class="result-car-info" id="modalDetectedCar">차량: x1</div>
-        </div>
-        <p class="modal-guide-text">인식 결과가 맞으면 <b>[원터치 저장]</b>, 틀렸다면 <b>[수동 수정]</b>을 눌러주세요.</p>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn-modal-save" onclick="App.parking.saveDetected()">⚡ 원터치 바로 저장</button>
-        <button type="button" class="btn-modal-edit" onclick="App.parking.editDetected()">✏️ 수동 수정하기</button>
       </div>
     </div>
   </div>
