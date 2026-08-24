@@ -13,7 +13,10 @@ App.ledger = {
     this.currentYearMonth = `${y}-${m}`;
 
     const dateInput = document.getElementById('ledgerDateInput');
-    if (dateInput) dateInput.value = now.toISOString().split('T')[0];
+    if (dateInput) {
+      const offset = now.getTimezoneOffset() * 60000;
+      dateInput.value = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    }
   },
 
   selectCategory(cat) {
@@ -36,6 +39,7 @@ App.ledger = {
   },
 
   changeMonth(delta) {
+    if (!this.currentYearMonth) this.init();
     const [yStr, mStr] = this.currentYearMonth.split('-');
     let y = parseInt(yStr, 10);
     let m = parseInt(mStr, 10) + delta;
@@ -44,18 +48,17 @@ App.ledger = {
     else if (m > 12) { m = 1; y++; }
 
     this.currentYearMonth = `${y}-${String(m).padStart(2, '0')}`;
-    this.render(App.stores.ledger.getItems());
+    this.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
   },
 
-  /* 실시간 금액 콤마 포맷터 */
   formatAmountInput(input) {
     let val = input.value.replace(/[^0-9]/g, '');
     if (!val) { input.value = ''; return; }
     input.value = Number(val).toLocaleString();
   },
 
-  /* 🎯 목표 예산 설정 */
   setBudget() {
+    if (!this.currentYearMonth) this.init();
     const key = `budget_${this.currentYearMonth}`;
     const current = Number(safeGet(key)) || 0;
     const input = prompt(`[${this.currentYearMonth}] 한 달 목표 생활비 예산을 입력하세요 (원 단위):`, current ? current.toLocaleString() : '1500000');
@@ -69,26 +72,30 @@ App.ledger = {
       }
       App.ui.toast(`🎯 ${this.currentYearMonth} 예산이 ${num.toLocaleString()}원으로 설정되었습니다.`);
       this.render(App.stores.ledger.getItems());
-      App.ticker.refresh();
+      if (App.ticker) App.ticker.refresh();
     }
   },
 
   addEntry({ date, title, amount, category = '식비/마트', author = '나', source = '장보기', todoId = null }) {
     if (!title || isNaN(amount) || amount <= 0) return;
-    const cleanDate = date || new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const cleanDate = date || new Date(now.getTime() - offset).toISOString().split('T')[0];
     const month = cleanDate.substring(0, 7);
 
-    App.stores.ledger.add({
-      id: Date.now(),
-      date: cleanDate,
-      month: month,
-      title: title.trim(),
-      amount: parseInt(amount, 10),
-      category: category,
-      author: author,
-      source: source,
-      todoId: todoId ? String(todoId) : null
-    });
+    if (App.stores.ledger) {
+      App.stores.ledger.add({
+        id: Date.now(),
+        date: cleanDate,
+        month: month,
+        title: title.trim(),
+        amount: parseInt(amount, 10),
+        category: category,
+        author: author,
+        source: source,
+        todoId: todoId ? String(todoId) : null
+      });
+    }
   },
 
   addManual() {
@@ -105,7 +112,7 @@ App.ledger = {
     if (!amount || isNaN(amount) || amount <= 0) return alert('올바른 지출 금액을 입력해주세요.');
 
     this.addEntry({
-      date: date || new Date().toISOString().split('T')[0],
+      date: date,
       title: title,
       amount: amount,
       category: this.category,
@@ -119,7 +126,6 @@ App.ledger = {
     App.ui.toast('💰 가계부 지출이 등록되었습니다!');
   },
 
-  /* ✏️ 항목 수정 모달 열기 */
   openEditModal(id) {
     const item = App.stores.ledger.getItems().find(i => String(i.id) === String(id));
     if (!item) return;
@@ -173,7 +179,6 @@ App.ledger = {
     }
   },
 
-  /* 📥 엑셀(CSV) 다운로드 */
   exportCSV() {
     const items = App.stores.ledger.getItems().filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
     if (items.length === 0) return alert('내보낼 지출 내역이 없습니다.');
@@ -212,7 +217,7 @@ App.ledger = {
     const monthText = document.getElementById('ledgerCurrentMonthText');
     if (monthText) monthText.innerText = `${y}년 ${parseInt(m, 10)}월`;
 
-    const filtered = items.filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
+    const filtered = (items || []).filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
     const totalAmount = filtered.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
 
     const totalEl = document.getElementById('ledgerTotalAmount');
@@ -222,7 +227,6 @@ App.ledger = {
     if (totalEl) totalEl.innerText = `${totalAmount.toLocaleString()}원`;
     if (countEl) countEl.innerText = `총 ${filtered.length}건`;
 
-    // 예산 프로그레스 바 계산
     const budgetKey = `budget_${this.currentYearMonth}`;
     const targetBudget = Number(safeGet(budgetKey)) || 0;
     const progressBox = document.getElementById('budgetProgressBox');
@@ -267,7 +271,7 @@ App.ledger = {
             <span class="ledger-source-tag">${escapeHtml(item.source || '장보기')}</span>
             <span class="ledger-item-title">${escapeHtml(item.title)}</span>
           </div>
-          <span class="ledger-item-date">${escapeHtml(item.date)} · ${escapeHtml(item.author || '가족')} (터치 시 수정)</span>
+          <span class="ledger-item-date">${escapeHtml(item.date)} · ${escapeHtml(item.author || '가족')}</span>
         </div>
         <div class="ledger-item-right">
           <span class="ledger-item-amount">-${(Number(item.amount) || 0).toLocaleString()}원</span>
