@@ -1,302 +1,12 @@
-/* ── 공통 유틸리티 ── */
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+/**
+ * 📱 GOGO 스마트 매니저 - 코어 엔진 (app.js)
+ * Firebase 실시간 동기화, 라우터, 전광판 롤링, 뱃지 관리
+ */
 
-async function sha256(str) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+window.App = window.App || {};
 
-const memoryStorage = {};
-function safeGet(key) {
-  try { return localStorage.getItem(key) || memoryStorage[key] || ''; } 
-  catch (e) { return memoryStorage[key] || ''; }
-}
-function safeSet(key, val) {
-  try { localStorage.setItem(key, val); } 
-  catch (e) { memoryStorage[key] = val; }
-}
-
-/* ── 공통 CRUD 팩토리 ── */
-function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
-  let items = [];
-
-  const load = () => {
-    try { items = JSON.parse(safeGet(key) || '[]'); } catch(e){ items = []; }
-    items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
-    if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
-  };
-
-  const add = (item) => {
-    items = items.filter(i => String(i.id) !== String(item.id));
-    items.unshift(item);
-    if (maxItems) items = items.slice(0, maxItems);
-    safeSet(key, JSON.stringify(items));
-    if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath + '/' + item.id).set(item);
-    }
-    if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
-  };
-
-  const remove = (id) => {
-    items = items.filter(i => String(i.id) !== String(id));
-    safeSet(key, JSON.stringify(items));
-    if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath + '/' + id).remove();
-    }
-    if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
-  };
-
-  const update = (id, updates) => {
-    const target = items.find(i => String(i.id) === String(id));
-    if (target) {
-      Object.assign(target, updates);
-      safeSet(key, JSON.stringify(items));
-      if (App.isFirebaseActive && firebasePath) {
-        App.db.ref(firebasePath + '/' + id).update(updates);
-      }
-      if (onRender) onRender(items);
-      App.ticker.refresh();
-      App.badge.refresh();
-    }
-  };
-
-  const clear = () => {
-    items = [];
-    safeSet(key, JSON.stringify([]));
-    if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath).remove();
-    }
-    if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
-  };
-
-  const syncFromFirebase = (data) => {
-    items = data ? Object.values(data) : [];
-    items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
-    safeSet(key, JSON.stringify(items));
-    if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
-  };
-
-  return { getItems: () => items, load, add, remove, update, clear, syncFromFirebase };
-}
-
-/* ── App 메인 코어 ── */
-window.App = Object.assign(window.App || {}, {
-  db: null,
-  isFirebaseActive: false,
-  
-  state: {
-    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all' },
-    memo: { author: '나', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
-    trip: { coords: { lat: 37.5665, lng: 126.9780 }, photoBase64: '', map: null, markers: [], tempMarker: null },
-    calendar: { syncTimeout: null }
-  },
-
-  stores: {},
-
-  ui: {
-    toast(msg) {
-      const t = document.getElementById('toast');
-      if (msg) t.innerText = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2000);
-    },
-    alertReady(name) {
-      alert(`[${name}] 기능은 현재 준비 중입니다.\n곧 업데이트될 예정입니다!`);
-    }
-  },
-
-  router: {
-    go(screenName) {
-      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-      const target = document.getElementById('screen-' + screenName);
-      if (target) {
-        target.classList.add('active');
-        window.scrollTo(0, 0);
-
-        if (['parking', 'memo', 'trip'].includes(screenName)) {
-          safeSet('last_view_' + screenName, Date.now());
-          App.badge.refresh();
-        }
-
-        if (screenName === 'trip') App.trip.initMap();
-      }
-    }
-  },
-
-  /* 세로 롤링 전광판 (독립 라인) */
-  ticker: {
-    messages: [],
-    currentIndex: 0,
-    timer: null,
-
-    refresh() {
-      const lines = [];
-
-      // 1. 주차 현황
-      const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
-      if (parkingItems.length > 0) {
-        const pTexts = [];
-        parkingItems.forEach(p => {
-          const carName = (p.car || '').trim();
-          let loc = p.text || '';
-          if (loc.includes(' - ')) {
-            const parts = loc.split(' - ');
-            loc = parts[parts.length - 1];
-            if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
-              loc = '야외 ' + loc;
-            }
-          }
-          pTexts.push(`${carName} · ${loc.trim()}`);
-        });
-        if (pTexts.length > 0) lines.push(pTexts.join(' │ '));
-      }
-
-      // 2. 장보기
-      const todos = App.stores.todos ? App.stores.todos.getItems() : [];
-      const pending = todos.filter(t => !t.completed);
-      if (pending.length > 0) {
-        const preview = pending.slice(0, 3).map(t => t.text).join(', ');
-        lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (남은 ${pending.length}개)`);
-      }
-
-      // 3. 메모
-      const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
-      if (stickies.length > 0) {
-        lines.push(`메모 : ${stickies[0].text.replace(/\n/g, ' ').trim()}`);
-      }
-
-      // 4. 여행
-      const trips = App.stores.trips ? App.stores.trips.getItems() : [];
-      if (trips.length > 0) {
-        lines.push(`여행 : ${trips[0].place} (${trips[0].date})`);
-      }
-
-      // 5. 이달의 목표
-      const now = new Date();
-      const currentGoal = safeGet(`planner_goal_${now.getFullYear()}_${now.getMonth() + 1}`);
-      if (currentGoal && currentGoal.trim()) {
-        lines.push(`목표 : ${currentGoal.trim()}`);
-      }
-
-      if (lines.length === 0) {
-        lines.push('우리 가족 스마트 포털에 오신 것을 환영합니다 ✨');
-      }
-
-      this.messages = lines;
-      this.showCurrent();
-    },
-
-    showCurrent() {
-      const el = document.getElementById('tickerVerticalText');
-      if (!el || this.messages.length === 0) return;
-      if (this.currentIndex >= this.messages.length) this.currentIndex = 0;
-      el.innerText = this.messages[this.currentIndex];
-    },
-
-    next() {
-      if (this.messages.length <= 1) return;
-      const el = document.getElementById('tickerVerticalText');
-      if (!el) return;
-
-      el.classList.add('slide-down-out');
-
-      setTimeout(() => {
-        this.currentIndex = (this.currentIndex + 1) % this.messages.length;
-        el.innerText = this.messages[this.currentIndex];
-        el.classList.remove('slide-down-out');
-        el.classList.add('slide-down-in');
-
-        void el.offsetHeight;
-        el.classList.remove('slide-down-in');
-      }, 450);
-    },
-
-    start() {
-      this.refresh();
-      if (this.timer) clearInterval(this.timer);
-      this.timer = setInterval(() => {
-        this.next();
-      }, 3500);
-    }
-  },
-
-  /* NEW 뱃지 관리 */
-  badge: {
-    refresh() {
-      const lastParkingView = Number(safeGet('last_view_parking') || 0);
-      const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
-      const hasNewParking = parkingItems.some(i => (Number(i.id) || 0) > lastParkingView);
-      const pBadge = document.getElementById('badge-parking');
-      if (pBadge) pBadge.style.display = hasNewParking ? 'inline-block' : 'none';
-
-      const lastMemoView = Number(safeGet('last_view_memo') || 0);
-      const todos = App.stores.todos ? App.stores.todos.getItems() : [];
-      const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
-      const hasNewMemo = todos.some(i => (Number(i.id) || 0) > lastMemoView) || stickies.some(i => (Number(i.id) || 0) > lastMemoView);
-      const mBadge = document.getElementById('badge-memo');
-      if (mBadge) mBadge.style.display = hasNewMemo ? 'inline-block' : 'none';
-
-      const lastTripView = Number(safeGet('last_view_trip') || 0);
-      const trips = App.stores.trips ? App.stores.trips.getItems() : [];
-      const hasNewTrip = trips.some(i => (Number(i.id) || 0) > lastTripView);
-      const tBadge = document.getElementById('badge-trip');
-      if (tBadge) tBadge.style.display = hasNewTrip ? 'inline-block' : 'none';
-    }
-  },
-
-  init() {
-    // 1. 주차 드롭다운 옵션 세팅
-    const colSelect = document.getElementById('colSelect');
-    for (let i = 65; i <= 90; i++) colSelect.innerHTML += `<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}열</option>`;
-    const rowSelect = document.getElementById('rowSelect');
-    for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
-
-    // 2. 상단 오늘 날짜
-    const now = new Date();
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
-    const dateEl = document.getElementById('homeTodayDate');
-    if (dateEl) dateEl.innerText = dateStr;
-
-    // 3. 통합 스토어 초기화
-    this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking.render(items) });
-    this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
-    this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
-    this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
-
-    Object.values(this.stores).forEach(s => s.load());
-
-    // 4. 달력 초기화
-    this.calendar.updateGridStyle('dark');
-    document.getElementById('yearInput').value = now.getFullYear();
-    document.getElementById('monthInput').value = now.getMonth() + 1;
-    document.getElementById('tripDateInput').value = now.toISOString().split('T')[0];
-    this.calendar.generate();
-
-    // 5. 전광판 & 뱃지 시작
-    this.ticker.start();
-    this.badge.refresh();
-
-    // 6. Firebase 초기화
-  const firebaseConfig = {
+// 1. ⚠️ 본인의 Firebase 프로젝트 설정값으로 교체해주세요!
+const firebaseConfig = {
   apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
   authDomain: "gogo-manager-f0a68.firebaseapp.com",
   databaseURL: "https://gogo-manager-f0a68-default-rtdb.firebaseio.com",
@@ -305,64 +15,196 @@ window.App = Object.assign(window.App || {}, {
   messagingSenderId: "1016084163074",
   appId: "1:1016084163074:web:836b8517d023638e12551b"
 };
-    
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+
+
+// 2. Firebase 초기화 & 실시간 DB 인스턴스
+let db = null;
+let isFirebaseReady = false;
+
+try {
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.database();
+    isFirebaseReady = true;
+  }
+} catch (e) {
+  console.warn("Firebase 초기화 대기 (로컬 모드로 작동):", e);
 }
 
-    try {
-      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        this.db = firebase.database();
-        this.isFirebaseActive = true;
+// 3. 전역 상태 관리
+App.state = {
+  currentScreen: 'home',
+  tickerItems: ['환영합니다! GOGO 스마트 매니저입니다.'],
+  tickerIndex: 0,
+  tickerTimer: null
+};
 
-        const badge = document.getElementById('cloudStatusBadge');
-        if (badge) {
-          badge.innerText = '☁️ 가족 실시간 동기화 중';
-          badge.classList.add('cloud-active');
-        }
+// 4. 화면 전환 라우터
+App.router = {
+  go(screenName) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById(`screen-${screenName}`);
+    if (target) {
+      target.classList.add('active');
+      App.state.currentScreen = screenName;
+      window.scrollTo(0, 0);
 
-        this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val()));
-        this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val()));
-        this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
-        this.db.ref('family_trips').on('value', snap => {
-          this.stores.trips.syncFromFirebase(snap.val());
-          this.trip.renderMarkers(this.stores.trips.getItems());
-        });
-
-        this.db.ref('calendar_data').on('value', snap => {
-          const data = snap.val() || {};
-          let hasChange = false;
-          Object.keys(data).forEach(k => {
-            if (safeGet(k) !== data[k]) {
-              safeSet(k, data[k]);
-              hasChange = true;
-            }
-          });
-
-          const activeEl = document.activeElement;
-          const isTyping = activeEl && (
-            activeEl.classList.contains('cell-memo') ||
-            activeEl.classList.contains('editable-goal') ||
-            activeEl.classList.contains('editable-bottom-memo')
-          );
-
-          if (!isTyping && hasChange) {
-            this.calendar.generate();
-          }
-          App.ticker.refresh();
-        });
-      }
-    } catch (e) {
-      console.warn("Firebase 연결 대기 (로컬 모드 실행):", e);
-    }
-
-    if (safeGet('gogo_auth_pass') === 'true') {
-      this.router.go('home');
-    } else {
-      this.router.go('lock');
+      // 각 모듈 화면 진입 시 초기화/새로고침
+      if (screenName === 'parking' && App.parking?.refresh) App.parking.refresh();
+      if (screenName === 'calendar' && App.calendar?.generate) App.calendar.generate();
+      if (screenName === 'memo' && App.memo?.render) App.memo.render();
+      if (screenName === 'trip' && App.trip?.render) App.trip.render();
     }
   }
-});
+};
 
-window.onload = () => App.init();
+// 5. 공통 UI 유틸
+App.ui = {
+  toast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.innerText = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  },
+  alertReady(featureName) {
+    alert(`🚧 '${featureName}' 기능은 현재 준비 중입니다.`);
+  }
+};
+
+// 6. 실시간 전광판 & 연결 상태 감지 엔진
+function initNetworkAndTicker() {
+  const statusBadge = document.getElementById('cloudStatusBadge');
+
+  // Firebase 실시간 온라인/오프라인 상태 감지
+  if (isFirebaseReady && db) {
+    db.ref('.info/connected').on('value', (snap) => {
+      if (snap.val() === true) {
+        if (statusBadge) {
+          statusBadge.innerText = '☁️ 클라우드 연동';
+          statusBadge.classList.add('cloud-active');
+        }
+        listenRealtimeUpdates(); // 실시간 데이터 수신 시작
+      } else {
+        if (statusBadge) {
+          statusBadge.innerText = '📱 로컬 모드';
+          statusBadge.classList.remove('cloud-active');
+        }
+        loadLocalFallbackData();
+      }
+    });
+  } else {
+    loadLocalFallbackData();
+  }
+
+  startTickerRolling();
+}
+
+// Firebase 실시간 데이터 구독 (주차 위치, 장보기 미완료, 여행 등)
+function listenRealtimeUpdates() {
+  if (!db) return;
+
+  // 1) 주차 정보 실시간 갱신
+  db.ref('parking_logs').on('value', (snap) => {
+    const data = snap.val() || {};
+    if (data.x1) localStorage.setItem('parking_x1', JSON.stringify(data.x1));
+    if (data.accent) localStorage.setItem('parking_accent', JSON.stringify(data.accent));
+    updateTickerData();
+  });
+
+  // 2) 할 일/장보기 실시간 갱신
+  db.ref('family_todos').on('value', (snap) => {
+    const todos = snap.val() || [];
+    localStorage.setItem('family_todos', JSON.stringify(todos));
+    updateTickerData();
+  });
+}
+
+function loadLocalFallbackData() {
+  updateTickerData();
+}
+
+// 전광판 문구 생성
+function updateTickerData() {
+  const items = [];
+  
+  // 주차 위치 정보
+  const pX1 = localStorage.getItem('parking_x1');
+  const pAcc = localStorage.getItem('parking_accent');
+  
+  if (pX1) {
+    try { items.push(`🚗 [X1] ${JSON.parse(pX1).display_text}`); } catch(e){}
+  }
+  if (pAcc) {
+    try { items.push(`🚙 [엑센트] ${JSON.parse(pAcc).display_text}`); } catch(e){}
+  }
+
+  // 장보기 미완료 목록
+  const todosRaw = localStorage.getItem('family_todos');
+  if (todosRaw) {
+    try {
+      const list = JSON.parse(todosRaw);
+      const pending = list.filter(t => !t.completed);
+      if (pending.length > 0) {
+        items.push(`🛒 장보기 남은 항목: ${pending.map(p => p.text).slice(0, 3).join(', ')} (${pending.length}건)`);
+      }
+    } catch(e){}
+  }
+
+  // 기본 문구
+  if (items.length === 0) {
+    items.push('오늘도 좋은 하루 되세요! 🌟');
+  }
+
+  App.state.tickerItems = items;
+  renderTickerText();
+}
+
+// 3.5초 간격 세로 롤링 전광판 애니메이션
+function startTickerRolling() {
+  if (App.state.tickerTimer) clearInterval(App.state.tickerTimer);
+
+  App.state.tickerTimer = setInterval(() => {
+    const tickerEl = document.getElementById('tickerVerticalText');
+    if (!tickerEl || App.state.tickerItems.length <= 1) return;
+
+    // 슬라이드 다운 아웃
+    tickerEl.classList.add('slide-down-out');
+
+    setTimeout(() => {
+      App.state.tickerIndex = (App.state.tickerIndex + 1) % App.state.tickerItems.length;
+      tickerEl.innerText = App.state.tickerItems[App.state.tickerIndex];
+      
+      tickerEl.classList.remove('slide-down-out');
+      tickerEl.classList.add('slide-down-in');
+
+      setTimeout(() => {
+        tickerEl.classList.remove('slide-down-in');
+      }, 50);
+    }, 450);
+  }, 3500);
+}
+
+function renderTickerText() {
+  const tickerEl = document.getElementById('tickerVerticalText');
+  if (tickerEl && App.state.tickerItems.length > 0) {
+    tickerEl.innerText = App.state.tickerItems[App.state.tickerIndex % App.state.tickerItems.length];
+  }
+}
+
+// 오늘 날짜 상단 표기 갱신
+function updateHomeDate() {
+  const dateEl = document.getElementById('homeTodayDate');
+  if (!dateEl) return;
+  const now = new Date();
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  dateEl.innerText = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+}
+
+// DOM 준비 완료 시 실행
+document.addEventListener('DOMContentLoaded', () => {
+  updateHomeDate();
+  initNetworkAndTicker();
+});
