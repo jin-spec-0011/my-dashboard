@@ -37,7 +37,7 @@
   <div class="screen" id="screen-home">
     <div class="home-header">
       <div class="home-title-group">
-        <div class="home-date-text" id="homeTodayDate">2026년 8월 21일 (금)</div>
+        <div class="home-date-text" id="homeTodayDate">2026년 8월 24일 (월)</div>
         <h1>스마트 포털</h1>
       </div>
       <div class="status-badge" id="cloudStatusBadge">📱 로컬 모드</div>
@@ -88,7 +88,7 @@
               <div class="card-title">가족 장보기 / 메모</div>
               <span class="badge-new" id="badge-memo" style="display: none;">NEW</span>
             </div>
-            <div class="card-desc">실시간 체크리스트 & 포스트잇 메모</div>
+            <div class="card-desc">실시간 체크리스트 & 가계부 자동 연동</div>
           </div>
         </div>
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
@@ -109,16 +109,19 @@
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
       </div>
 
-      <!-- 5. 가계부 (준비중) -->
-      <div class="launcher-card disabled" onclick="App.ui.alertReady('간편 가계부')">
+      <!-- 5. 간편 가계부 -->
+      <div class="launcher-card" onclick="App.router.go('ledger')">
         <div class="card-left">
           <div class="app-icon icon-money">💰</div>
           <div class="card-text">
-            <div class="card-title">간편 가계부</div>
-            <div class="card-desc">일별 지출 및 고정비 관리</div>
+            <div class="card-title-wrap">
+              <div class="card-title">간편 가계부</div>
+              <span class="badge-new" id="badge-ledger" style="display: none;">NEW</span>
+            </div>
+            <div class="card-desc">월별 지출·예산 관리 & 엑셀 파일 내보내기</div>
           </div>
         </div>
-        <span class="badge-ready">준비중</span>
+        <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
       </div>
 
       <!-- 6. 화면 잠그기 -->
@@ -437,6 +440,149 @@
     </div>
   </div>
 
+  <!-- 6. 💰 간편 가계부 화면 (예산 바 & 카테고리 필터 탑재) -->
+  <div class="screen" id="screen-ledger">
+    <div class="top-nav-bar">
+      <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
+      <span class="top-nav-title">💰 간편 가계부</span>
+      <button type="button" class="btn-excel" onclick="App.ledger.exportCSV()">📥 엑셀(CSV)</button>
+    </div>
+
+    <div class="memo-section-wrapper">
+      <!-- 월별 네비게이터 -->
+      <div class="ledger-month-bar">
+        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(-1)">◀ 이전달</button>
+        <span class="ledger-month-title" id="ledgerCurrentMonthText">2026년 8월</span>
+        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(1)">다음달 ▶</button>
+      </div>
+
+      <!-- 이달의 지출 및 예산 진척도 카드 -->
+      <div class="ledger-summary-card">
+        <div class="ledger-summary-header">
+          <span class="ledger-summary-label">이달의 총 지출</span>
+          <button type="button" class="btn-set-budget" onclick="App.ledger.setBudget()">🎯 예산 설정</button>
+        </div>
+        <div class="ledger-total-amount" id="ledgerTotalAmount">0원</div>
+        
+        <!-- 목표 예산 프로그레스 바 -->
+        <div class="budget-progress-box" id="budgetProgressBox">
+          <div class="budget-info-row">
+            <span id="budgetRemainingLabel">남은 예산: 0원</span>
+            <span id="budgetPercentLabel">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="budgetProgressBar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 직접 지출 등록 카드 -->
+      <div class="memo-input-card">
+        <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">+ 직접 지출 등록</div>
+        
+        <!-- 카테고리 태그 선택기 -->
+        <div class="category-selector-group">
+          <span class="cat-chip active" onclick="App.ledger.selectCategory('식비/마트')">🍚 식비/마트</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('외식/카페')">☕ 외식/카페</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('주유/차량')">🚗 주유/차량</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('생활/육아')">👶 생활/육아</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('고정비/기타')">🏠 고정비/기타</span>
+        </div>
+
+        <div class="grid-2">
+          <input type="date" id="ledgerDateInput" class="memo-text-input" style="padding: 10px;">
+          <input type="text" id="ledgerTitleInput" class="memo-text-input" placeholder="지출 내용 (예: 주유, 마트 장보기)">
+        </div>
+
+        <div class="memo-input-row">
+          <input type="text" id="ledgerAmountInput" class="memo-text-input" placeholder="금액 입력 (예: 25,000)" inputmode="numeric" oninput="App.ledger.formatAmountInput(this)">
+          <button type="button" class="btn-add-memo" onclick="App.ledger.addManual()">등록</button>
+        </div>
+
+        <div class="memo-tag-selector">
+          <span style="font-size: 11px; font-weight: 700; color: #64748b;">결제자:</span>
+          <span class="tag-chip active" id="ledger-tag-me" onclick="App.ledger.selectAuthor('나')">나</span>
+          <span class="tag-chip" id="ledger-tag-spouse" onclick="App.ledger.selectAuthor('배우자')">배우자</span>
+          <span class="tag-chip" id="ledger-tag-family" onclick="App.ledger.selectAuthor('가족')">가족</span>
+        </div>
+      </div>
+
+      <!-- 지출 내역 리스트 -->
+      <div class="parking-card" style="padding: 14px;">
+        <div class="log-header">
+          <h2 id="ledgerListHeader">📋 지출 내역</h2>
+          <span id="ledgerCountLabel" style="font-size: 12px; font-weight: 800; color: #2563eb;">총 0건</span>
+        </div>
+        <div class="ledger-list" id="ledgerListContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 장보기 완료 시 금액 입력 팝업 모달 -->
+  <div id="todo-amount-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">🛒 장보기 완료 & 가계부 연동</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: #64748b; margin: 8px 0 10px;">
+          <strong id="modalTodoItemText" style="color: #2563eb; font-size: 15px;">품목명</strong>의 지출 금액을 입력하세요.
+        </p>
+
+        <!-- 모달 내 카테고리 선택 -->
+        <div class="category-selector-group modal-cat-group" style="margin-bottom: 12px;">
+          <span class="cat-chip active" onclick="App.memo.selectModalCategory('식비/마트')">🍚 식비/마트</span>
+          <span class="cat-chip" onclick="App.memo.selectModalCategory('외식/카페')">☕ 외식/카페</span>
+          <span class="cat-chip" onclick="App.memo.selectModalCategory('생활/육아')">👶 생활/육아</span>
+          <span class="cat-chip" onclick="App.memo.selectModalCategory('고정비/기타')">🏠 기타</span>
+        </div>
+
+        <input type="text" id="modalTodoAmountInput" class="modal-amount-input" placeholder="금액 (예: 12,000)" inputmode="numeric" oninput="App.ledger.formatAmountInput(this)" onkeydown="if(event.key==='Enter') App.memo.confirmTodoWithAmount()">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-save" onclick="App.memo.confirmTodoWithAmount()">💾 가계부에 기록하고 완료</button>
+        <button type="button" class="btn-modal-edit" onclick="App.memo.confirmTodoWithoutAmount()">금액 없이 단순 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 지출 항목 수정 모달 -->
+  <div id="ledger-edit-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">✏️ 지출 내역 수정</h3>
+      </div>
+      <div class="modal-body" style="text-align: left; display: flex; flex-direction: column; gap: 8px; margin: 10px 0 14px;">
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">날짜</label>
+          <input type="date" id="editLedgerDate" class="memo-text-input" style="padding: 8px 10px; width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">항목명</label>
+          <input type="text" id="editLedgerTitle" class="memo-text-input" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">금액(원)</label>
+          <input type="text" id="editLedgerAmount" class="memo-text-input" inputmode="numeric" oninput="App.ledger.formatAmountInput(this)" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">카테고리</label>
+          <select id="editLedgerCategory" class="parking-select" style="padding: 8px 10px; font-size: 13px;">
+            <option value="식비/마트">🍚 식비/마트</option>
+            <option value="외식/카페">☕ 외식/카페</option>
+            <option value="주유/차량">🚗 주유/차량</option>
+            <option value="생활/육아">👶 생활/육아</option>
+            <option value="고정비/기타">🏠 고정비/기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-save" onclick="App.ledger.saveEdit()">수정 저장</button>
+        <button type="button" class="btn-modal-edit" onclick="App.ledger.closeEditModal()">취소</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast">✅ 처리되었습니다!</div>
 
   <!-- JS 모듈 로드 -->
@@ -445,6 +591,7 @@
   <script src="js/parking.js"></script>
   <script src="js/memo.js"></script>
   <script src="js/trip.js"></script>
+  <script src="js/ledger.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
