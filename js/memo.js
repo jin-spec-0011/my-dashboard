@@ -80,7 +80,6 @@ App.memo = {
       }
       if (modal) modal.style.display = 'flex';
     } else {
-      // 체크 해제 시 연결된 가계부 내역이 있다면 동기화 취소
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const linked = ledgerItems.find(l => String(l.todoId) === String(id));
       if (linked) {
@@ -117,7 +116,6 @@ App.memo = {
             todoId: item.id
           });
         } else if (App.stores.ledger) {
-          // ledger.js가 지연 로딩되어도 데이터 스토어에 직접 백업
           App.stores.ledger.add({
             id: Date.now(),
             date: dateStr,
@@ -146,6 +144,7 @@ App.memo = {
     this.closeAmountModal();
   },
 
+  /* ✕ 닫기 (상태 변경 없이 모달만 종료) */
   closeAmountModal() {
     const modal = document.getElementById('todo-amount-modal');
     if (modal) modal.style.display = 'none';
@@ -209,7 +208,6 @@ App.memo = {
     setTimeout(() => { App.state.memo.isAddingSticky = false; }, 300);
   },
 
-  /* 고정 메모 내용을 가계부로 즉시 보내기 */
   sendStickyToLedger(id) {
     const item = App.stores.stickies.getItems().find(i => String(i.id) === String(id));
     if (!item) return;
