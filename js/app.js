@@ -132,9 +132,6 @@ window.App = Object.assign(window.App || {}, {
       if (msg) t.innerText = msg;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2000);
-    },
-    alertReady(name) {
-      alert(`[${name}] 기능은 현재 준비 중입니다.\n곧 업데이트될 예정입니다!`);
     }
   },
 
@@ -146,14 +143,16 @@ window.App = Object.assign(window.App || {}, {
         target.classList.add('active');
         window.scrollTo(0, 0);
 
-        if (['parking', 'memo', 'trip'].includes(screenName)) {
+        if (['parking', 'memo', 'trip', 'ledger'].includes(screenName)) {
           safeSet('last_view_' + screenName, Date.now());
           App.badge.refresh();
         }
 
-        // 각 화면 진입 시 초기 렌더링 보장
         if (screenName === 'calendar' && App.calendar?.generate) {
           App.calendar.generate();
+        }
+        if (screenName === 'ledger' && App.ledger?.render) {
+          App.ledger.render(App.stores.ledger.getItems());
         }
         if (screenName === 'trip' && App.trip?.initMap) {
           App.trip.initMap();
@@ -162,7 +161,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 세로 롤링 전광판 */
+  /* 📢 세로 롤링 전광판 (가계부 지출 & 남은 예산 자동 반영) */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -190,7 +189,25 @@ window.App = Object.assign(window.App || {}, {
         if (pTexts.length > 0) lines.push(pTexts.join(' │ '));
       }
 
-      // 2. 장보기
+      // 2. 가계부 이달의 지출 및 예산 현황
+      const now = new Date();
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
+      const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
+      const totalMonthSpend = thisMonthLedger.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+      const budgetKey = `budget_${currentMonthKey}`;
+      const targetBudget = Number(safeGet(budgetKey)) || 0;
+
+      if (totalMonthSpend > 0 || targetBudget > 0) {
+        if (targetBudget > 0) {
+          const remain = targetBudget - totalMonthSpend;
+          lines.push(`💰 ${now.getMonth() + 1}월 지출: ${totalMonthSpend.toLocaleString()}원 (남은 예산: ${remain.toLocaleString()}원)`);
+        } else {
+          lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원 (${thisMonthLedger.length}건)`);
+        }
+      }
+
+      // 3. 장보기 미완료
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
@@ -198,20 +215,19 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (남은 ${pending.length}개)`);
       }
 
-      // 3. 메모
+      // 4. 고정 메모
       const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
       if (stickies.length > 0) {
         lines.push(`메모 : ${stickies[0].text.replace(/\n/g, ' ').trim()}`);
       }
 
-      // 4. 여행
+      // 5. 여행
       const trips = App.stores.trips ? App.stores.trips.getItems() : [];
       if (trips.length > 0) {
         lines.push(`여행 : ${trips[0].place} (${trips[0].date})`);
       }
 
-      // 5. 이달의 목표
-      const now = new Date();
+      // 6. 이달의 목표
       const currentGoal = safeGet(`planner_goal_${now.getFullYear()}_${now.getMonth() + 1}`);
       if (currentGoal && currentGoal.trim()) {
         lines.push(`목표 : ${currentGoal.trim()}`);
@@ -280,11 +296,17 @@ window.App = Object.assign(window.App || {}, {
       const hasNewTrip = trips.some(i => (Number(i.id) || 0) > lastTripView);
       const tBadge = document.getElementById('badge-trip');
       if (tBadge) tBadge.style.display = hasNewTrip ? 'inline-block' : 'none';
+
+      const lastLedgerView = Number(safeGet('last_view_ledger') || 0);
+      const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
+      const hasNewLedger = ledgerItems.some(i => (Number(i.id) || 0) > lastLedgerView);
+      const lBadge = document.getElementById('badge-ledger');
+      if (lBadge) lBadge.style.display = hasNewLedger ? 'inline-block' : 'none';
     }
   },
 
   init() {
-    // 1. 주차 드롭다운 옵션 세팅
+    // 1. 주차 드롭다운 세팅
     const colSelect = document.getElementById('colSelect');
     if (colSelect) {
       colSelect.innerHTML = '';
@@ -308,10 +330,13 @@ window.App = Object.assign(window.App || {}, {
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
+    this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => this.ledger.render(items) });
 
     Object.values(this.stores).forEach(s => s.load());
 
-    // 4. 달력 초기 세팅
+    // 4. 모듈 초기화
+    if (this.ledger) this.ledger.init();
+
     if (this.calendar) {
       this.calendar.updateGridStyle('dark');
       const yearInput = document.getElementById('yearInput');
@@ -355,6 +380,13 @@ window.App = Object.assign(window.App || {}, {
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val()));
         this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val()));
         this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
+        this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val()));
+        this.db.ref('family_budget').on('value', snap => {
+          const data = snap.val() || {};
+          Object.keys(data).forEach(k => safeSet(`budget_${k}`, data[k]));
+          if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
+          this.ticker.refresh();
+        });
         this.db.ref('family_trips').on('value', snap => {
           this.stores.trips.syncFromFirebase(snap.val());
           if (this.trip) this.trip.renderMarkers(this.stores.trips.getItems());
