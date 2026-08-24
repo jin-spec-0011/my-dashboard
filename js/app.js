@@ -85,7 +85,6 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
-  // 서버 동기화 시 서버가 비어있고 로컬에 데이터가 있다면 역으로 서버에 백업
   const syncFromFirebase = (data) => {
     if (data) {
       items = Object.values(data);
@@ -118,7 +117,7 @@ window.App = Object.assign(window.App || {}, {
   isFirebaseActive: false,
   
   state: {
-    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all' },
+    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' },
     memo: { author: '나', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
     trip: { coords: { lat: 37.5665, lng: 126.9780 }, photoBase64: '', map: null, markers: [], tempMarker: null },
     calendar: { syncTimeout: null }
@@ -152,7 +151,13 @@ window.App = Object.assign(window.App || {}, {
           App.badge.refresh();
         }
 
-        if (screenName === 'trip' && App.trip?.initMap) App.trip.initMap();
+        // 각 화면 진입 시 초기 렌더링 보장
+        if (screenName === 'calendar' && App.calendar?.generate) {
+          App.calendar.generate();
+        }
+        if (screenName === 'trip' && App.trip?.initMap) {
+          App.trip.initMap();
+        }
       }
     }
   },
@@ -306,12 +311,15 @@ window.App = Object.assign(window.App || {}, {
 
     Object.values(this.stores).forEach(s => s.load());
 
-    // 4. 달력 초기화
+    // 4. 달력 초기 세팅
     if (this.calendar) {
       this.calendar.updateGridStyle('dark');
-      document.getElementById('yearInput').value = now.getFullYear();
-      document.getElementById('monthInput').value = now.getMonth() + 1;
-      document.getElementById('tripDateInput').value = now.toISOString().split('T')[0];
+      const yearInput = document.getElementById('yearInput');
+      const monthInput = document.getElementById('monthInput');
+      const tripDateInput = document.getElementById('tripDateInput');
+      if (yearInput) yearInput.value = now.getFullYear();
+      if (monthInput) monthInput.value = now.getMonth() + 1;
+      if (tripDateInput) tripDateInput.value = now.toISOString().split('T')[0];
       this.calendar.generate();
     }
 
