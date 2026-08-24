@@ -1,7 +1,7 @@
 window.App = window.App || {};
 
 App.parking = {
-  // 실사 기반 층별 고유 색상 HSV 테이블
+  // 1. 실사 기반 층별 고유 색상 HSV 테이블
   FLOOR_COLOR_MAP: [
     { floor: 'B1', name: '지하 1층 (스카이블루)', hMin: 175, hMax: 215, sMin: 0.25, vMin: 0.40 },
     { floor: 'B2', name: '지하 2층 (웜옐로우)',   hMin: 35,  hMax: 58,  sMin: 0.35, vMin: 0.45 },
@@ -53,7 +53,7 @@ App.parking = {
     );
   },
 
-  /* 📷 사진 업로드 및 자동 분석 파이프라인 */
+  /* 📷 사진 업로드 및 초고인식률 분석 파이프라인 */
   async handlePhoto(input) {
     const file = input.files?.[0];
     if (!file) return;
@@ -64,20 +64,26 @@ App.parking = {
     if (statusText) statusText.innerText = '이미지 최적화 중...';
 
     try {
-      // 1) Canvas 리사이징 (800px 제한)
+      // 1) 1차 Canvas 리사이징 (메모리 안정화: 최대 800px)
       const canvas = await this.resizeImageToCanvas(file, 800);
 
       // 2) 기둥 상단 HSV 분석 -> 층수 판별
-      if (statusText) statusText.innerText = '기둥 색상(층수) 분석 중...';
+      if (statusText) statusText.innerText = '1단계: 기둥 색상(층수) 정밀 분석 중...';
       const detectedFloor = this.analyzePillarColor(canvas) || App.state.parking.floor || 'B1';
 
-      // 3) OCR 판독 -> 숫자/알파벳 추출
-      if (statusText) statusText.innerText = '구역 번호 판독 중... (0%)';
-      const ocrResult = await this.recognizePillarText(canvas, (progress) => {
-        if (statusText) statusText.innerText = `구역 번호 판독 중... (${Math.round(progress * 100)}%)`;
-      });
+      // 3) OCR 문자 판독 (크롭 + 흑백 이진화 + 화이트리스트 적용)
+      if (statusText) statusText.innerText = '2단계: 구역 번호 판독 중... (0%)';
+      let ocrResult = { col: null, row: null };
 
-      // 4) 임시 데이터 세팅
+      try {
+        ocrResult = await this.recognizePillarText(canvas, (progress) => {
+          if (statusText) statusText.innerText = `구역 번호 판독 중... (${Math.round(progress * 100)}%)`;
+        });
+      } catch (ocrErr) {
+        console.warn('OCR 판독 지연 (색상 우선 적용):', ocrErr);
+      }
+
+      // 4) 감지 데이터 조합
       this.pendingDetection = {
         car: App.state.parking.car || 'x1',
         floor: detectedFloor,
@@ -87,11 +93,12 @@ App.parking = {
 
       if (statusBox) statusBox.style.display = 'none';
 
-      // 5) 확인 모달 표시
+      // 5) 수동 폼에 Pre-fill & 결과 모달 팝업
+      this.applyDetectedToUI(this.pendingDetection);
       this.openModal(this.pendingDetection);
 
     } catch (err) {
-      console.error('사진 분석 실패:', err);
+      console.error('전체 분석 실패:', err);
       if (statusText) statusText.innerText = '인식에 실패했습니다. 수동 입력을 이용해주세요.';
       setTimeout(() => {
         if (statusBox) statusBox.style.display = 'none';
@@ -101,30 +108,36 @@ App.parking = {
     }
   },
 
+  /* Canvas 기본 리사이징 */
   resizeImageToCanvas(file, maxWidth = 800) {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      img.onload = () => {
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(img.width * scale);
+          canvas.height = Math.floor(img.height * scale);
 
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(img.src);
-        resolve(canvas);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
       };
-      img.onerror = reject;
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   },
 
+  /* 상단 15%~45% 영역 집중 HSV 색상 분석 */
   analyzePillarColor(canvas) {
     const ctx = canvas.getContext('2d');
-    const startX = Math.floor(canvas.width * 0.30);
+    const startX = Math.floor(canvas.width * 0.25);
     const startY = Math.floor(canvas.height * 0.15);
-    const sampleW = Math.floor(canvas.width * 0.40);
+    const sampleW = Math.floor(canvas.width * 0.50);
     const sampleH = Math.floor(canvas.height * 0.30);
 
     const imgData = ctx.getImageData(startX, startY, sampleW, sampleH).data;
@@ -132,7 +145,7 @@ App.parking = {
 
     for (let i = 0; i < imgData.length; i += 16) {
       const [h, s, v] = this.rgbToHsv(imgData[i], imgData[i + 1], imgData[i + 2]);
-      if (s > 0.20 && v > 0.30 && v < 0.88) {
+      if (s > 0.20 && v > 0.28 && v < 0.90) {
         totalH += h;
         totalS += s;
         totalV += v;
@@ -170,12 +183,55 @@ App.parking = {
     return [h * 360, s, v];
   },
 
+  /* 🎯 OCR 인식률 극대화 전처리 (ROI 크롭 + 고대비 흑백 이진화) */
+  preprocessCanvasForOCR(sourceCanvas) {
+    const canvas = document.createElement('canvas');
+    // 기둥 중앙 텍스트 영역(가로 60%, 세로 65%)만 집중 크롭하여 주변 차량/배경 노이즈 제거
+    const startX = Math.floor(sourceCanvas.width * 0.20);
+    const startY = Math.floor(sourceCanvas.height * 0.12);
+    const w = Math.floor(sourceCanvas.width * 0.60);
+    const h = Math.floor(sourceCanvas.height * 0.65);
+
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(sourceCanvas, startX, startY, w, h, 0, 0, w, h);
+
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+
+    // 밝은 글자(흰색)를 검은색(0)으로, 어두운 배경을 완전 흰색(255)으로 반전 이진화
+    for (let i = 0; i < d.length; i += 4) {
+      const brightness = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+      // 밝은 글씨 픽셀 감지 임계값 (150 이상)
+      const isText = brightness > 150;
+      const color = isText ? 0 : 255; // Tesseract가 가장 좋아하는 '흰 배경 위 검은 글씨'
+      d[i] = color;
+      d[i + 1] = color;
+      d[i + 2] = color;
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  },
+
+  /* 🔍 Tesseract OCR 엔진 실행 */
   async recognizePillarText(canvas, onProgress) {
     if (typeof Tesseract === 'undefined') {
       throw new Error('Tesseract CDN 미로드');
     }
 
-    const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
+    // 전처리된 고대비 흑백 이미지 생성
+    const processedCanvas = this.preprocessCanvasForOCR(canvas);
+    const imageJpegData = processedCanvas.toDataURL('image/jpeg', 0.9);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('OCR 시간 초과')), 8000)
+    );
+
+    const ocrPromise = Tesseract.recognize(imageJpegData, 'eng', {
+      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', // 👈 숫자+영문 대문자만 강제
+      tessedit_pageseg_mode: '6', // 👈 단일 텍스트 블록 모드
       logger: m => {
         if (m.status === 'recognizing text' && onProgress) {
           onProgress(m.progress);
@@ -183,15 +239,16 @@ App.parking = {
       }
     });
 
-    const cleanText = text.replace(/[^A-Za-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+    const { data: { text } } = await Promise.race([ocrPromise, timeoutPromise]);
+    const cleanText = text.replace(/[^A-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    // 상단 숫자 + 하단 알파벳 (예: "45 B", "16 B", "23 A", "20 A")
+    // 1) 상단 숫자 + 하단 알파벳 (예: "45 B", "16 B", "23 A", "20 A")
     const numThenAlpha = cleanText.match(/([0-9]{1,2})\s+([A-Z])/);
     if (numThenAlpha) {
       return { col: numThenAlpha[2], row: parseInt(numThenAlpha[1], 10) };
     }
 
-    // 알파벳 + 숫자 (예: "A 23", "B16")
+    // 2) 알파벳 + 숫자 (예: "A 23", "B16")
     const alphaThenNum = cleanText.match(/([A-Z])\s*([0-9]{1,2})/);
     if (alphaThenNum) {
       return { col: alphaThenNum[1], row: parseInt(alphaThenNum[2], 10) };
