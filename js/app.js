@@ -152,7 +152,7 @@ window.App = Object.assign(window.App || {}, {
           App.calendar.generate();
         }
         if (screenName === 'ledger' && App.ledger?.render) {
-          App.ledger.render(App.stores.ledger.getItems());
+          App.ledger.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
         }
         if (screenName === 'trip' && App.trip?.initMap) {
           App.trip.initMap();
@@ -330,7 +330,7 @@ window.App = Object.assign(window.App || {}, {
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
-    this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => this.ledger.render(items) });
+    this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => { if (this.ledger) this.ledger.render(items); } });
 
     Object.values(this.stores).forEach(s => s.load());
 
