@@ -32,7 +32,7 @@ body {
 .screen {
   display: none;
   width: 100%;
-  max-width: 800px;
+  max-width: 960px; /* PC 화면에서 넓고 쾌적하게 확장 */
   flex-direction: column;
   align-items: center;
 }
@@ -122,7 +122,7 @@ body {
 /* ── 홈 런처 ── */
 .home-header {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   margin: 4px 0 12px;
   display: flex;
   justify-content: space-between;
@@ -154,7 +154,7 @@ body {
 /* ── 한 줄 전광판 스타일 ── */
 .home-ticker-wrapper {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 16px;
@@ -226,7 +226,7 @@ body {
 /* ── 런처 카드 ── */
 .launcher-list {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -336,25 +336,24 @@ body {
 
 .cal-page {
   width: 100%;
-  min-height: 85vh;
-  padding: 14px 10px 10px 10px;
+  min-height: auto; /* 고정 85vh 대신 내용에 맞춤 */
+  padding: 16px 14px 14px 14px;
   background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  border-radius: 8px;
+  border-radius: 12px;
   box-sizing: border-box;
 }
 .cal-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 2px solid #0f172a;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 .cal-header-left { display: flex; flex-direction: column; gap: 1px; }
 .cal-header-year-sub { font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #64748b; }
@@ -365,10 +364,10 @@ body {
 .focus-box {
   border: 1.5px dashed var(--grid-color);
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 5px 10px;
   background: #f8fafc;
-  min-width: 180px;
-  font-size: 10.5px;
+  min-width: 220px;
+  font-size: 11px;
   color: #475569;
   display: flex;
   align-items: center;
@@ -385,7 +384,7 @@ body {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #0f172a;
   width: 100%;
@@ -393,13 +392,13 @@ body {
 }
 .editable-goal::placeholder { color: #94a3b8; font-weight: 500; }
 
-.table-container { flex-grow: 1; display: flex; flex-direction: column; width: 100%; }
-table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; border: var(--grid-width) solid var(--grid-color); }
+.table-container { width: 100%; margin-bottom: 12px; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; border: var(--grid-width) solid var(--grid-color); }
 th, td { border: var(--grid-width) solid var(--grid-color); vertical-align: top; }
 th {
-  padding: 4px 0;
+  padding: 6px 0;
   font-family: 'Montserrat', 'Noto Sans KR', sans-serif;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   text-align: center;
   background-color: #f8fafc;
@@ -409,9 +408,9 @@ th .eng-day { display: block; font-size: 8px; font-weight: 600; opacity: 0.85; }
 th.sun { color: #e11d48; background-color: #fff1f2; }
 th.sat { color: #2563eb; background-color: #eff6ff; }
 th.weekday { color: #1e293b; }
-td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
+td { padding: 4px 5px; height: 95px; background-color: #ffffff; }
 .cell-inner { height: 100%; display: flex; flex-direction: column; }
-.date-header-row { display: flex; align-items: baseline; justify-content: flex-start; gap: 4px; margin-bottom: 2px; }
+.date-header-row { display: flex; align-items: baseline; justify-content: flex-start; gap: 4px; margin-bottom: 3px; }
 .day-num { font-family: 'Montserrat', sans-serif; font-weight: 700; line-height: 1.1; display: inline-block; }
 .holiday-tag { font-size: 9.5px; font-weight: 600; color: #e11d48; letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sun-num, .holiday-num { color: #e11d48 !important; }
@@ -427,8 +426,8 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
   outline: none;
   resize: none;
   background: transparent;
-  font-size: 10.5px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.3;
   color: #1e293b;
   font-family: inherit;
   padding: 0;
@@ -436,9 +435,9 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
 }
 .cell-memo:focus { background-color: #f0f9ff; border-radius: 2px; }
 
-.memo-container { margin-top: 6px; display: flex; gap: 6px; height: 64px; }
-.memo-card { flex: 1; border: var(--grid-width) solid var(--grid-color); border-radius: 5px; padding: 4px 6px; background: #fafafa; display: flex; flex-direction: column; }
-.memo-card-title { font-size: 9.5px; font-weight: 700; color: #334155; margin-bottom: 2px; }
+.memo-container { display: flex; gap: 10px; height: 80px; }
+.memo-card { flex: 1; border: var(--grid-width) solid var(--grid-color); border-radius: 6px; padding: 6px 8px; background: #fafafa; display: flex; flex-direction: column; }
+.memo-card-title { font-size: 10px; font-weight: 700; color: #334155; margin-bottom: 2px; }
 
 .editable-bottom-memo {
   width: 100%;
@@ -448,15 +447,15 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
   outline: none;
   resize: none;
   background: transparent;
-  font-size: 10.5px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.3;
   color: #1e293b;
   font-family: inherit;
   padding: 0;
 }
 
 /* ── 🚗 주차 기록 스타일 ── */
-.parking-wrapper { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
+.parking-wrapper { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
 .parking-card { background: #ffffff; border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-group label { font-size: 13px; font-weight: 700; color: #475569; }
@@ -529,7 +528,6 @@ iframe { width: 100%; height: 100%; border: none; }
 .delete-item-btn { background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 2px 6px; line-height: 1; }
 .delete-item-btn:hover { color: #dc2626; }
 
-/* 주차 로그 내 사진 썸네일 */
 .parking-log-thumb {
   width: 68px;
   height: 68px;
@@ -541,7 +539,7 @@ iframe { width: 100%; height: 100%; border: none; }
 }
 
 /* ── 가족 공유 메모 ── */
-.memo-section-wrapper { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
+.memo-section-wrapper { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
 .memo-input-card {
   background: #ffffff;
   border: 1px solid var(--border-color);
@@ -644,7 +642,7 @@ iframe { width: 100%; height: 100%; border: none; }
 .sticky-body { font-size: 13.5px; font-weight: 600; line-height: 1.35; white-space: pre-wrap; word-break: break-all; }
 .sticky-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 10.5px; opacity: 0.8; }
 
-/* ── 여행 지도 & 공통 사진 첨부 박스 ── */
+/* ── 여행 지도 ── */
 #travelMap {
   width: 100%;
   height: 280px;
