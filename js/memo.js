@@ -1,6 +1,9 @@
 window.App = window.App || {};
 
 App.memo = {
+  pendingTodoId: null,
+  modalCategory: '식비/마트',
+
   switchTab(tab) {
     App.state.memo.tab = tab;
     document.getElementById('tab-btn-todo').classList.toggle('active', tab === 'todo');
@@ -11,7 +14,9 @@ App.memo = {
 
   selectAuthor(a) {
     App.state.memo.author = a;
-    document.querySelectorAll('.tag-chip').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.memo-input-card .memo-tag-selector .tag-chip').forEach(el => {
+      if (el.id && el.id.startsWith('tag-')) el.classList.remove('active');
+    });
     const map = { '나': 'tag-me', '배우자': 'tag-spouse', '가족': 'tag-family' };
     if (map[a]) document.getElementById(map[a]).classList.add('active');
   },
@@ -21,6 +26,13 @@ App.memo = {
     document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
     const dot = document.querySelector('.dot-' + c);
     if (dot) dot.classList.add('active');
+  },
+
+  selectModalCategory(cat) {
+    this.modalCategory = cat;
+    document.querySelectorAll('.modal-cat-group .cat-chip').forEach(el => {
+      el.classList.toggle('active', el.innerText.includes(cat));
+    });
   },
 
   addTodo() {
@@ -47,9 +59,97 @@ App.memo = {
     setTimeout(() => { App.state.memo.isAddingTodo = false; }, 300);
   },
 
+  /* 💡 1. 장보기 체크 시 가계부 모달 오픈 / 체크 해제 시 가계부 연동 삭제 */
   toggleTodo(id) {
     const item = App.stores.todos.getItems().find(i => String(i.id) === String(id));
-    if (item) App.stores.todos.update(id, { completed: !item.completed });
+    if (!item) return;
+
+    if (!item.completed) {
+      this.pendingTodoId = id;
+      this.modalCategory = '식비/마트';
+      this.selectModalCategory('식비/마트');
+
+      const modal = document.getElementById('todo-amount-modal');
+      const itemText = document.getElementById('modalTodoItemText');
+      const amountInput = document.getElementById('modalTodoAmountInput');
+
+      if (itemText) itemText.innerText = item.text;
+      if (amountInput) {
+        amountInput.value = '';
+        setTimeout(() => amountInput.focus(), 100);
+      }
+      if (modal) modal.style.display = 'flex';
+    } else {
+      // 체크 해제 시 연결된 가계부 내역이 있다면 동기화 취소
+      const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
+      const linked = ledgerItems.find(l => String(l.todoId) === String(id));
+      if (linked) {
+        if (confirm(`가계부에 등록된 [${linked.title} (-${Number(linked.amount).toLocaleString()}원)] 지출도 함께 취소하시겠습니까?`)) {
+          App.stores.ledger.remove(linked.id);
+          App.ui.toast('💰 가계부 지출 내역이 함께 취소되었습니다.');
+        }
+      }
+      App.stores.todos.update(id, { completed: false });
+    }
+  },
+
+  /* 모달: 금액 입력 완료 */
+  confirmTodoWithAmount() {
+    const amountInput = document.getElementById('modalTodoAmountInput');
+    const amountStr = amountInput ? amountInput.value.replace(/[^0-9]/g, '') : '0';
+    const amount = parseInt(amountStr, 10);
+    const item = App.stores.todos.getItems().find(i => String(i.id) === String(this.pendingTodoId));
+
+    if (item) {
+      if (amount && !isNaN(amount) && amount > 0) {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const dateStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+
+        if (App.ledger && typeof App.ledger.addEntry === 'function') {
+          App.ledger.addEntry({
+            date: dateStr,
+            title: item.text,
+            amount: amount,
+            category: this.modalCategory,
+            author: item.author || '가족',
+            source: '장보기',
+            todoId: item.id
+          });
+        } else if (App.stores.ledger) {
+          // ledger.js가 지연 로딩되어도 데이터 스토어에 직접 백업
+          App.stores.ledger.add({
+            id: Date.now(),
+            date: dateStr,
+            month: dateStr.substring(0, 7),
+            title: item.text.trim(),
+            amount: amount,
+            category: this.modalCategory,
+            author: item.author || '가족',
+            source: '장보기',
+            todoId: String(item.id)
+          });
+        }
+        App.ui.toast(`💰 [${item.text}] ${amount.toLocaleString()}원이 가계부에 등록되었습니다!`);
+      }
+      App.stores.todos.update(this.pendingTodoId, { completed: true });
+    }
+
+    this.closeAmountModal();
+  },
+
+  confirmTodoWithoutAmount() {
+    if (this.pendingTodoId) {
+      App.stores.todos.update(this.pendingTodoId, { completed: true });
+      App.ui.toast("✅ 장보기 항목이 완료되었습니다.");
+    }
+    this.closeAmountModal();
+  },
+
+  closeAmountModal() {
+    const modal = document.getElementById('todo-amount-modal');
+    if (modal) modal.style.display = 'none';
+    this.pendingTodoId = null;
   },
 
   deleteTodo(id) {
@@ -87,6 +187,7 @@ App.memo = {
       </div>`).join('');
   },
 
+  /* 💡 2. 고정 메모(포스트잇) 영역 */
   addSticky() {
     if (App.state.memo.isAddingSticky) return;
     const input = document.getElementById('stickyInput');
@@ -106,6 +207,46 @@ App.memo = {
 
     App.ui.toast("📌 메모가 등록되었습니다!");
     setTimeout(() => { App.state.memo.isAddingSticky = false; }, 300);
+  },
+
+  /* 고정 메모 내용을 가계부로 즉시 보내기 */
+  sendStickyToLedger(id) {
+    const item = App.stores.stickies.getItems().find(i => String(i.id) === String(id));
+    if (!item) return;
+
+    const input = prompt(`[${item.text}] 항목의 지출 금액을 입력하세요 (원):`, '10000');
+    if (input === null) return;
+
+    const amount = parseInt(input.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(amount) || amount <= 0) return alert('올바른 금액을 입력해주세요.');
+
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const dateStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+
+    if (App.ledger && typeof App.ledger.addEntry === 'function') {
+      App.ledger.addEntry({
+        date: dateStr,
+        title: item.text,
+        amount: amount,
+        category: '고정비/기타',
+        author: '가족',
+        source: '메모'
+      });
+    } else if (App.stores.ledger) {
+      App.stores.ledger.add({
+        id: Date.now(),
+        date: dateStr,
+        month: dateStr.substring(0, 7),
+        title: item.text.trim(),
+        amount: amount,
+        category: '고정비/기타',
+        author: '가족',
+        source: '메모'
+      });
+    }
+
+    App.ui.toast(`💰 가계부에 [${item.text}] ${amount.toLocaleString()}원이 등록되었습니다!`);
   },
 
   deleteSticky(id) {
@@ -128,7 +269,8 @@ App.memo = {
         <div class="sticky-body">${escapeHtml(item.text)}</div>
         <div class="sticky-footer">
           <span>${escapeHtml(item.date)}</span>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="btn-sticky-ledger" onclick="App.memo.sendStickyToLedger('${item.id}')" title="가계부로 등록">💰</button>
             <span style="cursor:pointer;" onclick="App.memo.copySticky('${escapeHtml(item.text).replace(/'/g, "\\'")}')">📋</span>
             <span style="cursor:pointer; margin-left:4px;" onclick="App.memo.deleteSticky('${item.id}')">✕</span>
           </div>
