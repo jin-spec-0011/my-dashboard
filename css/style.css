@@ -532,7 +532,7 @@ iframe { width: 100%; height: 100%; border: none; }
   flex-shrink: 0;
 }
 
-/* ── 가족 공유 메모 ── */
+/* ── 가족 공유 메모 & 고정 메모 ── */
 .memo-section-wrapper { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
 .memo-input-card {
   background: #ffffff;
@@ -635,6 +635,7 @@ iframe { width: 100%; height: 100%; border: none; }
 .sticky-pink { background: #fce7f3; border: 1px solid #fbcfe8; color: #831843; }
 .sticky-body { font-size: 13.5px; font-weight: 600; line-height: 1.35; white-space: pre-wrap; word-break: break-all; }
 .sticky-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 10.5px; opacity: 0.8; }
+.btn-sticky-ledger { background: #dbeafe; border: 1px solid #bfdbfe; border-radius: 4px; font-size: 12px; cursor: pointer; padding: 2px 4px; line-height: 1; }
 
 /* ── 여행 지도 ── */
 #travelMap {
@@ -777,7 +778,6 @@ iframe { width: 100%; height: 100%; border: none; }
   letter-spacing: -0.5px;
 }
 
-/* 목표 예산 게이지 바 */
 .budget-progress-box {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 10px;
@@ -808,7 +808,6 @@ iframe { width: 100%; height: 100%; border: none; }
 .progress-fill.warning { background: #fbbf24; }
 .progress-fill.danger { background: #ef4444; }
 
-/* 카테고리 태그 칩 */
 .category-selector-group {
   display: flex;
   gap: 6px;
@@ -837,7 +836,6 @@ iframe { width: 100%; height: 100%; border: none; }
   justify-content: center;
 }
 
-/* 지출 항목 리스트 */
 .ledger-list {
   display: flex;
   flex-direction: column;
