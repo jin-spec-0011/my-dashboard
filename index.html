@@ -440,7 +440,7 @@
     </div>
   </div>
 
-  <!-- 6. 💰 간편 가계부 화면 (예산 바 & 카테고리 필터 탑재) -->
+  <!-- 6. 💰 간편 가계부 화면 -->
   <div class="screen" id="screen-ledger">
     <div class="top-nav-bar">
       <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
@@ -518,9 +518,12 @@
     </div>
   </div>
 
-  <!-- 7. 장보기 완료 시 금액 입력 팝업 모달 -->
+  <!-- 7. 장보기 완료 시 금액 입력 팝업 모달 (닫기 X 버튼 & 취소 버튼 탑재) -->
   <div id="todo-amount-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
+      <!-- ✕ 우측 상단 닫기 버튼 -->
+      <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeAmountModal()" title="닫기">✕</button>
+
       <div class="modal-header">
         <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">🛒 장보기 완료 & 가계부 연동</h3>
       </div>
@@ -542,6 +545,7 @@
       <div class="modal-actions">
         <button type="button" class="btn-modal-save" onclick="App.memo.confirmTodoWithAmount()">💾 가계부에 기록하고 완료</button>
         <button type="button" class="btn-modal-edit" onclick="App.memo.confirmTodoWithoutAmount()">금액 없이 단순 완료</button>
+        <button type="button" class="btn-modal-cancel" onclick="App.memo.closeAmountModal()">✕ 닫기 (취소)</button>
       </div>
     </div>
   </div>
@@ -549,6 +553,8 @@
   <!-- 8. 지출 항목 수정 모달 -->
   <div id="ledger-edit-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
+      <button type="button" class="modal-close-icon-btn" onclick="App.ledger.closeEditModal()" title="닫기">✕</button>
+
       <div class="modal-header">
         <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">✏️ 지출 내역 수정</h3>
       </div>
