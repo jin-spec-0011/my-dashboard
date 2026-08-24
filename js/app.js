@@ -24,7 +24,7 @@ function safeSet(key, val) {
   catch (e) { memoryStorage[key] = val; }
 }
 
-/* ── 공통 CRUD 팩토리 ── */
+/* ── 🛡️ 데이터 유실 방지 공통 CRUD 팩토리 ── */
 function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
   let items = [];
 
@@ -32,8 +32,8 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
     try { items = JSON.parse(safeGet(key) || '[]'); } catch(e){ items = []; }
     items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
     if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
+    if (App.ticker) App.ticker.refresh();
+    if (App.badge) App.badge.refresh();
   };
 
   const add = (item) => {
@@ -45,8 +45,8 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
       App.db.ref(firebasePath + '/' + item.id).set(item);
     }
     if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
+    if (App.ticker) App.ticker.refresh();
+    if (App.badge) App.badge.refresh();
   };
 
   const remove = (id) => {
@@ -56,8 +56,8 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
       App.db.ref(firebasePath + '/' + id).remove();
     }
     if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
+    if (App.ticker) App.ticker.refresh();
+    if (App.badge) App.badge.refresh();
   };
 
   const update = (id, updates) => {
@@ -69,8 +69,8 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
         App.db.ref(firebasePath + '/' + id).update(updates);
       }
       if (onRender) onRender(items);
-      App.ticker.refresh();
-      App.badge.refresh();
+      if (App.ticker) App.ticker.refresh();
+      if (App.badge) App.badge.refresh();
     }
   };
 
@@ -81,17 +81,32 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
       App.db.ref(firebasePath).remove();
     }
     if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
+    if (App.ticker) App.ticker.refresh();
+    if (App.badge) App.badge.refresh();
   };
 
+  // 서버 동기화 시 서버가 비어있고 로컬에 데이터가 있다면 역으로 서버에 백업
   const syncFromFirebase = (data) => {
-    items = data ? Object.values(data) : [];
-    items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
-    safeSet(key, JSON.stringify(items));
+    if (data) {
+      items = Object.values(data);
+      items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+      safeSet(key, JSON.stringify(items));
+    } else {
+      const localData = safeGet(key);
+      if (localData && localData !== '[]') {
+        try {
+          const parsed = JSON.parse(localData);
+          if (Array.isArray(parsed) && parsed.length > 0 && App.isFirebaseActive && firebasePath) {
+            parsed.forEach(item => {
+              App.db.ref(firebasePath + '/' + item.id).set(item);
+            });
+          }
+        } catch(e) {}
+      }
+    }
     if (onRender) onRender(items);
-    App.ticker.refresh();
-    App.badge.refresh();
+    if (App.ticker) App.ticker.refresh();
+    if (App.badge) App.badge.refresh();
   };
 
   return { getItems: () => items, load, add, remove, update, clear, syncFromFirebase };
@@ -114,6 +129,7 @@ window.App = Object.assign(window.App || {}, {
   ui: {
     toast(msg) {
       const t = document.getElementById('toast');
+      if (!t) return;
       if (msg) t.innerText = msg;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2000);
@@ -136,12 +152,12 @@ window.App = Object.assign(window.App || {}, {
           App.badge.refresh();
         }
 
-        if (screenName === 'trip') App.trip.initMap();
+        if (screenName === 'trip' && App.trip?.initMap) App.trip.initMap();
       }
     }
   },
 
-  /* 세로 롤링 전광판 (독립 라인) */
+  /* 세로 롤링 전광판 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -265,9 +281,15 @@ window.App = Object.assign(window.App || {}, {
   init() {
     // 1. 주차 드롭다운 옵션 세팅
     const colSelect = document.getElementById('colSelect');
-    for (let i = 65; i <= 90; i++) colSelect.innerHTML += `<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}열</option>`;
+    if (colSelect) {
+      colSelect.innerHTML = '';
+      for (let i = 65; i <= 90; i++) colSelect.innerHTML += `<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}열</option>`;
+    }
     const rowSelect = document.getElementById('rowSelect');
-    for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
+    if (rowSelect) {
+      rowSelect.innerHTML = '';
+      for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
+    }
 
     // 2. 상단 오늘 날짜
     const now = new Date();
@@ -285,31 +307,34 @@ window.App = Object.assign(window.App || {}, {
     Object.values(this.stores).forEach(s => s.load());
 
     // 4. 달력 초기화
-    this.calendar.updateGridStyle('dark');
-    document.getElementById('yearInput').value = now.getFullYear();
-    document.getElementById('monthInput').value = now.getMonth() + 1;
-    document.getElementById('tripDateInput').value = now.toISOString().split('T')[0];
-    this.calendar.generate();
+    if (this.calendar) {
+      this.calendar.updateGridStyle('dark');
+      document.getElementById('yearInput').value = now.getFullYear();
+      document.getElementById('monthInput').value = now.getMonth() + 1;
+      document.getElementById('tripDateInput').value = now.toISOString().split('T')[0];
+      this.calendar.generate();
+    }
 
     // 5. 전광판 & 뱃지 시작
     this.ticker.start();
     this.badge.refresh();
 
     // 6. Firebase 초기화
-  const firebaseConfig = {
-  apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
-  authDomain: "gogo-manager-f0a68.firebaseapp.com",
-  databaseURL: "https://gogo-manager-f0a68-default-rtdb.firebaseio.com",
-  projectId: "gogo-manager-f0a68",
-  storageBucket: "gogo-manager-f0a68.firebasestorage.app",
-  messagingSenderId: "1016084163074",
-  appId: "1:1016084163074:web:836b8517d023638e12551b"
-};
-
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
+      authDomain: "gogo-manager-f0a68.firebaseapp.com",
+      databaseURL: "https://gogo-manager-f0a68-default-rtdb.firebaseio.com",
+      projectId: "gogo-manager-f0a68",
+      storageBucket: "gogo-manager-f0a68.firebasestorage.app",
+      messagingSenderId: "1016084163074",
+      appId: "1:1016084163074:web:836b8517d023638e12551b"
+    };
 
     try {
-      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
+      if (typeof firebase !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
         this.db = firebase.database();
         this.isFirebaseActive = true;
 
@@ -324,7 +349,7 @@ window.App = Object.assign(window.App || {}, {
         this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
         this.db.ref('family_trips').on('value', snap => {
           this.stores.trips.syncFromFirebase(snap.val());
-          this.trip.renderMarkers(this.stores.trips.getItems());
+          if (this.trip) this.trip.renderMarkers(this.stores.trips.getItems());
         });
 
         this.db.ref('calendar_data').on('value', snap => {
@@ -344,7 +369,7 @@ window.App = Object.assign(window.App || {}, {
             activeEl.classList.contains('editable-bottom-memo')
           );
 
-          if (!isTyping && hasChange) {
+          if (!isTyping && hasChange && this.calendar) {
             this.calendar.generate();
           }
           App.ticker.refresh();
