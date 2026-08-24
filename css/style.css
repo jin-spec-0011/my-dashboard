@@ -151,7 +151,7 @@ body {
 }
 .status-badge.cloud-active { background: #059669; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); }
 
-/* ── 위에서 아래로 롤링되는 한 줄 전광판 스타일 (확장형) ── */
+/* ── 한 줄 전광판 스타일 ── */
 .home-ticker-wrapper {
   width: 100%;
   max-width: 460px;
@@ -164,7 +164,7 @@ body {
   align-items: center;
   gap: 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  height: 52px; /* 44px ➔ 52px 확장 */
+  height: 52px;
   overflow: hidden;
 }
 
@@ -172,7 +172,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px; /* 11.5px ➔ 12.5px 확장 */
+  font-size: 12.5px;
   font-weight: 800;
   color: #ef4444;
   background: #fef2f2;
@@ -194,13 +194,13 @@ body {
 
 .ticker-vertical-box {
   flex-grow: 1;
-  height: 28px; /* 24px ➔ 28px 확장 */
+  height: 28px;
   overflow: hidden;
   position: relative;
 }
 
 .ticker-vertical-item {
-  font-size: 14.5px; /* 13px ➔ 14.5px 확장 (글자 또렷하게) */
+  font-size: 14.5px;
   font-weight: 700;
   color: #0f172a;
   line-height: 28px;
@@ -212,7 +212,6 @@ body {
   opacity: 1;
 }
 
-/* 확장된 높이에 맞춘 슬라이드 이동 거리 */
 .ticker-vertical-item.slide-down-out {
   transform: translateY(30px);
   opacity: 0;
@@ -456,7 +455,7 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
   padding: 0;
 }
 
-/* ── 주차 기록 ── */
+/* ── 🚗 주차 기록 스타일 ── */
 .parking-wrapper { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
 .parking-card { background: #ffffff; border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
@@ -490,6 +489,131 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
   appearance: none;
 }
 .select-wrapper::after { content: "▼"; font-size: 11px; color: #94a3b8; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+
+/* AI 사진 인식 버튼 & 프로그레스 */
+.scan-action-container { margin-bottom: 14px; }
+.btn-scan-action {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: transform 0.1s ease;
+}
+.btn-scan-action:active { transform: scale(0.98); }
+
+.ocr-status-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+.ocr-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 팝업 모달 (인식 결과 확인 & 오인식 대비) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.modal-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 330px;
+  border-radius: 18px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+}
+.result-highlight-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.result-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.result-location {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 8px 0 4px;
+}
+.result-car-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+.modal-guide-text {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-modal-save {
+  width: 100%;
+  padding: 13px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-modal-edit {
+  width: 100%;
+  padding: 11px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 #outdoorMapSection { display: none; flex-direction: column; gap: 8px; margin-bottom: 14px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1.5px solid #cbd5e1; }
 .map-header { display: flex; justify-content: space-between; align-items: center; }
