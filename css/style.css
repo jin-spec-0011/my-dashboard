@@ -151,7 +151,7 @@ body {
 }
 .status-badge.cloud-active { background: #059669; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); }
 
-/* ── 위에서 아래로 롤링되는 한 줄 전광판 스타일 (확장형) ── */
+/* ── 한 줄 전광판 스타일 ── */
 .home-ticker-wrapper {
   width: 100%;
   max-width: 460px;
@@ -164,7 +164,7 @@ body {
   align-items: center;
   gap: 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  height: 52px; /* 44px ➔ 52px 확장 */
+  height: 52px;
   overflow: hidden;
 }
 
@@ -172,7 +172,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px; /* 11.5px ➔ 12.5px 확장 */
+  font-size: 12.5px;
   font-weight: 800;
   color: #ef4444;
   background: #fef2f2;
@@ -194,13 +194,13 @@ body {
 
 .ticker-vertical-box {
   flex-grow: 1;
-  height: 28px; /* 24px ➔ 28px 확장 */
+  height: 28px;
   overflow: hidden;
   position: relative;
 }
 
 .ticker-vertical-item {
-  font-size: 14.5px; /* 13px ➔ 14.5px 확장 (글자 또렷하게) */
+  font-size: 14.5px;
   font-weight: 700;
   color: #0f172a;
   line-height: 28px;
@@ -212,7 +212,6 @@ body {
   opacity: 1;
 }
 
-/* 확장된 높이에 맞춘 슬라이드 이동 거리 */
 .ticker-vertical-item.slide-down-out {
   transform: translateY(30px);
   opacity: 0;
@@ -456,58 +455,240 @@ td { padding: 3px 4px; height: 70px; background-color: #ffffff; }
   padding: 0;
 }
 
-/* ── 주차 기록 ── */
-.parking-wrapper { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
-.parking-card { background: #ffffff; border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
-.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.form-group label { font-size: 13px; font-weight: 700; color: #475569; }
-.parking-btn-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
-.btn-toggle {
-  background: #f8fafc;
-  border: 1.5px solid #cbd5e1;
-  color: #1e293b;
-  padding: 12px 6px;
+/* ── 🚗 주차 기록 (사진인식 + 수동입력 통합) ── */
+.parking-wrapper {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.parking-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.car-selector-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.car-radio-label {
+  flex: 1;
+  cursor: pointer;
+}
+.car-radio-label input {
+  display: none;
+}
+.radio-btn {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+.car-radio-label input:checked + .radio-btn {
+  background: #eff6ff;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+/* AI 카메라 스캔 버튼 및 상태 알림 */
+.scan-action-container {
+  margin-bottom: 12px;
+}
+.btn-scan-action {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: transform 0.1s ease;
 }
-.btn-toggle.active { background: var(--accent); border-color: var(--accent); color: #ffffff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.select-wrapper { position: relative; }
-.parking-select {
+.btn-scan-action:active { transform: scale(0.98); }
+
+.ocr-status-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+.ocr-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 탭 전환 */
+.parking-type-tabs {
+  display: flex;
+  margin: 14px 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+  font-size: 14px;
+  color: #64748b;
+  cursor: pointer;
+}
+.tab-btn.active {
+  color: #0f172a;
+  border-bottom-color: #0f172a;
+}
+
+/* 수동/자동 입력 폼 */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.form-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+.form-input {
+  width: 100%;
+  padding: 10px;
   border: 1.5px solid #cbd5e1;
-  color: #1e293b;
-  padding: 11px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #f8fafc;
+  color: #0f172a;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--accent);
+  background: #ffffff;
+}
+
+.btn-primary-save {
+  width: 100%;
+  padding: 13px;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
   border-radius: 10px;
   font-size: 15px;
   font-weight: 700;
-  width: 100%;
-  outline: none;
-  appearance: none;
+  cursor: pointer;
+  margin-top: 4px;
 }
-.select-wrapper::after { content: "▼"; font-size: 11px; color: #94a3b8; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.btn-primary-save:active { background: #1e293b; }
 
-#outdoorMapSection { display: none; flex-direction: column; gap: 8px; margin-bottom: 14px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1.5px solid #cbd5e1; }
-.map-header { display: flex; justify-content: space-between; align-items: center; }
-.btn-gps { background: var(--accent); border: none; color: #ffffff; font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
-.gps-status { font-size: 12px; color: #059669; font-weight: 700; }
-.iframe-wrapper { width: 100%; height: 200px; border-radius: 10px; overflow: hidden; border: 1px solid #cbd5e1; }
-iframe { width: 100%; height: 100%; border: none; }
+/* 야외 주차 & GPS */
+.outdoor-gps-box {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px dashed #cbd5e1;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.btn-gps-action {
+  padding: 8px 14px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+}
+.gps-status {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+  margin-top: 6px;
+}
 
-.btn-save-parking { background: var(--accent); border: none; color: white; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 6px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); }
-.btn-save-parking:active { transform: scale(0.98); }
-
-.log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1.5px solid var(--border-color); }
+/* 주차 로그 목록 */
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--border-color);
+}
 .log-header h2 { font-size: 16px; font-weight: 800; }
-.parking-clear-btn { background: #fee2e2; border: none; color: #dc2626; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.parking-clear-btn {
+  background: #fee2e2;
+  border: none;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
 
-.log-filter-bar { display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; gap: 4px; margin-bottom: 12px; }
-.filter-btn { flex: 1; border: none; background: transparent; padding: 8px 0; font-size: 13px; font-weight: 700; color: #64748b; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
-.filter-btn.active { background: #ffffff; color: var(--accent); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
+.log-filter-bar {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.filter-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.filter-btn.active {
+  background: #ffffff;
+  color: var(--accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
 
 .log-list { display: flex; flex-direction: column; gap: 10px; }
 .log-item {
@@ -526,9 +707,100 @@ iframe { width: 100%; height: 100%; border: none; }
 .log-text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15.5px; font-weight: 800; color: #0f172a; }
 .log-time { font-size: 11.5px; color: var(--text-sub); }
 .map-links-group { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
-.log-map-link { font-size: 11px; color: #0284c7; text-decoration: none; font-weight: 700; background: #e0f2fe; padding: 3px 8px; border-radius: 6px; border: 1px solid #bae6fd; }
+.log-map-link {
+  font-size: 11px;
+  color: #0284c7;
+  text-decoration: none;
+  font-weight: 700;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #bae6fd;
+}
 .delete-item-btn { background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; padding: 2px 6px; line-height: 1; }
 .delete-item-btn:hover { color: #dc2626; }
+
+/* ── 팝업 모달 (인식 결과 확인 & 오인식 대비) ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.modal-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 330px;
+  border-radius: 18px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+}
+.result-highlight-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.result-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.result-location {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 8px 0 4px;
+}
+.result-car-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+.modal-guide-text {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-modal-save {
+  width: 100%;
+  padding: 13px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-modal-edit {
+  width: 100%;
+  padding: 11px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 /* ── 가족 공유 메모 ── */
 .memo-section-wrapper { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 14px; }
