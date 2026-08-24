@@ -305,7 +305,10 @@ window.App = Object.assign(window.App || {}, {
   messagingSenderId: "1016084163074",
   appId: "1:1016084163074:web:836b8517d023638e12551b"
 };
-
+    
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
     try {
       if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
