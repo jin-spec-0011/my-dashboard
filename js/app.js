@@ -118,7 +118,8 @@ window.App = Object.assign(window.App || {}, {
   
   state: {
     parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' },
-    memo: { author: '나', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
+    memo: { author: '진세', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
+    schedule: { author: '진세' },
     trip: { coords: { lat: 37.5665, lng: 126.9780 }, photoBase64: '', map: null, markers: [], tempMarker: null },
     calendar: { syncTimeout: null }
   },
@@ -143,13 +144,16 @@ window.App = Object.assign(window.App || {}, {
         target.classList.add('active');
         window.scrollTo(0, 0);
 
-        if (['parking', 'memo', 'trip', 'ledger'].includes(screenName)) {
+        if (['parking', 'memo', 'trip', 'ledger', 'schedule'].includes(screenName)) {
           safeSet('last_view_' + screenName, Date.now());
           App.badge.refresh();
         }
 
         if (screenName === 'calendar' && App.calendar?.generate) {
           App.calendar.generate();
+        }
+        if (screenName === 'schedule' && App.schedule?.render) {
+          App.schedule.render(App.stores.schedules ? App.stores.schedules.getItems() : []);
         }
         if (screenName === 'ledger' && App.ledger?.render) {
           App.ledger.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
@@ -161,7 +165,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 세로 롤링 전광판 (가계부 지출 & 남은 예산 자동 반영) */
+  /* 📢 세로 롤링 전광판 (일정 + 가계부 + 주차) */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -170,7 +174,19 @@ window.App = Object.assign(window.App || {}, {
     refresh() {
       const lines = [];
 
-      // 1. 주차 현황
+      // 1. 다가오는 일정
+      const schedules = App.stores.schedules ? App.stores.schedules.getItems() : [];
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+      const upcoming = schedules.filter(s => s.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
+
+      if (upcoming.length > 0) {
+        const nextEvt = upcoming[0];
+        lines.push(`🗓️ [${nextEvt.author}] ${nextEvt.title} (${nextEvt.date.substring(5)})`);
+      }
+
+      // 2. 주차 현황
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         const pTexts = [];
@@ -189,52 +205,32 @@ window.App = Object.assign(window.App || {}, {
         if (pTexts.length > 0) lines.push(pTexts.join(' │ '));
       }
 
-      // 2. 가계부 이달의 지출 및 예산 현황
-      const now = new Date();
+      // 3. 가계부 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
       const totalMonthSpend = thisMonthLedger.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
-      const budgetKey = `budget_${currentMonthKey}`;
-      const targetBudget = Number(safeGet(budgetKey)) || 0;
 
-      if (totalMonthSpend > 0 || targetBudget > 0) {
-        if (targetBudget > 0) {
-          const remain = targetBudget - totalMonthSpend;
-          lines.push(`💰 ${now.getMonth() + 1}월 지출: ${totalMonthSpend.toLocaleString()}원 (남은 예산: ${remain.toLocaleString()}원)`);
-        } else {
-          lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원 (${thisMonthLedger.length}건)`);
-        }
+      if (totalMonthSpend > 0) {
+        lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
       }
 
-      // 3. 장보기 미완료
+      // 4. 장보기 미완료
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
         const preview = pending.slice(0, 3).map(t => t.text).join(', ');
-        lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (남은 ${pending.length}개)`);
+        lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
       }
 
-      // 4. 고정 메모
-      const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
-      if (stickies.length > 0) {
-        lines.push(`메모 : ${stickies[0].text.replace(/\n/g, ' ').trim()}`);
-      }
-
-      // 5. 여행
-      const trips = App.stores.trips ? App.stores.trips.getItems() : [];
-      if (trips.length > 0) {
-        lines.push(`여행 : ${trips[0].place} (${trips[0].date})`);
-      }
-
-      // 6. 이달의 목표
+      // 5. 이달의 목표
       const currentGoal = safeGet(`planner_goal_${now.getFullYear()}_${now.getMonth() + 1}`);
       if (currentGoal && currentGoal.trim()) {
         lines.push(`목표 : ${currentGoal.trim()}`);
       }
 
       if (lines.length === 0) {
-        lines.push('우리 가족 스마트 포털에 오신 것을 환영합니다 ✨');
+        lines.push('진세 & 지혜 스마트 포털에 오신 것을 환영합니다 ✨');
       }
 
       this.messages = lines;
@@ -275,33 +271,22 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* NEW 뱃지 관리 */
+  /* NEW 뱃지 */
   badge: {
     refresh() {
-      const lastParkingView = Number(safeGet('last_view_parking') || 0);
-      const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
-      const hasNewParking = parkingItems.some(i => (Number(i.id) || 0) > lastParkingView);
-      const pBadge = document.getElementById('badge-parking');
-      if (pBadge) pBadge.style.display = hasNewParking ? 'inline-block' : 'none';
+      const checkBadge = (key, storeKey, badgeId) => {
+        const lastView = Number(safeGet(key) || 0);
+        const items = App.stores[storeKey] ? App.stores[storeKey].getItems() : [];
+        const hasNew = items.some(i => (Number(i.id) || 0) > lastView);
+        const el = document.getElementById(badgeId);
+        if (el) el.style.display = hasNew ? 'inline-block' : 'none';
+      };
 
-      const lastMemoView = Number(safeGet('last_view_memo') || 0);
-      const todos = App.stores.todos ? App.stores.todos.getItems() : [];
-      const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
-      const hasNewMemo = todos.some(i => (Number(i.id) || 0) > lastMemoView) || stickies.some(i => (Number(i.id) || 0) > lastMemoView);
-      const mBadge = document.getElementById('badge-memo');
-      if (mBadge) mBadge.style.display = hasNewMemo ? 'inline-block' : 'none';
-
-      const lastTripView = Number(safeGet('last_view_trip') || 0);
-      const trips = App.stores.trips ? App.stores.trips.getItems() : [];
-      const hasNewTrip = trips.some(i => (Number(i.id) || 0) > lastTripView);
-      const tBadge = document.getElementById('badge-trip');
-      if (tBadge) tBadge.style.display = hasNewTrip ? 'inline-block' : 'none';
-
-      const lastLedgerView = Number(safeGet('last_view_ledger') || 0);
-      const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
-      const hasNewLedger = ledgerItems.some(i => (Number(i.id) || 0) > lastLedgerView);
-      const lBadge = document.getElementById('badge-ledger');
-      if (lBadge) lBadge.style.display = hasNewLedger ? 'inline-block' : 'none';
+      checkBadge('last_view_parking', 'parking', 'badge-parking');
+      checkBadge('last_view_memo', 'todos', 'badge-memo');
+      checkBadge('last_view_trip', 'trips', 'badge-trip');
+      checkBadge('last_view_ledger', 'ledger', 'badge-ledger');
+      checkBadge('last_view_schedule', 'schedules', 'badge-schedule');
     }
   },
 
@@ -318,7 +303,7 @@ window.App = Object.assign(window.App || {}, {
       for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
     }
 
-    // 2. 상단 오늘 날짜
+    // 2. 오늘 날짜
     const now = new Date();
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
@@ -331,14 +316,18 @@ window.App = Object.assign(window.App || {}, {
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
     this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => { if (this.ledger) this.ledger.render(items); } });
+    this.stores.schedules = createDataStore({ key: 'family_schedules', firebasePath: 'family_schedules', maxItems: 500, onRender: (items) => { 
+      if (this.schedule) this.schedule.render(items); 
+      if (this.calendar) this.calendar.generate();
+    } });
 
     Object.values(this.stores).forEach(s => s.load());
 
     // 4. 모듈 초기화
     if (this.ledger) this.ledger.init();
+    if (this.schedule) this.schedule.init();
 
     if (this.calendar) {
-      this.calendar.updateGridStyle('dark');
       const yearInput = document.getElementById('yearInput');
       const monthInput = document.getElementById('monthInput');
       const tripDateInput = document.getElementById('tripDateInput');
@@ -381,6 +370,10 @@ window.App = Object.assign(window.App || {}, {
         this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val()));
         this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
         this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val()));
+        this.db.ref('family_schedules').on('value', snap => {
+          this.stores.schedules.syncFromFirebase(snap.val());
+          if (this.calendar) this.calendar.generate();
+        });
         this.db.ref('family_budget').on('value', snap => {
           const data = snap.val() || {};
           Object.keys(data).forEach(k => safeSet(`budget_${k}`, data[k]));
@@ -404,7 +397,6 @@ window.App = Object.assign(window.App || {}, {
 
           const activeEl = document.activeElement;
           const isTyping = activeEl && (
-            activeEl.classList.contains('cell-memo') ||
             activeEl.classList.contains('editable-goal') ||
             activeEl.classList.contains('editable-bottom-memo')
           );
