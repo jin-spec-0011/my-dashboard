@@ -32,7 +32,6 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
     try { 
       const raw = safeGet(key);
       const parsed = JSON.parse(raw || '[]');
-      // 객체 형태나 다른 타입으로 저장되어 있어도 100% 배열로 강제 변환
       if (Array.isArray(parsed)) {
         items = parsed;
       } else if (parsed && typeof parsed === 'object') {
@@ -178,7 +177,7 @@ window.App = Object.assign(window.App || {}, {
           App.calendar.generate();
         }
         if (screenName === 'schedule' && App.schedule?.render) {
-          App.schedule.render(App.stores.schedules ? App.stores.schedules.getItems() : []);
+          App.schedule.render();
         }
         if (screenName === 'ledger' && App.ledger?.render) {
           App.ledger.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
@@ -190,7 +189,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 세로 롤링 전광판 (일정 + 가계부 + 주차) */
+  /* 📢 세로 롤링 전광판 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -200,15 +199,16 @@ window.App = Object.assign(window.App || {}, {
       const lines = [];
 
       // 1. 다가오는 일정
-      const schedules = App.stores.schedules ? App.stores.schedules.getItems() : [];
+      const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
       const now = new Date();
       const offset = now.getTimezoneOffset() * 60000;
       const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
-      const upcoming = schedules.filter(s => s.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
+      const upcoming = allSchedules.filter(s => s && s.date >= todayStr).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
       if (upcoming.length > 0) {
         const nextEvt = upcoming[0];
-        lines.push(`🗓️ [${nextEvt.author}] ${nextEvt.title} (${nextEvt.date.substring(5)})`);
+        const prefix = nextEvt.isPrivate ? '🔒' : `[${nextEvt.author}]`;
+        lines.push(`🗓️ ${prefix} ${nextEvt.title} (${nextEvt.date.substring(5)})`);
       }
 
       // 2. 주차 현황
@@ -246,12 +246,6 @@ window.App = Object.assign(window.App || {}, {
       if (pending.length > 0) {
         const preview = pending.slice(0, 3).map(t => t.text).join(', ');
         lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
-      }
-
-      // 5. 이달의 목표
-      const currentGoal = safeGet(`planner_goal_${now.getFullYear()}_${now.getMonth() + 1}`);
-      if (currentGoal && currentGoal.trim()) {
-        lines.push(`목표 : ${currentGoal.trim()}`);
       }
 
       if (lines.length === 0) {
@@ -296,7 +290,6 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* NEW 뱃지 */
   badge: {
     refresh() {
       const checkBadge = (key, storeKey, badgeId) => {
@@ -315,8 +308,30 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
+  /* 🔒 개인별 Firebase 실시간 채널 분기 구독 */
+  syncPrivateChannel() {
+    if (!this.isFirebaseActive || !this.db) return;
+
+    const user = this.auth?.currentUser || 'public';
+
+    if (user === 'jinse') {
+      this.db.ref('private_schedules/jinse').off();
+      this.db.ref('private_schedules/jinse').on('value', snap => {
+        this.stores.privateJinse.syncFromFirebase(snap.val());
+        if (this.schedule) this.schedule.render();
+        if (this.calendar) this.calendar.generate();
+      });
+    } else if (user === 'jihye') {
+      this.db.ref('private_schedules/jihye').off();
+      this.db.ref('private_schedules/jihye').on('value', snap => {
+        this.stores.privateJihye.syncFromFirebase(snap.val());
+        if (this.schedule) this.schedule.render();
+        if (this.calendar) this.calendar.generate();
+      });
+    }
+  },
+
   init() {
-    // 1. 주차 드롭다운 세팅
     const colSelect = document.getElementById('colSelect');
     if (colSelect) {
       colSelect.innerHTML = '';
@@ -328,27 +343,36 @@ window.App = Object.assign(window.App || {}, {
       for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
     }
 
-    // 2. 오늘 날짜
     const now = new Date();
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    // 3. 통합 스토어 초기화
+    // 통합 스토어 초기화 (공유 + 진세 비공개 + 지혜 비공개 분리)
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking.render(items) });
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
     this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => { if (this.ledger) this.ledger.render(items); } });
     this.stores.schedules = createDataStore({ key: 'family_schedules', firebasePath: 'family_schedules', maxItems: 500, onRender: (items) => { 
-      if (this.schedule) this.schedule.render(items); 
+      if (this.schedule) this.schedule.render(); 
+      if (this.calendar) this.calendar.generate();
+    } });
+
+    this.stores.privateJinse = createDataStore({ key: 'private_jinse', firebasePath: 'private_schedules/jinse', maxItems: 500, onRender: () => {
+      if (this.schedule) this.schedule.render();
+      if (this.calendar) this.calendar.generate();
+    } });
+
+    this.stores.privateJihye = createDataStore({ key: 'private_jihye', firebasePath: 'private_schedules/jihye', maxItems: 500, onRender: () => {
+      if (this.schedule) this.schedule.render();
       if (this.calendar) this.calendar.generate();
     } });
 
     Object.values(this.stores).forEach(s => s.load());
 
-    // 4. 모듈 초기화
+    if (this.auth) this.auth.init();
     if (this.ledger) this.ledger.init();
     if (this.schedule) this.schedule.init();
 
@@ -362,11 +386,10 @@ window.App = Object.assign(window.App || {}, {
       this.calendar.generate();
     }
 
-    // 5. 전광판 & 뱃지 시작
     this.ticker.start();
     this.badge.refresh();
 
-    // 6. Firebase 초기화
+    // Firebase 초기화
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -399,6 +422,10 @@ window.App = Object.assign(window.App || {}, {
           this.stores.schedules.syncFromFirebase(snap.val());
           if (this.calendar) this.calendar.generate();
         });
+
+        // 활성 사용자 비공개 채널 연결
+        this.syncPrivateChannel();
+
         this.db.ref('family_budget').on('value', snap => {
           const data = snap.val() || {};
           Object.keys(data).forEach(k => safeSet(`budget_${k}`, data[k]));
