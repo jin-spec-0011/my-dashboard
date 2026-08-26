@@ -48,14 +48,36 @@ App.schedule = {
     else if (m > 12) { m = 1; y++; }
 
     this.currentYearMonth = `${y}-${String(m).padStart(2, '0')}`;
-    this.render(App.stores.schedules ? App.stores.schedules.getItems() : []);
+    this.render();
   },
 
-  /* 일정 등록 -> 캘린더 자동 동기화 */
+  /* 🔒 공유 일정 + 비공개 일정 안전 병합 */
+  getAllSchedules() {
+    let publicSchedules = [];
+    try {
+      publicSchedules = App.stores?.schedules ? App.stores.schedules.getItems() : [];
+      if (!Array.isArray(publicSchedules)) publicSchedules = [];
+    } catch (e) {
+      publicSchedules = [];
+    }
+
+    let privateSchedules = [];
+    try {
+      const raw = safeGet('local_private_schedules');
+      const parsed = JSON.parse(raw || '[]');
+      privateSchedules = Array.isArray(parsed) ? parsed : Object.values(parsed || {});
+    } catch (e) {
+      privateSchedules = [];
+    }
+
+    return [...publicSchedules, ...privateSchedules].filter(Boolean);
+  },
+
   add() {
     const dateInput = document.getElementById('scheduleDateInput');
     const titleInput = document.getElementById('scheduleTitleInput');
     const memoInput = document.getElementById('scheduleMemoInput');
+    const isPrivate = document.getElementById('schedulePrivateCheck')?.checked || false;
 
     const date = dateInput ? dateInput.value : '';
     const title = titleInput ? titleInput.value.trim() : '';
@@ -71,24 +93,40 @@ App.schedule = {
       title: title,
       category: this.category,
       author: this.author,
-      memo: memo
+      memo: memo,
+      isPrivate: isPrivate
     };
 
-    App.stores.schedules.add(newSchedule);
+    if (isPrivate) {
+      let privateList = [];
+      try {
+        const raw = safeGet('local_private_schedules');
+        const parsed = JSON.parse(raw || '[]');
+        privateList = Array.isArray(parsed) ? parsed : Object.values(parsed || {});
+      } catch (e) {}
+      privateList.unshift(newSchedule);
+      safeSet('local_private_schedules', JSON.stringify(privateList));
+      if (App.ui?.toast) App.ui.toast(`🔒 [${title}] 비공개 일정이 등록되었습니다.`);
+    } else {
+      if (App.stores?.schedules) {
+        App.stores.schedules.add(newSchedule);
+      }
+      if (App.ui?.toast) App.ui.toast(`🗓️ [${title}] 가족 공유 일정이 등록되었습니다!`);
+    }
 
     if (titleInput) titleInput.value = '';
     if (memoInput) memoInput.value = '';
+    const checkEl = document.getElementById('schedulePrivateCheck');
+    if (checkEl) checkEl.checked = false;
 
-    // 만년 캘린더 동기화 재생성
-    if (App.calendar && App.calendar.generate) {
-      App.calendar.generate();
-    }
-
-    App.ui.toast(`🗓️ [${title}] 일정이 등록되었습니다!`);
+    this.render();
+    if (App.calendar?.generate) App.calendar.generate();
+    if (App.ticker) App.ticker.refresh();
   },
 
   openEditModal(id) {
-    const item = App.stores.schedules.getItems().find(i => String(i.id) === String(id));
+    const all = this.getAllSchedules();
+    const item = all.find(i => String(i.id) === String(id));
     if (!item) return;
 
     this.editingId = id;
@@ -97,6 +135,9 @@ App.schedule = {
     document.getElementById('editScheduleCategory').value = item.category || '가족행사';
     document.getElementById('editScheduleAuthor').value = item.author || '진세';
     document.getElementById('editScheduleMemo').value = item.memo || '';
+    
+    const pCheck = document.getElementById('editSchedulePrivateCheck');
+    if (pCheck) pCheck.checked = !!item.isPrivate;
 
     const modal = document.getElementById('schedule-edit-modal');
     if (modal) modal.style.display = 'flex';
@@ -115,59 +156,87 @@ App.schedule = {
     const category = document.getElementById('editScheduleCategory').value;
     const author = document.getElementById('editScheduleAuthor').value;
     const memo = document.getElementById('editScheduleMemo').value.trim();
+    const isPrivate = document.getElementById('editSchedulePrivateCheck')?.checked || false;
 
     if (!date) return alert('날짜를 입력해주세요.');
     if (!title) return alert('일정 제목을 입력해주세요.');
 
-    App.stores.schedules.update(this.editingId, {
+    const all = this.getAllSchedules();
+    const existing = all.find(i => String(i.id) === String(this.editingId));
+    if (!existing) return;
+
+    const updated = {
+      id: Number(this.editingId),
       date: date,
       month: date.substring(0, 7),
       title: title,
       category: category,
       author: author,
-      memo: memo
-    });
+      memo: memo,
+      isPrivate: isPrivate
+    };
 
-    this.closeEditModal();
-
-    if (App.calendar && App.calendar.generate) {
-      App.calendar.generate();
+    if (existing.isPrivate) {
+      let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
+      pList = pList.filter(i => String(i.id) !== String(this.editingId));
+      safeSet('local_private_schedules', JSON.stringify(pList));
+    } else {
+      if (App.stores?.schedules) App.stores.schedules.remove(this.editingId);
     }
 
-    App.ui.toast('✅ 일정이 수정되었습니다.');
+    if (isPrivate) {
+      let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
+      pList.unshift(updated);
+      safeSet('local_private_schedules', JSON.stringify(pList));
+    } else {
+      if (App.stores?.schedules) App.stores.schedules.add(updated);
+    }
+
+    this.closeEditModal();
+    this.render();
+    if (App.calendar?.generate) App.calendar.generate();
+    if (App.ticker) App.ticker.refresh();
+    if (App.ui?.toast) App.ui.toast('✅ 일정이 수정되었습니다.');
   },
 
   delete(id) {
-    const item = App.stores.schedules.getItems().find(i => String(i.id) === String(id));
+    const all = this.getAllSchedules();
+    const item = all.find(i => String(i.id) === String(id));
     if (!item) return;
 
     if (confirm(`[${item.title}] 일정을 삭제하시겠습니까?`)) {
-      App.stores.schedules.remove(id);
-      if (App.calendar && App.calendar.generate) {
-        App.calendar.generate();
+      if (item.isPrivate) {
+        let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
+        pList = pList.filter(i => String(i.id) !== String(id));
+        safeSet('local_private_schedules', JSON.stringify(pList));
+      } else {
+        if (App.stores?.schedules) App.stores.schedules.remove(id);
       }
-      App.ui.toast('🗑️ 일정이 삭제되었습니다.');
+      this.render();
+      if (App.calendar?.generate) App.calendar.generate();
+      if (App.ticker) App.ticker.refresh();
+      if (App.ui?.toast) App.ui.toast('🗑️ 일정이 삭제되었습니다.');
     }
   },
 
-  /* 📥 월별 일정 엑셀(CSV) 다운로드 */
   exportCSV() {
-    const items = (App.stores.schedules ? App.stores.schedules.getItems() : [])
+    const items = this.getAllSchedules()
       .filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
     
     if (items.length === 0) return alert('내보낼 일정이 없습니다.');
 
-    items.sort((a, b) => a.date.localeCompare(b.date));
+    items.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-    let csvContent = '\uFEFF'; // UTF-8 BOM
-    csvContent += '날짜,카테고리,작성자,일정제목,상세메모\n';
+    let csvContent = '\uFEFF';
+    csvContent += '날짜,카테고리,작성자,공개여부,일정제목,상세메모\n';
 
     items.forEach(i => {
       const row = [
         `"${i.date}"`,
         `"${i.category || '가족행사'}"`,
-        `"${i.author || '가족'}"`,
-        `"${i.title.replace(/"/g, '""')}"`,
+        `"${i.author || '진세'}"`,
+        `"${i.isPrivate ? '비공개(나만보기)' : '가족공유'}"`,
+        `"${(i.title || '').replace(/"/g, '""')}"`,
         `"${(i.memo || '').replace(/"/g, '""')}"`
       ];
       csvContent += row.join(',') + '\n';
@@ -177,23 +246,24 @@ App.schedule = {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${this.currentYearMonth}_가족일정목록.csv`);
+    link.setAttribute('download', `${this.currentYearMonth}_일정목록.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    App.ui.toast('📥 일정 엑셀(CSV) 파일이 다운로드되었습니다!');
+    if (App.ui?.toast) App.ui.toast('📥 일정 엑셀(CSV) 파일이 다운로드되었습니다!');
   },
 
-  render(items) {
+  render() {
     if (!this.currentYearMonth) this.init();
 
     const [y, m] = this.currentYearMonth.split('-');
     const monthText = document.getElementById('scheduleCurrentMonthText');
     if (monthText) monthText.innerText = `${y}년 ${parseInt(m, 10)}월`;
 
-    const filtered = (items || []).filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
-    filtered.sort((a, b) => a.date.localeCompare(b.date));
+    const all = this.getAllSchedules();
+    const filtered = all.filter(i => (i.month || i.date?.substring(0, 7)) === this.currentYearMonth);
+    filtered.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     const countEl = document.getElementById('scheduleCountLabel');
     const listEl = document.getElementById('scheduleListContainer');
@@ -207,13 +277,15 @@ App.schedule = {
     }
 
     listEl.innerHTML = filtered.map(item => {
-      const authorClass = item.author === '진세' ? 'author-jinse' : (item.author === '지혜' ? 'author-jihye' : 'author-family');
+      const authorClass = item.isPrivate ? 'author-private' : (item.author === '진세' ? 'author-jinse' : (item.author === '지혜' ? 'author-jihye' : 'author-family'));
+      const authorLabel = item.isPrivate ? `🔒 ${item.author}(나만보기)` : escapeHtml(item.author || '진세');
+
       return `
-        <div class="schedule-item" onclick="App.schedule.openEditModal('${item.id}')">
+        <div class="schedule-item ${item.isPrivate ? 'is-private' : ''}" onclick="App.schedule.openEditModal('${item.id}')">
           <div class="schedule-item-left">
             <div class="schedule-item-top">
               <span class="schedule-cat-badge">${escapeHtml(item.category || '가족행사')}</span>
-              <span class="schedule-author-badge ${authorClass}">${escapeHtml(item.author || '진세')}</span>
+              <span class="schedule-author-badge ${authorClass}">${authorLabel}</span>
               <span class="schedule-item-title">${escapeHtml(item.title)}</span>
             </div>
             <span class="schedule-item-date">📅 ${escapeHtml(item.date)}</span>
