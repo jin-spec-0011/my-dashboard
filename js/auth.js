@@ -75,7 +75,7 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
-  /* 🔒 개인 PIN 검증 (Firebase 클라우드 해시 또는 기본값 대조) */
+  /* 🔒 개인 PIN 검증 */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
@@ -130,7 +130,7 @@ App.auth = {
     if (changeModal) changeModal.style.display = 'none';
   },
 
-  /* 🔑 새 PIN 저장 (Firebase 실시간 동기화) */
+  /* 🔑 새 PIN 저장 (Firebase 클라우드 동기화) */
   async saveNewPIN() {
     const target = this.pendingTargetUser;
     if (!target) return;
@@ -159,7 +159,7 @@ App.auth = {
       return alert("현재 PIN 번호가 일치하지 않습니다.");
     }
 
-    // 새 PIN 해시화 후 저장
+    // 새 PIN 암호화 후 Firebase 저장
     const newHash = await sha256(newPin);
     safeSet(`pin_hash_${target}`, newHash);
 
@@ -170,6 +170,35 @@ App.auth = {
     const nameMap = { jinse: '진세', jihye: '지혜' };
     alert(`[${nameMap[target]}] 새 비밀번호가 성공적으로 저장되었습니다!\n모든 기기에 즉시 동기화됩니다.`);
     this.closeChangePinModal();
+  },
+
+  /* 🔄 비밀번호 분실 시 마스터 키(1234)로 초기화 */
+  async resetPersonalPIN(targetUser) {
+    const target = targetUser || this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
+    const nameMap = { jinse: '진세', jihye: '지혜' };
+    const defaultPinMap = { jinse: '1111', jihye: '2222' };
+
+    const masterKey = prompt(`[${nameMap[target]}] 비밀번호 초기화를 위해 포털 마스터 비밀번호(4자리)를 입력하세요:`);
+    if (masterKey === null) return;
+
+    const masterHash = await sha256(masterKey.trim());
+    if (masterHash === this.portalPINHash || masterKey.trim() === "1234") {
+      // 1. Firebase에서 개인 PIN 삭제 -> 기본값으로 복원
+      if (App.isFirebaseActive && App.db) {
+        App.db.ref(`auth_pins/${target}`).remove();
+      }
+      safeSet(`pin_hash_${target}`, '');
+
+      alert(`✅ [${nameMap[target]}] 비밀번호가 초기값(${defaultPinMap[target]})으로 초기화되었습니다.\n초기 번호로 로그인 후 새 번호로 변경해주세요.`);
+      
+      const pinInput = document.getElementById('profilePinInput');
+      if (pinInput) {
+        pinInput.value = defaultPinMap[target];
+        pinInput.focus();
+      }
+    } else {
+      alert("❌ 마스터 비밀번호가 일치하지 않습니다.");
+    }
   },
 
   switchToPublic() {
