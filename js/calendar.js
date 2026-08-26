@@ -4,6 +4,38 @@ App.calendar = {
   monthNamesEng: ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"],
   holidayCache: {},
   fixedHolidays: { "1-1": "신정", "3-1": "3·1절", "5-5": "어린이날", "6-6": "현충일", "8-15": "광복절", "10-3": "개천절", "10-9": "한글날", "12-25": "성탄절" },
+  isMobileView: true,
+  showPrivate: true, // 기본값: 비공개 일정 표시
+
+  /* 📱 모바일 뷰 ↔ 🖥️ A4 원본 뷰 전환 */
+  toggleViewMode() {
+    this.isMobileView = !this.isMobileView;
+    const page = document.getElementById('plannerPage');
+    const btn = document.getElementById('btnToggleViewMode');
+
+    if (page) {
+      page.classList.toggle('cal-view-mobile', this.isMobileView);
+      page.classList.toggle('cal-view-full', !this.isMobileView);
+    }
+    if (btn) {
+      btn.innerText = this.isMobileView ? '📱 모바일 뷰' : '🖥️ A4 원본 뷰';
+    }
+    App.ui.toast(this.isMobileView ? '📱 모바일 맞춤 화면으로 변경되었습니다.' : '🖥️ A4 원본(40px) 뷰로 변경되었습니다.');
+  },
+
+  /* 🔒 비공개 일정 표시/숨김 토글 (출력 전 숨김 선택 가능) */
+  togglePrivate() {
+    this.showPrivate = !this.showPrivate;
+    const btn = document.getElementById('btnTogglePrivate');
+
+    if (btn) {
+      btn.innerText = this.showPrivate ? '🔒 비공개: 표시' : '🔒 비공개: 숨김';
+      btn.classList.toggle('off', !this.showPrivate);
+    }
+
+    this.generate();
+    App.ui.toast(this.showPrivate ? '🔒 비공개 일정이 캘린더에 표시됩니다.' : '🔒 비공개 일정이 캘린더(및 출력)에서 제외되었습니다.');
+  },
 
   async fetchHolidays(year) {
     if (this.holidayCache[year]) return this.holidayCache[year];
@@ -103,8 +135,11 @@ App.calendar = {
     if (goalInput) goalInput.value = safeGet(`planner_goal_${year}_${month}`);
     if (notesInput) notesInput.value = safeGet(`planner_bottom_notes_${year}_${month}`);
 
-    // 동기화된 일정 데이터 불러오기
-    const allSchedules = App.stores.schedules ? App.stores.schedules.getItems() : [];
+    // 공유 + 비공개 일정 취합 후 토글 상태(showPrivate)에 따라 필터링
+    let allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
+    if (!this.showPrivate) {
+      allSchedules = allSchedules.filter(s => !s.isPrivate);
+    }
 
     const tbody = document.getElementById('calendarBody');
     if (!tbody) return;
@@ -146,15 +181,16 @@ App.calendar = {
         let otherClass = isOtherMonth ? 'other-month' : '';
         let holidayHtml = holiday ? `<span class="holiday-tag">${escapeHtml(holiday)}</span>` : '';
 
-        // 해당 날짜에 등록된 일정 필터링
+        // 해당 날짜의 일정 렌더링
         const dayEvents = allSchedules.filter(s => s.date === dateKey);
         
         let eventsHtml = '';
         if (dayEvents.length > 0) {
           eventsHtml = `<div class="cell-event-list">` + dayEvents.map(e => {
-            const tagClass = e.author === '진세' ? 'event-tag-jinse' : (e.author === '지혜' ? 'event-tag-jihye' : 'event-tag-family');
-            if (!isOtherMonth) monthEventsSummary.push(`${dMonth}/${dText} [${e.author}] ${e.title}`);
-            return `<div class="cell-event-item ${tagClass}"><span>[${escapeHtml(e.author)}]</span> ${escapeHtml(e.title)}</div>`;
+            const tagClass = e.isPrivate ? 'event-tag-private' : (e.author === '진세' ? 'event-tag-jinse' : (e.author === '지혜' ? 'event-tag-jihye' : 'event-tag-family'));
+            const prefix = e.isPrivate ? '🔒' : `[${escapeHtml(e.author)}]`;
+            if (!isOtherMonth) monthEventsSummary.push(`${dMonth}/${dText} ${prefix} ${e.title}`);
+            return `<div class="cell-event-item ${tagClass}"><span>${prefix}</span> ${escapeHtml(e.title)}</div>`;
           }).join('') + `</div>`;
         }
 
@@ -174,12 +210,11 @@ App.calendar = {
     }
     tbody.innerHTML = html;
 
-    // 하단 주요 일정 요약 자동 렌더링
     const summaryEl = document.getElementById('bottomTodoSummary');
     if (summaryEl) {
       summaryEl.innerHTML = monthEventsSummary.length > 0
         ? monthEventsSummary.slice(0, 6).map(s => `• ${escapeHtml(s)}`).join('<br>')
-        : '이달에 등록된 가족 일정이 없습니다.';
+        : '이달에 등록된 일정이 없습니다.';
     }
   }
 };
