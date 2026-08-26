@@ -51,26 +51,24 @@ App.schedule = {
     this.render();
   },
 
-  /* 🔒 공유 일정 + 비공개 일정 안전 병합 */
+  /* 🔒 현재 활성 프로필에 따라 공개 + 비공개 일정 안전 병합 */
   getAllSchedules() {
-    let publicSchedules = [];
+    let publicList = [];
     try {
-      publicSchedules = App.stores?.schedules ? App.stores.schedules.getItems() : [];
-      if (!Array.isArray(publicSchedules)) publicSchedules = [];
-    } catch (e) {
-      publicSchedules = [];
+      publicList = App.stores?.schedules ? App.stores.schedules.getItems() : [];
+      if (!Array.isArray(publicList)) publicList = [];
+    } catch (e) { publicList = []; }
+
+    let privateList = [];
+    const user = App.auth?.currentUser || 'public';
+
+    if (user === 'jinse') {
+      privateList = App.stores?.privateJinse ? App.stores.privateJinse.getItems() : [];
+    } else if (user === 'jihye') {
+      privateList = App.stores?.privateJihye ? App.stores.privateJihye.getItems() : [];
     }
 
-    let privateSchedules = [];
-    try {
-      const raw = safeGet('local_private_schedules');
-      const parsed = JSON.parse(raw || '[]');
-      privateSchedules = Array.isArray(parsed) ? parsed : Object.values(parsed || {});
-    } catch (e) {
-      privateSchedules = [];
-    }
-
-    return [...publicSchedules, ...privateSchedules].filter(Boolean);
+    return [...publicList, ...privateList].filter(Boolean);
   },
 
   add() {
@@ -86,6 +84,12 @@ App.schedule = {
     if (!date) return alert('날짜를 선택해주세요.');
     if (!title) return alert('일정 제목을 입력해주세요.');
 
+    const activeUser = App.auth?.currentUser || 'public';
+    if (isPrivate && activeUser === 'public') {
+      alert("비공개 일정을 등록하려면 상단에서 [진세] 또는 [지혜] 프로필로 먼저 인증해주세요.");
+      return;
+    }
+
     const newSchedule = {
       id: Date.now(),
       date: date,
@@ -98,20 +102,17 @@ App.schedule = {
     };
 
     if (isPrivate) {
-      let privateList = [];
-      try {
-        const raw = safeGet('local_private_schedules');
-        const parsed = JSON.parse(raw || '[]');
-        privateList = Array.isArray(parsed) ? parsed : Object.values(parsed || {});
-      } catch (e) {}
-      privateList.unshift(newSchedule);
-      safeSet('local_private_schedules', JSON.stringify(privateList));
-      if (App.ui?.toast) App.ui.toast(`🔒 [${title}] 비공개 일정이 등록되었습니다.`);
+      if (activeUser === 'jinse' && App.stores?.privateJinse) {
+        App.stores.privateJinse.add(newSchedule);
+      } else if (activeUser === 'jihye' && App.stores?.privateJihye) {
+        App.stores.privateJihye.add(newSchedule);
+      }
+      App.ui.toast(`🔒 [${title}] 비공개 클라우드 일정이 등록되었습니다.`);
     } else {
       if (App.stores?.schedules) {
         App.stores.schedules.add(newSchedule);
       }
-      if (App.ui?.toast) App.ui.toast(`🗓️ [${title}] 가족 공유 일정이 등록되었습니다!`);
+      App.ui.toast(`🗓️ [${title}] 가족 공유 일정이 등록되었습니다!`);
     }
 
     if (titleInput) titleInput.value = '';
@@ -165,6 +166,9 @@ App.schedule = {
     const existing = all.find(i => String(i.id) === String(this.editingId));
     if (!existing) return;
 
+    const activeUser = App.auth?.currentUser || 'public';
+    const targetStore = (activeUser === 'jinse') ? App.stores?.privateJinse : App.stores?.privateJihye;
+
     const updated = {
       id: Number(this.editingId),
       date: date,
@@ -176,27 +180,24 @@ App.schedule = {
       isPrivate: isPrivate
     };
 
-    if (existing.isPrivate) {
-      let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
-      pList = pList.filter(i => String(i.id) !== String(this.editingId));
-      safeSet('local_private_schedules', JSON.stringify(pList));
-    } else {
-      if (App.stores?.schedules) App.stores.schedules.remove(this.editingId);
+    // 기존 저장소에서 제거 후 상태에 따라 재분기 저장
+    if (existing.isPrivate && targetStore) {
+      targetStore.remove(this.editingId);
+    } else if (App.stores?.schedules) {
+      App.stores.schedules.remove(this.editingId);
     }
 
-    if (isPrivate) {
-      let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
-      pList.unshift(updated);
-      safeSet('local_private_schedules', JSON.stringify(pList));
-    } else {
-      if (App.stores?.schedules) App.stores.schedules.add(updated);
+    if (isPrivate && targetStore) {
+      targetStore.add(updated);
+    } else if (App.stores?.schedules) {
+      App.stores.schedules.add(updated);
     }
 
     this.closeEditModal();
     this.render();
     if (App.calendar?.generate) App.calendar.generate();
     if (App.ticker) App.ticker.refresh();
-    if (App.ui?.toast) App.ui.toast('✅ 일정이 수정되었습니다.');
+    App.ui.toast('✅ 일정이 수정되었습니다.');
   },
 
   delete(id) {
@@ -205,17 +206,19 @@ App.schedule = {
     if (!item) return;
 
     if (confirm(`[${item.title}] 일정을 삭제하시겠습니까?`)) {
-      if (item.isPrivate) {
-        let pList = JSON.parse(safeGet('local_private_schedules') || '[]');
-        pList = pList.filter(i => String(i.id) !== String(id));
-        safeSet('local_private_schedules', JSON.stringify(pList));
-      } else {
-        if (App.stores?.schedules) App.stores.schedules.remove(id);
+      const activeUser = App.auth?.currentUser || 'public';
+      const targetStore = (activeUser === 'jinse') ? App.stores?.privateJinse : App.stores?.privateJihye;
+
+      if (item.isPrivate && targetStore) {
+        targetStore.remove(id);
+      } else if (App.stores?.schedules) {
+        App.stores.schedules.remove(id);
       }
+
       this.render();
       if (App.calendar?.generate) App.calendar.generate();
       if (App.ticker) App.ticker.refresh();
-      if (App.ui?.toast) App.ui.toast('🗑️ 일정이 삭제되었습니다.');
+      App.ui.toast('🗑️ 일정이 삭제되었습니다.');
     }
   },
 
@@ -251,7 +254,7 @@ App.schedule = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    if (App.ui?.toast) App.ui.toast('📥 일정 엑셀(CSV) 파일이 다운로드되었습니다!');
+    App.ui.toast('📥 일정 엑셀(CSV) 파일이 다운로드되었습니다!');
   },
 
   render() {
