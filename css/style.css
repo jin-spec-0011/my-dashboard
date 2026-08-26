@@ -10,11 +10,7 @@
   --grid-width: 1.5px;
 }
 
-@page { 
-  size: A4 portrait; 
-  margin: 0; 
-}
-
+@page { size: A4 portrait; margin: 0; }
 * {
   box-sizing: border-box;
   margin: 0;
@@ -22,7 +18,6 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
-
 body {
   background-color: var(--bg-color);
   color: var(--text-main);
@@ -128,7 +123,7 @@ body {
 .home-header {
   width: 100%;
   max-width: 480px;
-  margin: 4px 0 12px;
+  margin: 4px 0 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -156,6 +151,42 @@ body {
 }
 .status-badge.cloud-active { background: #059669; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); }
 
+/* 👤 사용자 프로필 바 */
+.profile-switch-bar {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.profile-current-badge {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.profile-actions-wrap { display: flex; gap: 5px; }
+.btn-prof {
+  border: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-prof-jinse { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.btn-prof-jihye { background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; }
+.btn-prof-lock { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
 /* ── 한 줄 전광판 ── */
 .home-ticker-wrapper {
   width: 100%;
@@ -164,7 +195,7 @@ body {
   border: 1.5px solid #e2e8f0;
   border-radius: 16px;
   padding: 10px 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -310,17 +341,8 @@ body {
 .btn-clear { background-color: #e2e8f0; color: #475569; }
 .btn-view-mode { background-color: #6366f1; color: #ffffff; }
 
-/* 🔒 비공개 일정 표시/숨김 버튼 스타일 */
-.btn-private-toggle {
-  background-color: #ef4444;
-  color: #ffffff;
-  transition: all 0.2s ease;
-}
-.btn-private-toggle.off {
-  background-color: #94a3b8;
-  color: #ffffff;
-  opacity: 0.85;
-}
+.btn-private-toggle { background-color: #ef4444; color: #ffffff; transition: all 0.2s ease; }
+.btn-private-toggle.off { background-color: #94a3b8; color: #ffffff; opacity: 0.85; }
 
 .cal-page {
   width: 100%;
@@ -397,7 +419,7 @@ td { padding: 4px 5px; height: 105px; background-color: #ffffff; }
 .cell-inner { height: 100%; display: flex; flex-direction: column; }
 .date-header-row { display: flex; align-items: baseline; justify-content: flex-start; gap: 5px; margin-bottom: 3px; }
 
-/* ── 📱 화면 뷰 모드 설정 ── */
+/* 📱 화면 뷰 모드 설정 */
 .cal-page.cal-view-full .day-num {
   font-family: 'Montserrat', sans-serif;
   font-size: 40px;
@@ -425,14 +447,7 @@ td { padding: 4px 5px; height: 105px; background-color: #ffffff; }
 .weekday-num { color: #0f172a; }
 .other-month { opacity: 0.22; filter: grayscale(50%); }
 
-/* 캘린더 일정 태그 및 비공개 뱃지 */
-.cell-event-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 2px;
-  overflow: hidden;
-}
+.cell-event-list { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; overflow: hidden; }
 .cell-event-item {
   font-size: 11px;
   font-weight: 700;
@@ -741,7 +756,7 @@ iframe { width: 100%; height: 100%; border: none; }
 #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: #10b981; color: white; padding: 10px 22px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,0.2); opacity: 0; transition: all 0.3s ease; z-index: 9999; pointer-events: none; }
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-/* ── 🖨️ A4 인쇄 전용 (화면 모드와 상관없이 40px 먹색 볼드 강제 적용) ── */
+/* ── 🖨️ A4 인쇄 전용 (화면 모드 무관 40px 볼드 강제) ── */
 @media print {
   @page {
     size: 210mm 297mm;
