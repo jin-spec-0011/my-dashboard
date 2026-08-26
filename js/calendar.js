@@ -7,7 +7,6 @@ App.calendar = {
   isMobileView: true,
   showPrivate: true,
 
-  /* 📱 모바일 뷰 ↔ 🖥️ A4 원본 뷰 전환 */
   toggleViewMode() {
     this.isMobileView = !this.isMobileView;
     const page = document.getElementById('plannerPage');
@@ -25,7 +24,6 @@ App.calendar = {
     }
   },
 
-  /* 🔒 비공개 일정 표시/숨김 토글 */
   togglePrivate() {
     this.showPrivate = !this.showPrivate;
     const btn = document.getElementById('btnTogglePrivate');
@@ -145,7 +143,6 @@ App.calendar = {
     if (goalInput) goalInput.value = safeGet(`planner_goal_${year}_${month}`);
     if (notesInput) notesInput.value = safeGet(`planner_bottom_notes_${year}_${month}`);
 
-    // 안전한 일정 취합 로직
     let allSchedules = [];
     try {
       if (App.schedule && typeof App.schedule.getAllSchedules === 'function') {
@@ -200,7 +197,6 @@ App.calendar = {
         const otherClass = isOtherMonth ? 'other-month' : '';
         const holidayHtml = holiday ? `<span class="holiday-tag">${escapeHtml(holiday)}</span>` : '';
 
-        // 일정 태그 생성
         const dayEvents = allSchedules.filter(s => s && s.date === dateKey);
         let eventsHtml = '';
         if (dayEvents.length > 0) {
