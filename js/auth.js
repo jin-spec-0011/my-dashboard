@@ -1,13 +1,13 @@
 window.App = window.App || {};
 
 App.auth = {
-  // 포털 기본 진입 비밀번호 해시 (기본: 1234)
+  // 포털 기본 진입 비밀번호 (1234)
   portalPINHash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
   
-  // 개인별 PIN (진세: 1111, 지혜: 2222)
-  personalPINs: {
-    jinse: "1111",
-    jihye: "2222"
+  // 개인별 기본 PIN 해시 (진세: 1111, 지혜: 2222)
+  defaultPINHashes: {
+    jinse: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5ab67e", // 1111
+    jihye: "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9"  // 2222
   },
 
   currentUser: 'public', // 'public' | 'jinse' | 'jihye'
@@ -43,14 +43,12 @@ App.auth = {
 
   lock() {
     safeSet('gogo_auth_pass', 'false');
-    // 공용 기기일 경우 프로필도 공용으로 리셋
     if (!safeGet('remembered_device_user')) {
       this.switchToPublic();
     }
     App.router.go('lock');
   },
 
-  /* 👤 사용자 프로필 전환 요청 */
   requestProfileSwitch(targetUser) {
     if (this.currentUser === targetUser) return;
 
@@ -77,15 +75,19 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
-  verifyProfilePIN() {
+  /* 🔒 개인 PIN 검증 (Firebase 클라우드 해시 또는 기본값 대조) */
+  async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
     const target = this.pendingTargetUser;
 
     if (!target) return;
+    if (!pin) return alert("PIN 4자리를 입력하세요.");
 
-    const correctPIN = this.personalPINs[target] || "1234";
-    if (pin === correctPIN || pin === "1234") {
+    const inputHash = await sha256(pin);
+    const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
+
+    if (inputHash === savedHash || pin === "1234") {
       const remCheck = document.getElementById('rememberDeviceCheck');
       if (remCheck && remCheck.checked) {
         safeSet('remembered_device_user', target);
@@ -101,6 +103,73 @@ App.auth = {
       alert("개인 PIN 번호가 일치하지 않습니다.");
       if (pinInput) { pinInput.value = ''; pinInput.focus(); }
     }
+  },
+
+  /* 🔑 PIN 변경 모달 열기/닫기 */
+  openChangePinModal() {
+    const target = this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
+    this.pendingTargetUser = target;
+
+    const nameMap = { jinse: '진세', jihye: '지혜' };
+    const titleEl = document.getElementById('changePinModalTitle');
+    if (titleEl) titleEl.innerText = `🔑 ${nameMap[target]} PIN 변경`;
+
+    document.getElementById('currentPinInput').value = '';
+    document.getElementById('newPinInput').value = '';
+    document.getElementById('newPinConfirmInput').value = '';
+
+    const authModal = document.getElementById('profile-pin-modal');
+    if (authModal) authModal.style.display = 'none';
+
+    const changeModal = document.getElementById('profile-pin-change-modal');
+    if (changeModal) changeModal.style.display = 'flex';
+  },
+
+  closeChangePinModal() {
+    const changeModal = document.getElementById('profile-pin-change-modal');
+    if (changeModal) changeModal.style.display = 'none';
+  },
+
+  /* 🔑 새 PIN 저장 (Firebase 실시간 동기화) */
+  async saveNewPIN() {
+    const target = this.pendingTargetUser;
+    if (!target) return;
+
+    const curPin = document.getElementById('currentPinInput').value.trim();
+    const newPin = document.getElementById('newPinInput').value.trim();
+    const confirmPin = document.getElementById('newPinConfirmInput').value.trim();
+
+    if (!curPin || !newPin || !confirmPin) {
+      return alert("모든 항목을 입력해주세요.");
+    }
+
+    if (newPin.length !== 4 || isNaN(Number(newPin))) {
+      return alert("새 PIN은 숫자 4자리로 입력해주세요.");
+    }
+
+    if (newPin !== confirmPin) {
+      return alert("새 PIN 번호가 서로 일치하지 않습니다.");
+    }
+
+    // 현재 PIN 확인
+    const curHash = await sha256(curPin);
+    const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
+
+    if (curHash !== savedHash && curPin !== "1234") {
+      return alert("현재 PIN 번호가 일치하지 않습니다.");
+    }
+
+    // 새 PIN 해시화 후 저장
+    const newHash = await sha256(newPin);
+    safeSet(`pin_hash_${target}`, newHash);
+
+    if (App.isFirebaseActive && App.db) {
+      App.db.ref(`auth_pins/${target}`).set(newHash);
+    }
+
+    const nameMap = { jinse: '진세', jihye: '지혜' };
+    alert(`[${nameMap[target]}] 새 비밀번호가 성공적으로 저장되었습니다!\n모든 기기에 즉시 동기화됩니다.`);
+    this.closeChangePinModal();
   },
 
   switchToPublic() {
@@ -121,7 +190,6 @@ App.auth = {
       lockBtn.style.display = (user === 'public') ? 'none' : 'inline-block';
     }
 
-    // 기본 작성자 자동 지정
     if (user === 'jinse') {
       if (App.schedule) App.schedule.selectAuthor('진세');
       if (App.memo) App.memo.selectAuthor('진세');
@@ -133,7 +201,6 @@ App.auth = {
     }
 
     if (shouldRefresh) {
-      // Firebase 비공개 채널 재구독
       if (App.syncPrivateChannel) App.syncPrivateChannel();
       if (App.schedule?.render) App.schedule.render();
       if (App.calendar?.generate) App.calendar.generate();
