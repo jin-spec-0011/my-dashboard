@@ -14,12 +14,12 @@ App.auth = {
   pendingTargetUser: null,
 
   init() {
-    // 1. 개인 스마트폰 기억 여부 확인
+    // 📱 1. 저장된 기기 기억 여부 확인 및 자동 로그인 실행
     const rememberedUser = safeGet('remembered_device_user');
     if (rememberedUser === 'jinse' || rememberedUser === 'jihye') {
-      this.setUserProfile(rememberedUser, false);
+      this.setUserProfile(rememberedUser, true);
     } else {
-      this.setUserProfile('public', false);
+      this.setUserProfile('public', true);
     }
   },
 
@@ -43,24 +43,39 @@ App.auth = {
 
   lock() {
     safeSet('gogo_auth_pass', 'false');
+    // 공용 기기일 때만 공용으로 초기화
     if (!safeGet('remembered_device_user')) {
       this.switchToPublic();
     }
     App.router.go('lock');
   },
 
+  /* 👤 상단 프로필 버튼 클릭 시 */
   requestProfileSwitch(targetUser) {
-    if (this.currentUser === targetUser) return;
+    const nameMap = { jinse: '진세', jihye: '지혜', public: '가족 공용' };
+
+    // 이미 해당 모드로 로그인되어 있는 경우
+    if (this.currentUser === targetUser) {
+      const isRemembered = (safeGet('remembered_device_user') === targetUser);
+      App.ui.toast(`현재 이미 [${nameMap[targetUser]}] 모드입니다.${isRemembered ? ' (기기 저장됨 📱)' : ''}`);
+      return;
+    }
+
+    if (targetUser === 'public') {
+      this.switchToPublic();
+      return;
+    }
 
     this.pendingTargetUser = targetUser;
-    const nameMap = { jinse: '진세', jihye: '지혜' };
     const modalTitle = document.getElementById('profileModalTitle');
     const pinInput = document.getElementById('profilePinInput');
     const remCheck = document.getElementById('rememberDeviceCheck');
 
     if (modalTitle) modalTitle.innerText = `👤 ${nameMap[targetUser]} 개인 인증`;
     if (pinInput) pinInput.value = '';
-    if (remCheck) remCheck.checked = false;
+    
+    // 스마트폰 편의를 위해 기본적으로 '이 기기 기억하기' 체크 활성화
+    if (remCheck) remCheck.checked = true;
 
     const modal = document.getElementById('profile-pin-modal');
     if (modal) {
@@ -75,7 +90,7 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
-  /* 🔒 개인 PIN 검증 */
+  /* 🔒 개인 PIN 검증 및 기기 기억 저장 */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
@@ -89,6 +104,8 @@ App.auth = {
 
     if (inputHash === savedHash || pin === "1234") {
       const remCheck = document.getElementById('rememberDeviceCheck');
+      
+      // 📱 기기 기억하기 체크 여부에 따라 영구 저장
       if (remCheck && remCheck.checked) {
         safeSet('remembered_device_user', target);
       } else {
@@ -97,15 +114,16 @@ App.auth = {
 
       this.setUserProfile(target, true);
       this.closeProfileModal();
+      
       const nameMap = { jinse: '진세', jihye: '지혜' };
-      App.ui.toast(`🔓 [${nameMap[target]}] 비공개 클라우드가 활성화되었습니다.`);
+      const remText = (remCheck && remCheck.checked) ? ' (📱 기기 기억됨)' : '';
+      App.ui.toast(`🔓 [${nameMap[target]}] 모드가 활성화되었습니다.${remText}`);
     } else {
       alert("개인 PIN 번호가 일치하지 않습니다.");
       if (pinInput) { pinInput.value = ''; pinInput.focus(); }
     }
   },
 
-  /* 🔑 PIN 변경 모달 열기/닫기 */
   openChangePinModal() {
     const target = this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
     this.pendingTargetUser = target;
@@ -130,7 +148,6 @@ App.auth = {
     if (changeModal) changeModal.style.display = 'none';
   },
 
-  /* 🔑 새 PIN 저장 (Firebase 클라우드 동기화) */
   async saveNewPIN() {
     const target = this.pendingTargetUser;
     if (!target) return;
@@ -139,19 +156,10 @@ App.auth = {
     const newPin = document.getElementById('newPinInput').value.trim();
     const confirmPin = document.getElementById('newPinConfirmInput').value.trim();
 
-    if (!curPin || !newPin || !confirmPin) {
-      return alert("모든 항목을 입력해주세요.");
-    }
+    if (!curPin || !newPin || !confirmPin) return alert("모든 항목을 입력해주세요.");
+    if (newPin.length !== 4 || isNaN(Number(newPin))) return alert("새 PIN은 숫자 4자리로 입력해주세요.");
+    if (newPin !== confirmPin) return alert("새 PIN 번호가 서로 일치하지 않습니다.");
 
-    if (newPin.length !== 4 || isNaN(Number(newPin))) {
-      return alert("새 PIN은 숫자 4자리로 입력해주세요.");
-    }
-
-    if (newPin !== confirmPin) {
-      return alert("새 PIN 번호가 서로 일치하지 않습니다.");
-    }
-
-    // 현재 PIN 확인
     const curHash = await sha256(curPin);
     const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
 
@@ -159,7 +167,6 @@ App.auth = {
       return alert("현재 PIN 번호가 일치하지 않습니다.");
     }
 
-    // 새 PIN 암호화 후 Firebase 저장
     const newHash = await sha256(newPin);
     safeSet(`pin_hash_${target}`, newHash);
 
@@ -168,28 +175,25 @@ App.auth = {
     }
 
     const nameMap = { jinse: '진세', jihye: '지혜' };
-    alert(`[${nameMap[target]}] 새 비밀번호가 성공적으로 저장되었습니다!\n모든 기기에 즉시 동기화됩니다.`);
+    alert(`[${nameMap[target]}] 새 비밀번호가 저장되었습니다!`);
     this.closeChangePinModal();
   },
 
-  /* 🔄 비밀번호 분실 시 마스터 키(1234)로 초기화 */
   async resetPersonalPIN(targetUser) {
     const target = targetUser || this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
     const nameMap = { jinse: '진세', jihye: '지혜' };
     const defaultPinMap = { jinse: '1111', jihye: '2222' };
 
-    const masterKey = prompt(`[${nameMap[target]}] 비밀번호 초기화를 위해 포털 마스터 비밀번호(4자리)를 입력하세요:`);
+    const masterKey = prompt(`[${nameMap[target]}] 비밀번호 초기화를 위해 마스터 비밀번호(4자리)를 입력하세요:`);
     if (masterKey === null) return;
 
     const masterHash = await sha256(masterKey.trim());
     if (masterHash === this.portalPINHash || masterKey.trim() === "1234") {
-      // 1. Firebase에서 개인 PIN 삭제 -> 기본값으로 복원
       if (App.isFirebaseActive && App.db) {
         App.db.ref(`auth_pins/${target}`).remove();
       }
       safeSet(`pin_hash_${target}`, '');
-
-      alert(`✅ [${nameMap[target]}] 비밀번호가 초기값(${defaultPinMap[target]})으로 초기화되었습니다.\n초기 번호로 로그인 후 새 번호로 변경해주세요.`);
+      alert(`✅ [${nameMap[target]}] 비밀번호가 초기값(${defaultPinMap[target]})으로 초기화되었습니다.`);
       
       const pinInput = document.getElementById('profilePinInput');
       if (pinInput) {
@@ -207,18 +211,32 @@ App.auth = {
     App.ui.toast("👥 가족 공용 모드로 전환되었습니다.");
   },
 
+  /* 🌟 프로필 상태 화면 동기화 및 버튼 활성화(Active) 하이라이트 */
   setUserProfile(user, shouldRefresh = true) {
     this.currentUser = user;
     const badge = document.getElementById('currentProfileBadge');
-    const lockBtn = document.getElementById('btnLockToPublic');
+    const isRemembered = (safeGet('remembered_device_user') === user);
 
-    const nameMap = { public: '👥 가족 공용 모드', jinse: '👤 진세 개인 모드', jihye: '👤 지혜 개인 모드' };
-    if (badge) badge.innerText = nameMap[user] || '👥 가족 공용 모드';
+    // 버튼 활성화 상태 표시
+    const btnPublic = document.getElementById('btn-prof-public');
+    const btnJinse = document.getElementById('btn-prof-jinse');
+    const btnJihye = document.getElementById('btn-prof-jihye');
 
-    if (lockBtn) {
-      lockBtn.style.display = (user === 'public') ? 'none' : 'inline-block';
+    if (btnPublic) btnPublic.classList.toggle('active', user === 'public');
+    if (btnJinse) btnJinse.classList.toggle('active', user === 'jinse');
+    if (btnJihye) btnJihye.classList.toggle('active', user === 'jihye');
+
+    if (badge) {
+      if (user === 'jinse') {
+        badge.innerHTML = `👤 진세 모드 ${isRemembered ? '<span class="device-tag">📱 자동로그인</span>' : ''}`;
+      } else if (user === 'jihye') {
+        badge.innerHTML = `👤 지혜 모드 ${isRemembered ? '<span class="device-tag">📱 자동로그인</span>' : ''}`;
+      } else {
+        badge.innerText = '👥 가족 공용 모드';
+      }
     }
 
+    // 작성자 기본값 매칭
     if (user === 'jinse') {
       if (App.schedule) App.schedule.selectAuthor('진세');
       if (App.memo) App.memo.selectAuthor('진세');
