@@ -24,19 +24,39 @@ function safeSet(key, val) {
   catch (e) { memoryStorage[key] = val; }
 }
 
-/* ── 🛡️ 데이터 유실 방지 공통 CRUD 팩토리 ── */
+/* ── 🛡️ 데이터 유실 방지 및 Array 안전 보장 CRUD 팩토리 ── */
 function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
   let items = [];
 
   const load = () => {
-    try { items = JSON.parse(safeGet(key) || '[]'); } catch(e){ items = []; }
-    items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    try { 
+      const raw = safeGet(key);
+      const parsed = JSON.parse(raw || '[]');
+      // 객체 형태나 다른 타입으로 저장되어 있어도 100% 배열로 강제 변환
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        items = Object.values(parsed);
+      } else {
+        items = [];
+      }
+    } catch(e) { 
+      items = []; 
+    }
+
+    if (Array.isArray(items)) {
+      items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    } else {
+      items = [];
+    }
+
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
     if (App.badge) App.badge.refresh();
   };
 
   const add = (item) => {
+    if (!Array.isArray(items)) items = [];
     items = items.filter(i => String(i.id) !== String(item.id));
     items.unshift(item);
     if (maxItems) items = items.slice(0, maxItems);
@@ -50,6 +70,7 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
   };
 
   const remove = (id) => {
+    if (!Array.isArray(items)) items = [];
     items = items.filter(i => String(i.id) !== String(id));
     safeSet(key, JSON.stringify(items));
     if (App.isFirebaseActive && firebasePath) {
@@ -61,6 +82,7 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
   };
 
   const update = (id, updates) => {
+    if (!Array.isArray(items)) items = [];
     const target = items.find(i => String(i.id) === String(id));
     if (target) {
       Object.assign(target, updates);
@@ -87,7 +109,7 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
 
   const syncFromFirebase = (data) => {
     if (data) {
-      items = Object.values(data);
+      items = Array.isArray(data) ? data : Object.values(data);
       items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       safeSet(key, JSON.stringify(items));
     } else {
@@ -95,9 +117,12 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
       if (localData && localData !== '[]') {
         try {
           const parsed = JSON.parse(localData);
-          if (Array.isArray(parsed) && parsed.length > 0 && App.isFirebaseActive && firebasePath) {
-            parsed.forEach(item => {
-              App.db.ref(firebasePath + '/' + item.id).set(item);
+          const list = Array.isArray(parsed) ? parsed : Object.values(parsed);
+          if (Array.isArray(list) && list.length > 0 && App.isFirebaseActive && firebasePath) {
+            list.forEach(item => {
+              if (item && item.id) {
+                App.db.ref(firebasePath + '/' + item.id).set(item);
+              }
             });
           }
         } catch(e) {}
@@ -108,7 +133,7 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
-  return { getItems: () => items, load, add, remove, update, clear, syncFromFirebase };
+  return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, update, clear, syncFromFirebase };
 }
 
 /* ── App 메인 코어 ── */
