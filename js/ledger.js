@@ -3,7 +3,7 @@ window.App = window.App || {};
 App.ledger = {
   currentYearMonth: '',
   category: '식비/마트',
-  author: '나',
+  author: '진세',
   editingId: null,
 
   init() {
@@ -31,7 +31,7 @@ App.ledger = {
     document.querySelectorAll('.memo-tag-selector .tag-chip').forEach(el => {
       if (el.id && el.id.startsWith('ledger-tag-')) el.classList.remove('active');
     });
-    const map = { '나': 'ledger-tag-me', '배우자': 'ledger-tag-spouse', '가족': 'ledger-tag-family' };
+    const map = { '진세': 'ledger-tag-jinse', '지혜': 'ledger-tag-jihye', '가족': 'ledger-tag-family' };
     if (map[a]) {
       const target = document.getElementById(map[a]);
       if (target) target.classList.add('active');
@@ -76,7 +76,7 @@ App.ledger = {
     }
   },
 
-  addEntry({ date, title, amount, category = '식비/마트', author = '나', source = '장보기', todoId = null }) {
+  addEntry({ date, title, amount, category = '식비/마트', author = '진세', source = '장보기', todoId = null }) {
     if (!title || isNaN(amount) || amount <= 0) return;
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
@@ -193,7 +193,7 @@ App.ledger = {
         `"${i.source || '장보기'}"`,
         `"${i.title.replace(/"/g, '""')}"`,
         i.amount,
-        `"${i.author || '가족'}"`
+        `"${i.author || '진세'}"`
       ];
       csvContent += row.join(',') + '\n';
     });
@@ -271,7 +271,7 @@ App.ledger = {
             <span class="ledger-source-tag">${escapeHtml(item.source || '장보기')}</span>
             <span class="ledger-item-title">${escapeHtml(item.title)}</span>
           </div>
-          <span class="ledger-item-date">${escapeHtml(item.date)} · ${escapeHtml(item.author || '가족')}</span>
+          <span class="ledger-item-date">${escapeHtml(item.date)} · ${escapeHtml(item.author || '진세')}</span>
         </div>
         <div class="ledger-item-right">
           <span class="ledger-item-amount">-${(Number(item.amount) || 0).toLocaleString()}원</span>
