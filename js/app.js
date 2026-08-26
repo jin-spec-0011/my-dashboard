@@ -349,7 +349,7 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    // 통합 스토어 초기화 (공유 + 진세 비공개 + 지혜 비공개 분리)
+    // 통합 스토어 초기화
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking.render(items) });
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
@@ -421,6 +421,13 @@ window.App = Object.assign(window.App || {}, {
         this.db.ref('family_schedules').on('value', snap => {
           this.stores.schedules.syncFromFirebase(snap.val());
           if (this.calendar) this.calendar.generate();
+        });
+
+        // 🔒 변경된 PIN 실시간 동기화 리스너
+        this.db.ref('auth_pins').on('value', snap => {
+          const data = snap.val() || {};
+          if (data.jinse) safeSet('pin_hash_jinse', data.jinse);
+          if (data.jihye) safeSet('pin_hash_jihye', data.jihye);
         });
 
         // 활성 사용자 비공개 채널 연결
