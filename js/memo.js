@@ -17,7 +17,7 @@ App.memo = {
     document.querySelectorAll('.memo-input-card .memo-tag-selector .tag-chip').forEach(el => {
       if (el.id && el.id.startsWith('tag-')) el.classList.remove('active');
     });
-    const map = { '나': 'tag-me', '배우자': 'tag-spouse', '가족': 'tag-family' };
+    const map = { '진세': 'tag-jinse', '지혜': 'tag-jihye', '가족': 'tag-family' };
     if (map[a]) document.getElementById(map[a]).classList.add('active');
   },
 
@@ -51,7 +51,7 @@ App.memo = {
       id: Date.now(),
       text: text,
       completed: false,
-      author: App.state.memo.author,
+      author: App.state.memo.author || '진세',
       time: timeStr
     });
 
@@ -59,7 +59,6 @@ App.memo = {
     setTimeout(() => { App.state.memo.isAddingTodo = false; }, 300);
   },
 
-  /* 💡 1. 장보기 체크 시 가계부 모달 오픈 / 체크 해제 시 가계부 연동 삭제 */
   toggleTodo(id) {
     const item = App.stores.todos.getItems().find(i => String(i.id) === String(id));
     if (!item) return;
@@ -92,7 +91,6 @@ App.memo = {
     }
   },
 
-  /* 모달: 금액 입력 완료 */
   confirmTodoWithAmount() {
     const amountInput = document.getElementById('modalTodoAmountInput');
     const amountStr = amountInput ? amountInput.value.replace(/[^0-9]/g, '') : '0';
@@ -111,28 +109,15 @@ App.memo = {
             title: item.text,
             amount: amount,
             category: this.modalCategory,
-            author: item.author || '가족',
+            author: item.author || '진세',
             source: '장보기',
             todoId: item.id
-          });
-        } else if (App.stores.ledger) {
-          App.stores.ledger.add({
-            id: Date.now(),
-            date: dateStr,
-            month: dateStr.substring(0, 7),
-            title: item.text.trim(),
-            amount: amount,
-            category: this.modalCategory,
-            author: item.author || '가족',
-            source: '장보기',
-            todoId: String(item.id)
           });
         }
         App.ui.toast(`💰 [${item.text}] ${amount.toLocaleString()}원이 가계부에 등록되었습니다!`);
       }
       App.stores.todos.update(this.pendingTodoId, { completed: true });
     }
-
     this.closeAmountModal();
   },
 
@@ -144,7 +129,6 @@ App.memo = {
     this.closeAmountModal();
   },
 
-  /* ✕ 닫기 (상태 변경 없이 모달만 종료) */
   closeAmountModal() {
     const modal = document.getElementById('todo-amount-modal');
     if (modal) modal.style.display = 'none';
@@ -180,13 +164,12 @@ App.memo = {
           <span class="check-title">${escapeHtml(item.text)}</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <span class="check-author">${escapeHtml(item.author || '가족')}</span>
+          <span class="check-author">${escapeHtml(item.author || '진세')}</span>
           <button type="button" class="delete-item-btn" onclick="event.stopPropagation(); App.memo.deleteTodo('${item.id}')">✕</button>
         </div>
       </div>`).join('');
   },
 
-  /* 💡 2. 고정 메모(포스트잇) 영역 */
   addSticky() {
     if (App.state.memo.isAddingSticky) return;
     const input = document.getElementById('stickyInput');
@@ -226,17 +209,6 @@ App.memo = {
       App.ledger.addEntry({
         date: dateStr,
         title: item.text,
-        amount: amount,
-        category: '고정비/기타',
-        author: '가족',
-        source: '메모'
-      });
-    } else if (App.stores.ledger) {
-      App.stores.ledger.add({
-        id: Date.now(),
-        date: dateStr,
-        month: dateStr.substring(0, 7),
-        title: item.text.trim(),
         amount: amount,
         category: '고정비/기타',
         author: '가족',
