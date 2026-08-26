@@ -4,21 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>GOGO 스마트 매니저</title>
-
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>GOGO 스마트 매니저</title>
-
-<!-- 📱 iOS 사파리 홈 화면(PWA) 전용 아이콘 -->
-  <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
   
-  <!-- (기존 폰트 및 스타일시트 링크...) -->
-    
+  <!-- App Icon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Leaflet Map CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -48,7 +41,7 @@
   <div class="screen" id="screen-home">
     <div class="home-header">
       <div class="home-title-group">
-        <div class="home-date-text" id="homeTodayDate">2026년 8월 24일 (월)</div>
+        <div class="home-date-text" id="homeTodayDate">2026년 8월 26일 (수)</div>
         <h1>스마트 포털</h1>
       </div>
       <div class="status-badge" id="cloudStatusBadge">📱 로컬 모드</div>
@@ -63,19 +56,34 @@
     </div>
 
     <div class="launcher-list">
-      <!-- 1. 달력 -->
+      <!-- 1. 만년 캘린더 (뷰어 & A4 인쇄) -->
       <div class="launcher-card" onclick="App.router.go('calendar')">
         <div class="card-left">
           <div class="app-icon icon-cal">📅</div>
           <div class="card-text">
-            <div class="card-title-wrap"><div class="card-title">만년 캘린더</div></div>
-            <div class="card-desc">가족 일정·메모 & 공휴일 자동 플래너</div>
+            <div class="card-title-wrap"><div class="card-title">만년 캘린더 (출력용)</div></div>
+            <div class="card-desc">일정 연동 뷰어 & A4 맞춤 고화질 인쇄/PDF</div>
           </div>
         </div>
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
       </div>
 
-      <!-- 2. 주차 기록 -->
+      <!-- 2. 가족 일정 관리 (동기화 & 엑셀) -->
+      <div class="launcher-card" onclick="App.router.go('schedule')">
+        <div class="card-left">
+          <div class="app-icon icon-schedule">🗓️</div>
+          <div class="card-text">
+            <div class="card-title-wrap">
+              <div class="card-title">가족 일정 관리</div>
+              <span class="badge-new" id="badge-schedule" style="display: none;">NEW</span>
+            </div>
+            <div class="card-desc">진세·지혜 일정 등록·수정 & 캘린더 동기화·엑셀</div>
+          </div>
+        </div>
+        <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
+      </div>
+
+      <!-- 3. 주차 기록 -->
       <div class="launcher-card" onclick="App.router.go('parking')">
         <div class="card-left">
           <div class="app-icon icon-car">🚗</div>
@@ -90,7 +98,7 @@
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
       </div>
 
-      <!-- 3. 가족 공유 메모장 -->
+      <!-- 4. 가족 공유 메모장 -->
       <div class="launcher-card" onclick="App.router.go('memo')">
         <div class="card-left">
           <div class="app-icon icon-memo">📝</div>
@@ -100,21 +108,6 @@
               <span class="badge-new" id="badge-memo" style="display: none;">NEW</span>
             </div>
             <div class="card-desc">실시간 체크리스트 & 가계부 자동 연동</div>
-          </div>
-        </div>
-        <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
-      </div>
-
-      <!-- 4. 가족 여행 지도 -->
-      <div class="launcher-card" onclick="App.router.go('trip')">
-        <div class="card-left">
-          <div class="app-icon icon-trip">✈️</div>
-          <div class="card-text">
-            <div class="card-title-wrap">
-              <div class="card-title">가족 여행 지도</div>
-              <span class="badge-new" id="badge-trip" style="display: none;">NEW</span>
-            </div>
-            <div class="card-desc">지도 핀 꽂기, 방문 날짜 & 사진 앨범</div>
           </div>
         </div>
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
@@ -135,7 +128,22 @@
         <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
       </div>
 
-      <!-- 6. 화면 잠그기 -->
+      <!-- 6. 가족 여행 지도 -->
+      <div class="launcher-card" onclick="App.router.go('trip')">
+        <div class="card-left">
+          <div class="app-icon icon-trip">✈️</div>
+          <div class="card-text">
+            <div class="card-title-wrap">
+              <div class="card-title">가족 여행 지도</div>
+              <span class="badge-new" id="badge-trip" style="display: none;">NEW</span>
+            </div>
+            <div class="card-desc">지도 핀 꽂기, 방문 날짜 & 사진 앨범</div>
+          </div>
+        </div>
+        <div style="color: #94a3b8; font-weight: bold; font-size: 18px;">➔</div>
+      </div>
+
+      <!-- 7. 화면 잠그기 -->
       <div class="launcher-card" onclick="App.auth.lock()">
         <div class="card-left">
           <div class="app-icon icon-setting">🔒</div>
@@ -149,23 +157,23 @@
     </div>
   </div>
 
-  <!-- 2. 만년 달력 화면 -->
+  <!-- 2. 만년 달력 화면 (폰트 40px 고정, 먹색 그리드, A4 완벽 맞춤 출력용) -->
   <div class="screen" id="screen-calendar">
     <div class="top-nav-bar">
       <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
-      <span class="top-nav-title">📅 만년 캘린더</span>
-      <button class="btn btn-print" onclick="window.print()">인쇄/PDF</button>
+      <span class="top-nav-title">📅 만년 캘린더 (뷰어)</span>
+      <button class="btn btn-print" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
     </div>
 
     <div class="control-panel">
       <div class="control-group">
         <label for="yearInput">연도</label>
-        <input type="number" id="yearInput" value="2026" min="1900" max="2100" style="width: 65px;">
+        <input type="number" id="yearInput" value="2026" min="1900" max="2100" style="width: 70px;">
       </div>
       
       <div class="control-group">
         <label for="monthInput">월</label>
-        <select id="monthInput" style="width: 68px;">
+        <select id="monthInput" style="width: 75px;">
           <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
           <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
           <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
@@ -173,39 +181,23 @@
         </select>
       </div>
 
-      <div class="control-group">
-        <label for="gridDensity">그리드</label>
-        <select id="gridDensity" onchange="App.calendar.updateGridStyle(this.value)">
-          <option value="light">연하게</option>
-          <option value="medium">보통</option>
-          <option value="dark" selected>진하게(먹색)</option>
-          <option value="black">아주 진하게</option>
-        </select>
-      </div>
-
-      <div class="control-group">
-        <label for="fontSizeRange">폰트(<span id="fontSizeDisplay">16</span>px)</label>
-        <input type="range" id="fontSizeRange" min="10" max="50" value="16" oninput="App.calendar.syncFontSize(this.value, false)">
-        <input type="number" id="fontSizeInput" min="10" max="50" value="16" style="width: 45px;" oninput="App.calendar.syncFontSize(this.value, true)" onchange="App.calendar.clampFontSize()">
-      </div>
-
       <div class="btn-group">
         <button class="btn btn-primary" onclick="App.calendar.generate()">조회</button>
-        <button class="btn btn-clear" onclick="App.calendar.clearCurrentMonth()">초기화</button>
+        <button class="btn btn-clear" onclick="App.router.go('schedule')">🗓️ 일정 수정하기</button>
       </div>
     </div>
 
     <div class="cal-page" id="plannerPage">
       <div class="cal-header">
         <div class="cal-header-left">
-          <div class="cal-header-year-sub" id="headerYearSub">2026 OCTOBER</div>
+          <div class="cal-header-year-sub" id="headerYearSub">2026 AUGUST</div>
           <div class="cal-header-title-wrap">
-            <span class="cal-header-month-num" id="headerMonthNum">10</span>
-            <span class="cal-header-month-text" id="headerMonthText">2026년 10월</span>
+            <span class="cal-header-month-num" id="headerMonthNum">08</span>
+            <span class="cal-header-month-text" id="headerMonthText">2026년 8월</span>
           </div>
         </div>
         <div class="focus-box">
-          <strong>🎯 목표:</strong> 
+          <strong>🎯 이달의 목표:</strong> 
           <input type="text" class="editable-goal" id="monthGoal" placeholder="이달의 목표 입력..." oninput="App.calendar.saveGoal()">
         </div>
       </div>
@@ -229,8 +221,8 @@
 
       <div class="memo-container">
         <div class="memo-card">
-          <div class="memo-card-title">📌 주요 일정 & To-Do</div>
-          <textarea class="editable-bottom-memo" id="bottomTodo" placeholder="주요 일정 입력..." oninput="App.calendar.saveBottomMemo('todo')"></textarea>
+          <div class="memo-card-title">📌 진세 & 지혜 주요 일정 요약</div>
+          <div class="viewer-bottom-memo" id="bottomTodoSummary">등록된 일정이 표시됩니다.</div>
         </div>
         <div class="memo-card" style="flex: 0.85;">
           <div class="memo-card-title">💡 메모 & 아이디어</div>
@@ -240,7 +232,65 @@
     </div>
   </div>
 
-  <!-- 3. 주차 위치 기록기 화면 -->
+  <!-- 3. 가족 일정 관리 화면 (신규: 캘린더 동기화, 수정/삭제, 엑셀) -->
+  <div class="screen" id="screen-schedule">
+    <div class="top-nav-bar">
+      <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
+      <span class="top-nav-title">🗓️ 가족 일정 관리</span>
+      <button type="button" class="btn-excel" onclick="App.schedule.exportCSV()">📥 엑셀(CSV)</button>
+    </div>
+
+    <div class="memo-section-wrapper">
+      <!-- 월별 이동 바 -->
+      <div class="ledger-month-bar">
+        <button type="button" class="btn-month-nav" onclick="App.schedule.changeMonth(-1)">◀ 이전달</button>
+        <span class="ledger-month-title" id="scheduleCurrentMonthText">2026년 8월</span>
+        <button type="button" class="btn-month-nav" onclick="App.schedule.changeMonth(1)">다음달 ▶</button>
+      </div>
+
+      <!-- 일정 등록 카드 -->
+      <div class="memo-input-card">
+        <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">+ 새 가족 일정 등록</div>
+        
+        <!-- 카테고리 태그 선택 -->
+        <div class="category-selector-group">
+          <span class="cat-chip active" onclick="App.schedule.selectCategory('가족행사')">🎉 가족행사</span>
+          <span class="cat-chip" onclick="App.schedule.selectCategory('기념일')">🎂 기념일</span>
+          <span class="cat-chip" onclick="App.schedule.selectCategory('여행/외출')">🚗 여행/외출</span>
+          <span class="cat-chip" onclick="App.schedule.selectCategory('병원/건강')">🏥 병원/건강</span>
+          <span class="cat-chip" onclick="App.schedule.selectCategory('개인/업무')">💼 개인/업무</span>
+        </div>
+
+        <div class="grid-2">
+          <input type="date" id="scheduleDateInput" class="memo-text-input" style="padding: 10px;">
+          <input type="text" id="scheduleTitleInput" class="memo-text-input" placeholder="일정 제목 (예: 결혼기념일, 치과 진료)">
+        </div>
+
+        <div class="memo-input-row">
+          <input type="text" id="scheduleMemoInput" class="memo-text-input" placeholder="상세 메모 (선택 입력)">
+          <button type="button" class="btn-add-memo" onclick="App.schedule.add()">등록</button>
+        </div>
+
+        <div class="memo-tag-selector">
+          <span style="font-size: 11px; font-weight: 700; color: #64748b;">작성자:</span>
+          <span class="tag-chip active" id="schedule-tag-jinse" onclick="App.schedule.selectAuthor('진세')">진세</span>
+          <span class="tag-chip" id="schedule-tag-jihye" onclick="App.schedule.selectAuthor('지혜')">지혜</span>
+          <span class="tag-chip" id="schedule-tag-family" onclick="App.schedule.selectAuthor('가족')">가족</span>
+        </div>
+      </div>
+
+      <!-- 일정 목록 카드 -->
+      <div class="parking-card" style="padding: 14px;">
+        <div class="log-header">
+          <h2>📋 이달의 일정 목록</h2>
+          <span id="scheduleCountLabel" style="font-size: 12px; font-weight: 800; color: #2563eb;">총 0건</span>
+        </div>
+        <div class="schedule-list" id="scheduleListContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 주차 위치 기록기 화면 -->
   <div class="screen" id="screen-parking">
     <div class="top-nav-bar">
       <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
@@ -296,7 +346,6 @@
           </div>
         </div>
 
-        <!-- 📸 주차 사진 첨부 영역 -->
         <div class="form-group">
           <label>6. 기둥 / 주차 위치 사진 (선택)</label>
           <div class="trip-photo-preview-wrap">
@@ -332,7 +381,7 @@
     </div>
   </div>
 
-  <!-- 4. 가족 공유 메모장 화면 -->
+  <!-- 5. 가족 공유 메모장 화면 (진세/지혜 태그) -->
   <div class="screen" id="screen-memo">
     <div class="top-nav-bar">
       <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
@@ -354,8 +403,8 @@
           </div>
           <div class="memo-tag-selector">
             <span style="font-size: 11px; font-weight: 700; color: #64748b;">작성자:</span>
-            <span class="tag-chip active" id="tag-me" onclick="App.memo.selectAuthor('나')">나</span>
-            <span class="tag-chip" id="tag-spouse" onclick="App.memo.selectAuthor('배우자')">배우자</span>
+            <span class="tag-chip active" id="tag-jinse" onclick="App.memo.selectAuthor('진세')">진세</span>
+            <span class="tag-chip" id="tag-jihye" onclick="App.memo.selectAuthor('지혜')">지혜</span>
             <span class="tag-chip" id="tag-family" onclick="App.memo.selectAuthor('가족')">가족</span>
           </div>
         </div>
@@ -387,7 +436,79 @@
     </div>
   </div>
 
-  <!-- 5. 가족 여행 기록 & 지도 화면 -->
+  <!-- 6. 간편 가계부 화면 (진세/지혜 태그) -->
+  <div class="screen" id="screen-ledger">
+    <div class="top-nav-bar">
+      <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
+      <span class="top-nav-title">💰 간편 가계부</span>
+      <button type="button" class="btn-excel" onclick="App.ledger.exportCSV()">📥 엑셀(CSV)</button>
+    </div>
+
+    <div class="memo-section-wrapper">
+      <div class="ledger-month-bar">
+        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(-1)">◀ 이전달</button>
+        <span class="ledger-month-title" id="ledgerCurrentMonthText">2026년 8월</span>
+        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(1)">다음달 ▶</button>
+      </div>
+
+      <div class="ledger-summary-card">
+        <div class="ledger-summary-header">
+          <span class="ledger-summary-label">이달의 총 지출</span>
+          <button type="button" class="btn-set-budget" onclick="App.ledger.setBudget()">🎯 예산 설정</button>
+        </div>
+        <div class="ledger-total-amount" id="ledgerTotalAmount">0원</div>
+        
+        <div class="budget-progress-box" id="budgetProgressBox">
+          <div class="budget-info-row">
+            <span id="budgetRemainingLabel">남은 예산: 0원</span>
+            <span id="budgetPercentLabel">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="budgetProgressBar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="memo-input-card">
+        <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">+ 직접 지출 등록</div>
+        
+        <div class="category-selector-group">
+          <span class="cat-chip active" onclick="App.ledger.selectCategory('식비/마트')">🍚 식비/마트</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('외식/카페')">☕ 외식/카페</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('주유/차량')">🚗 주유/차량</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('생활/육아')">👶 생활/육아</span>
+          <span class="cat-chip" onclick="App.ledger.selectCategory('고정비/기타')">🏠 고정비/기타</span>
+        </div>
+
+        <div class="grid-2">
+          <input type="date" id="ledgerDateInput" class="memo-text-input" style="padding: 10px;">
+          <input type="text" id="ledgerTitleInput" class="memo-text-input" placeholder="지출 내용 (예: 주유, 마트 장보기)">
+        </div>
+
+        <div class="memo-input-row">
+          <input type="text" id="ledgerAmountInput" class="memo-text-input" placeholder="금액 입력 (예: 25,000)" inputmode="numeric" oninput="App.ledger.formatAmountInput(this)">
+          <button type="button" class="btn-add-memo" onclick="App.ledger.addManual()">등록</button>
+        </div>
+
+        <div class="memo-tag-selector">
+          <span style="font-size: 11px; font-weight: 700; color: #64748b;">결제자:</span>
+          <span class="tag-chip active" id="ledger-tag-jinse" onclick="App.ledger.selectAuthor('진세')">진세</span>
+          <span class="tag-chip" id="ledger-tag-jihye" onclick="App.ledger.selectAuthor('지혜')">지혜</span>
+          <span class="tag-chip" id="ledger-tag-family" onclick="App.ledger.selectAuthor('가족')">가족</span>
+        </div>
+      </div>
+
+      <div class="parking-card" style="padding: 14px;">
+        <div class="log-header">
+          <h2>📋 지출 내역</h2>
+          <span id="ledgerCountLabel" style="font-size: 12px; font-weight: 800; color: #2563eb;">총 0건</span>
+        </div>
+        <div class="ledger-list" id="ledgerListContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 가족 여행 지도 화면 -->
   <div class="screen" id="screen-trip">
     <div class="top-nav-bar">
       <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
@@ -451,90 +572,10 @@
     </div>
   </div>
 
-  <!-- 6. 💰 간편 가계부 화면 -->
-  <div class="screen" id="screen-ledger">
-    <div class="top-nav-bar">
-      <button class="btn-back-home" onclick="App.router.go('home')">← 홈으로</button>
-      <span class="top-nav-title">💰 간편 가계부</span>
-      <button type="button" class="btn-excel" onclick="App.ledger.exportCSV()">📥 엑셀(CSV)</button>
-    </div>
-
-    <div class="memo-section-wrapper">
-      <!-- 월별 네비게이터 -->
-      <div class="ledger-month-bar">
-        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(-1)">◀ 이전달</button>
-        <span class="ledger-month-title" id="ledgerCurrentMonthText">2026년 8월</span>
-        <button type="button" class="btn-month-nav" onclick="App.ledger.changeMonth(1)">다음달 ▶</button>
-      </div>
-
-      <!-- 이달의 지출 및 예산 진척도 카드 -->
-      <div class="ledger-summary-card">
-        <div class="ledger-summary-header">
-          <span class="ledger-summary-label">이달의 총 지출</span>
-          <button type="button" class="btn-set-budget" onclick="App.ledger.setBudget()">🎯 예산 설정</button>
-        </div>
-        <div class="ledger-total-amount" id="ledgerTotalAmount">0원</div>
-        
-        <!-- 목표 예산 프로그레스 바 -->
-        <div class="budget-progress-box" id="budgetProgressBox">
-          <div class="budget-info-row">
-            <span id="budgetRemainingLabel">남은 예산: 0원</span>
-            <span id="budgetPercentLabel">0%</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill" id="budgetProgressBar" style="width: 0%;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 직접 지출 등록 카드 -->
-      <div class="memo-input-card">
-        <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 2px;">+ 직접 지출 등록</div>
-        
-        <!-- 카테고리 태그 선택기 -->
-        <div class="category-selector-group">
-          <span class="cat-chip active" onclick="App.ledger.selectCategory('식비/마트')">🍚 식비/마트</span>
-          <span class="cat-chip" onclick="App.ledger.selectCategory('외식/카페')">☕ 외식/카페</span>
-          <span class="cat-chip" onclick="App.ledger.selectCategory('주유/차량')">🚗 주유/차량</span>
-          <span class="cat-chip" onclick="App.ledger.selectCategory('생활/육아')">👶 생활/육아</span>
-          <span class="cat-chip" onclick="App.ledger.selectCategory('고정비/기타')">🏠 고정비/기타</span>
-        </div>
-
-        <div class="grid-2">
-          <input type="date" id="ledgerDateInput" class="memo-text-input" style="padding: 10px;">
-          <input type="text" id="ledgerTitleInput" class="memo-text-input" placeholder="지출 내용 (예: 주유, 마트 장보기)">
-        </div>
-
-        <div class="memo-input-row">
-          <input type="text" id="ledgerAmountInput" class="memo-text-input" placeholder="금액 입력 (예: 25,000)" inputmode="numeric" oninput="App.ledger.formatAmountInput(this)">
-          <button type="button" class="btn-add-memo" onclick="App.ledger.addManual()">등록</button>
-        </div>
-
-        <div class="memo-tag-selector">
-          <span style="font-size: 11px; font-weight: 700; color: #64748b;">결제자:</span>
-          <span class="tag-chip active" id="ledger-tag-me" onclick="App.ledger.selectAuthor('나')">나</span>
-          <span class="tag-chip" id="ledger-tag-spouse" onclick="App.ledger.selectAuthor('배우자')">배우자</span>
-          <span class="tag-chip" id="ledger-tag-family" onclick="App.ledger.selectAuthor('가족')">가족</span>
-        </div>
-      </div>
-
-      <!-- 지출 내역 리스트 -->
-      <div class="parking-card" style="padding: 14px;">
-        <div class="log-header">
-          <h2 id="ledgerListHeader">📋 지출 내역</h2>
-          <span id="ledgerCountLabel" style="font-size: 12px; font-weight: 800; color: #2563eb;">총 0건</span>
-        </div>
-        <div class="ledger-list" id="ledgerListContainer"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 7. 장보기 완료 시 금액 입력 팝업 모달 (닫기 X 버튼 & 취소 버튼 탑재) -->
+  <!-- 8. 장보기 완료 시 금액 입력 모달 -->
   <div id="todo-amount-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
-      <!-- ✕ 우측 상단 닫기 버튼 -->
       <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeAmountModal()" title="닫기">✕</button>
-
       <div class="modal-header">
         <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">🛒 장보기 완료 & 가계부 연동</h3>
       </div>
@@ -543,7 +584,6 @@
           <strong id="modalTodoItemText" style="color: #2563eb; font-size: 15px;">품목명</strong>의 지출 금액을 입력하세요.
         </p>
 
-        <!-- 모달 내 카테고리 선택 -->
         <div class="category-selector-group modal-cat-group" style="margin-bottom: 12px;">
           <span class="cat-chip active" onclick="App.memo.selectModalCategory('식비/마트')">🍚 식비/마트</span>
           <span class="cat-chip" onclick="App.memo.selectModalCategory('외식/카페')">☕ 외식/카페</span>
@@ -561,11 +601,10 @@
     </div>
   </div>
 
-  <!-- 8. 지출 항목 수정 모달 -->
+  <!-- 9. 지출 항목 수정 모달 -->
   <div id="ledger-edit-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <button type="button" class="modal-close-icon-btn" onclick="App.ledger.closeEditModal()" title="닫기">✕</button>
-
       <div class="modal-header">
         <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">✏️ 지출 내역 수정</h3>
       </div>
@@ -600,11 +639,58 @@
     </div>
   </div>
 
+  <!-- 10. 일정 항목 수정 모달 -->
+  <div id="schedule-edit-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <button type="button" class="modal-close-icon-btn" onclick="App.schedule.closeEditModal()" title="닫기">✕</button>
+      <div class="modal-header">
+        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">✏️ 일정 수정</h3>
+      </div>
+      <div class="modal-body" style="text-align: left; display: flex; flex-direction: column; gap: 8px; margin: 10px 0 14px;">
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">날짜</label>
+          <input type="date" id="editScheduleDate" class="memo-text-input" style="padding: 8px 10px; width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">일정 제목</label>
+          <input type="text" id="editScheduleTitle" class="memo-text-input" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">카테고리</label>
+          <select id="editScheduleCategory" class="parking-select" style="padding: 8px 10px; font-size: 13px;">
+            <option value="가족행사">🎉 가족행사</option>
+            <option value="기념일">🎂 기념일</option>
+            <option value="여행/외출">🚗 여행/외출</option>
+            <option value="병원/건강">🏥 병원/건강</option>
+            <option value="개인/업무">💼 개인/업무</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">작성자</label>
+          <select id="editScheduleAuthor" class="parking-select" style="padding: 8px 10px; font-size: 13px;">
+            <option value="진세">진세</option>
+            <option value="지혜">지혜</option>
+            <option value="가족">가족</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">메모</label>
+          <input type="text" id="editScheduleMemo" class="memo-text-input" style="width: 100%;">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-save" onclick="App.schedule.saveEdit()">일정 저장</button>
+        <button type="button" class="btn-modal-edit" onclick="App.schedule.closeEditModal()">취소</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast">✅ 처리되었습니다!</div>
 
   <!-- JS 모듈 로드 -->
   <script src="js/auth.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/schedule.js"></script>
   <script src="js/parking.js"></script>
   <script src="js/memo.js"></script>
   <script src="js/trip.js"></script>
