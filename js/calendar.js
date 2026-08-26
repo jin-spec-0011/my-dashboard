@@ -5,7 +5,6 @@ App.calendar = {
   holidayCache: {},
   fixedHolidays: { "1-1": "신정", "3-1": "3·1절", "5-5": "어린이날", "6-6": "현충일", "8-15": "광복절", "10-3": "개천절", "10-9": "한글날", "12-25": "성탄절" },
 
-  // 공휴일 비동기 패칭
   async fetchHolidays(year) {
     if (this.holidayCache[year]) return this.holidayCache[year];
 
@@ -54,55 +53,6 @@ App.calendar = {
     return null;
   },
 
-  updateGridStyle(density) {
-    const root = document.documentElement;
-    const config = {
-      light: { c: '#cbd5e1', w: '1px' },
-      medium: { c: '#94a3b8', w: '1.2px' },
-      dark: { c: '#475569', w: '1.5px' },
-      black: { c: '#0f172a', w: '2px' }
-    }[density] || { c: '#475569', w: '1.5px' };
-    root.style.setProperty('--grid-color', config.c);
-    root.style.setProperty('--grid-width', config.w);
-  },
-
-  // 폰트 크기 실시간 동기화
-  syncFontSize(val, fromInput = false) {
-    const rangeEl = document.getElementById('fontSizeRange');
-    const inputEl = document.getElementById('fontSizeInput');
-    const displayEl = document.getElementById('fontSizeDisplay');
-
-    if (val === '') return;
-    let num = parseInt(val, 10);
-    if (isNaN(num)) return;
-
-    if (displayEl) displayEl.innerText = num;
-    if (rangeEl && fromInput) rangeEl.value = Math.max(10, Math.min(50, num));
-    if (inputEl && !fromInput) inputEl.value = num;
-
-    document.querySelectorAll('.day-num').forEach(el => el.style.fontSize = num + 'px');
-  },
-
-  clampFontSize() {
-    const inputEl = document.getElementById('fontSizeInput');
-    const rangeEl = document.getElementById('fontSizeRange');
-    let num = parseInt(inputEl.value, 10);
-    if (isNaN(num) || num < 10) num = 10;
-    if (num > 50) num = 50;
-    
-    inputEl.value = num;
-    if (rangeEl) rangeEl.value = num;
-    this.syncFontSize(num);
-  },
-
-  saveCellMemo(key, text) {
-    safeSet(key, text);
-    clearTimeout(App.state.calendar.syncTimeout);
-    App.state.calendar.syncTimeout = setTimeout(() => {
-      if (App.isFirebaseActive) App.db.ref('calendar_data/' + key).set(text);
-    }, 600);
-  },
-
   saveGoal() {
     const y = document.getElementById('yearInput').value, m = document.getElementById('monthInput').value;
     const text = document.getElementById('monthGoal').value;
@@ -117,8 +67,8 @@ App.calendar = {
 
   saveBottomMemo(type) {
     const y = document.getElementById('yearInput').value, m = document.getElementById('monthInput').value;
-    const elem = document.getElementById(type === 'todo' ? 'bottomTodo' : 'bottomNotes');
-    const text = elem.value;
+    const elem = document.getElementById('bottomNotes');
+    const text = elem ? elem.value : '';
     const key = `planner_bottom_${type}_${y}_${m}`;
     safeSet(key, text);
     clearTimeout(App.state.calendar.syncTimeout);
@@ -127,33 +77,15 @@ App.calendar = {
     }, 600);
   },
 
-  clearCurrentMonth() {
-    if (confirm("현재 달의 작성된 메모를 모두 지우시겠습니까?")) {
-      const y = document.getElementById('yearInput').value, m = document.getElementById('monthInput').value;
-      try {
-        Object.keys(localStorage).forEach(k => {
-          if (k.startsWith(`planner_memo_${y}_${m}_`) || k === `planner_goal_${y}_${m}` || (k.startsWith(`planner_bottom_`) && k.endsWith(`_${y}_${m}`))) {
-            localStorage.removeItem(k);
-            if (App.isFirebaseActive) App.db.ref('calendar_data/' + k).remove();
-          }
-        });
-      } catch(e){}
-      this.generate();
-    }
-  },
-
   async generate() {
     const yearInput = document.getElementById('yearInput');
     const monthInput = document.getElementById('monthInput');
-    const fontSizeInput = document.getElementById('fontSizeInput');
 
     const year = parseInt(yearInput?.value) || new Date().getFullYear();
     const month = parseInt(monthInput?.value) || (new Date().getMonth() + 1);
-    const fontSize = parseInt(fontSizeInput?.value) || 16;
 
     if (isNaN(year) || isNaN(month) || month < 1 || month > 12) return;
 
-    // 공휴일 캐시 없으면 비동기 패칭
     if (!this.holidayCache[year]) await this.fetchHolidays(year);
 
     const monthStr = String(month).padStart(2, '0');
@@ -166,12 +98,13 @@ App.calendar = {
     if (textHeader) textHeader.innerText = `${year}년 ${month}월`;
 
     const goalInput = document.getElementById('monthGoal');
-    const todoInput = document.getElementById('bottomTodo');
     const notesInput = document.getElementById('bottomNotes');
 
     if (goalInput) goalInput.value = safeGet(`planner_goal_${year}_${month}`);
-    if (todoInput) todoInput.value = safeGet(`planner_bottom_todo_${year}_${month}`);
     if (notesInput) notesInput.value = safeGet(`planner_bottom_notes_${year}_${month}`);
+
+    // 동기화된 일정 데이터 불러오기
+    const allSchedules = App.stores.schedules ? App.stores.schedules.getItems() : [];
 
     const tbody = document.getElementById('calendarBody');
     if (!tbody) return;
@@ -185,43 +118,54 @@ App.calendar = {
     let currentDay = 1 - firstDayIndex;
     let html = '';
 
+    const monthEventsSummary = [];
+
     for (let week = 0; week < 6; week++) {
       if (week === 5 && currentDay > lastDayDate) break;
       html += '<tr>';
       for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
-        let isOtherMonth = false, dYear = year, dMonth = month, dText = '', memoKey = '';
+        let isOtherMonth = false, dYear = year, dMonth = month, dText = '';
 
         if (currentDay < 1) {
           dText = prevLastDayDate + currentDay;
           isOtherMonth = true;
           dMonth = month - 1;
           if (dMonth < 1) { dMonth = 12; dYear = year - 1; }
-          memoKey = `planner_memo_${dYear}_${dMonth}_${dText}`;
         } else if (currentDay > lastDayDate) {
           dText = nextMonthDateCount++;
           isOtherMonth = true;
           dMonth = month + 1;
           if (dMonth > 12) { dMonth = 1; dYear = year + 1; }
-          memoKey = `planner_memo_${dYear}_${dMonth}_${dText}`;
         } else {
           dText = currentDay;
-          memoKey = `planner_memo_${year}_${month}_${dText}`;
         }
 
+        const dateKey = `${dYear}-${String(dMonth).padStart(2, '0')}-${String(dText).padStart(2, '0')}`;
         const holiday = this.getHoliday(dYear, dMonth, dText);
         let colorClass = (dayOfWeek === 0 || holiday) ? 'sun-num' : (dayOfWeek === 6 ? 'sat-num' : 'weekday-num');
         let otherClass = isOtherMonth ? 'other-month' : '';
-        let savedMemo = safeGet(memoKey);
         let holidayHtml = holiday ? `<span class="holiday-tag">${escapeHtml(holiday)}</span>` : '';
+
+        // 해당 날짜에 등록된 일정 필터링
+        const dayEvents = allSchedules.filter(s => s.date === dateKey);
+        
+        let eventsHtml = '';
+        if (dayEvents.length > 0) {
+          eventsHtml = `<div class="cell-event-list">` + dayEvents.map(e => {
+            const tagClass = e.author === '진세' ? 'event-tag-jinse' : (e.author === '지혜' ? 'event-tag-jihye' : 'event-tag-family');
+            if (!isOtherMonth) monthEventsSummary.push(`${dMonth}/${dText} [${e.author}] ${e.title}`);
+            return `<div class="cell-event-item ${tagClass}"><span>[${escapeHtml(e.author)}]</span> ${escapeHtml(e.title)}</div>`;
+          }).join('') + `</div>`;
+        }
 
         html += `
           <td>
             <div class="cell-inner ${otherClass}">
               <div class="date-header-row">
-                <span class="day-num ${colorClass}" style="font-size: ${fontSize}px;">${dText}</span>
+                <span class="day-num ${colorClass}">${dText}</span>
                 ${holidayHtml}
               </div>
-              <textarea class="cell-memo" oninput="App.calendar.saveCellMemo('${memoKey}', this.value)">${escapeHtml(savedMemo)}</textarea>
+              ${eventsHtml}
             </div>
           </td>`;
         currentDay++;
@@ -229,5 +173,13 @@ App.calendar = {
       html += '</tr>';
     }
     tbody.innerHTML = html;
+
+    // 하단 주요 일정 요약 자동 렌더링
+    const summaryEl = document.getElementById('bottomTodoSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = monthEventsSummary.length > 0
+        ? monthEventsSummary.slice(0, 6).map(s => `• ${escapeHtml(s)}`).join('<br>')
+        : '이달에 등록된 가족 일정이 없습니다.';
+    }
   }
 };
