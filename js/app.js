@@ -141,6 +141,7 @@ window.App = Object.assign(window.App || {}, {
   isFirebaseActive: false,
   
   state: {
+    pendingRedirect: null,
     parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' },
     memo: { author: '진세', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
     schedule: { author: '진세' },
@@ -170,7 +171,7 @@ window.App = Object.assign(window.App || {}, {
 
         if (['parking', 'memo', 'trip', 'ledger', 'schedule'].includes(screenName)) {
           safeSet('last_view_' + screenName, Date.now());
-          App.badge.refresh();
+          if (App.badge) App.badge.refresh();
         }
 
         if (screenName === 'calendar' && App.calendar?.generate) {
@@ -185,6 +186,9 @@ window.App = Object.assign(window.App || {}, {
         if (screenName === 'trip' && App.trip?.initMap) {
           App.trip.initMap();
         }
+        if (screenName === 'parking' && App.parking?.render) {
+          App.parking.render(App.stores.parking ? App.stores.parking.getItems() : []);
+        }
       }
     }
   },
@@ -198,7 +202,6 @@ window.App = Object.assign(window.App || {}, {
     refresh() {
       const lines = [];
 
-      // 1. 다가오는 일정
       const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
       const now = new Date();
       const offset = now.getTimezoneOffset() * 60000;
@@ -211,7 +214,6 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title} (${nextEvt.date.substring(5)})`);
       }
 
-      // 2. 주차 현황
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         const pTexts = [];
@@ -230,7 +232,6 @@ window.App = Object.assign(window.App || {}, {
         if (pTexts.length > 0) lines.push(pTexts.join(' │ '));
       }
 
-      // 3. 가계부 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
@@ -240,7 +241,6 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
       }
 
-      // 4. 장보기 미완료
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
@@ -308,7 +308,6 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 🔒 개인별 Firebase 실시간 채널 분기 구독 */
   syncPrivateChannel() {
     if (!this.isFirebaseActive || !this.db) return;
 
@@ -423,14 +422,12 @@ window.App = Object.assign(window.App || {}, {
           if (this.calendar) this.calendar.generate();
         });
 
-        // 🔒 변경된 PIN 실시간 동기화 리스너
         this.db.ref('auth_pins').on('value', snap => {
           const data = snap.val() || {};
           if (data.jinse) safeSet('pin_hash_jinse', data.jinse);
           if (data.jihye) safeSet('pin_hash_jihye', data.jihye);
         });
 
-        // 활성 사용자 비공개 채널 연결
         this.syncPrivateChannel();
 
         this.db.ref('family_budget').on('value', snap => {
@@ -470,20 +467,24 @@ window.App = Object.assign(window.App || {}, {
       console.warn("Firebase 연결 대기 (로컬 모드 실행):", e);
     }
 
-        // 해시 주소(#parking 등)가 있으면 해당 화면으로 직행, 없으면 home으로 이동
+    // 🔒 7. 직행 해시(#parking 등) 및 비밀번호 인증 분기 처리
     const targetHash = window.location.hash.replace('#', '');
     const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
 
     if (safeGet('gogo_auth_pass') === 'true') {
+      // 이미 비밀번호 인증이 완료된 경우 -> 목적지로 바로 이동
       if (validScreens.includes(targetHash)) {
         this.router.go(targetHash);
       } else {
         this.router.go('home');
       }
     } else {
+      // 미인증 상태 -> 직행 목적지를 보존해두고 잠금 화면을 먼저 표시
+      if (validScreens.includes(targetHash)) {
+        this.state.pendingRedirect = targetHash;
+      }
       this.router.go('lock');
     }
-
   }
 });
 
