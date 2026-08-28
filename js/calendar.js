@@ -75,7 +75,7 @@ App.calendar = {
     }
   },
 
-  /* 🗓️ 모든 주차 행의 높이를 100% 균등 분할 생성 */
+  /* 🗓️ 7열 CSS Grid 기반 엄격 균등 분할 생성 */
   generate() {
     const yInp = document.getElementById('yearInput');
     const mInp = document.getElementById('monthInput');
@@ -96,75 +96,68 @@ App.calendar = {
     if (goalInp) goalInp.value = safeGet(`calendar_goal_${monthKey}`) || '';
     if (memoInp) memoInp.value = safeGet(`calendar_memo_${monthKey}`) || '';
 
-    const tbody = document.getElementById('calendarTableBody');
-    if (!tbody) return;
+    const gridBody = document.getElementById('calendarGridBody');
+    if (!gridBody) return;
 
     const firstDay = new Date(year, month - 1, 1).getDay(); // 0(일) ~ 6(토)
     const lastDate = new Date(year, month, 0).getDate();
 
-    // 1. 해당 월이 몇 주차(5주 또는 6주)인지 정확히 계산
+    // 5주 또는 6주 계산
     const totalDaysNeeded = firstDay + lastDate;
-    const totalWeeks = Math.ceil(totalDaysNeeded / 7); // 5 또는 6
-    const rowHeightPercent = (100 / totalWeeks).toFixed(4); // 20% 또는 16.6667%
-
-    tbody.className = `cal-rows-${totalWeeks}`;
+    const totalWeeks = Math.ceil(totalDaysNeeded / 7);
+    gridBody.className = `cal-sheet-grid-body cal-rows-${totalWeeks}`;
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
     const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
 
-    let rowsHtml = '';
+    let cellsHtml = '';
+    const totalCells = totalWeeks * 7;
     let currentDay = 1;
 
-    for (let row = 0; row < totalWeeks; row++) {
-      let rowCells = '';
+    for (let i = 0; i < totalCells; i++) {
+      const col = i % 7; // 0(일) ~ 6(토)
 
-      for (let col = 0; col < 7; col++) {
-        if (row === 0 && col < firstDay) {
-          // 1일 이전 빈 셀
-          rowCells += `<td class="cal-table-td td-empty"></td>`;
-        } else if (currentDay > lastDate) {
-          // 말일 이후 빈 셀
-          rowCells += `<td class="cal-table-td td-empty"></td>`;
-        } else {
-          const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
-          const isToday = (dateStr === todayStr);
-          const dayOfWeek = col; // 0: 일, 6: 토
+      if (i < firstDay) {
+        // 1일 이전 빈 칸
+        cellsHtml += `<div class="cal-grid-cell cell-empty"></div>`;
+      } else if (currentDay > lastDate) {
+        // 말일 이후 빈 칸
+        cellsHtml += `<div class="cal-grid-cell cell-empty"></div>`;
+      } else {
+        const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
+        const isToday = (dateStr === todayStr);
 
-          const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
+        const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
 
-          let eventsHtml = '';
-          daySchedules.forEach(s => {
-            const titleText = s.title || s.text || '일정';
-            const lockIcon = s.isPrivate ? '🔒' : '';
-            const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
-            const isPriv = Boolean(s.isPrivate);
+        let eventsHtml = '';
+        daySchedules.forEach(s => {
+          const titleText = s.title || s.text || '일정';
+          const lockIcon = s.isPrivate ? '🔒' : '';
+          const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
+          const isPriv = Boolean(s.isPrivate);
 
-            eventsHtml += `
-              <div class="td-event-badge ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
-                ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
-              </div>
-            `;
-          });
-
-          const numClass = dayOfWeek === 0 ? 'sun' : (dayOfWeek === 6 ? 'sat' : '');
-
-          rowCells += `
-            <td class="cal-table-td ${isToday ? 'td-today' : ''}">
-              <div class="td-date-num ${numClass}">${currentDay}</div>
-              <div class="td-events-list">${eventsHtml}</div>
-            </td>
+          eventsHtml += `
+            <div class="td-event-badge ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
+              ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
+            </div>
           `;
+        });
 
-          currentDay++;
-        }
+        const numClass = col === 0 ? 'sun' : (col === 6 ? 'sat' : '');
+
+        cellsHtml += `
+          <div class="cal-grid-cell ${isToday ? 'cell-today' : ''}">
+            <div class="cell-date-num ${numClass}">${currentDay}</div>
+            <div class="cell-events-wrap">${eventsHtml}</div>
+          </div>
+        `;
+
+        currentDay++;
       }
-
-      // 각 행(tr)에 정확히 균등한 높이(%) 부여
-      rowsHtml += `<tr style="height: ${rowHeightPercent}%;">${rowCells}</tr>`;
     }
 
-    tbody.innerHTML = rowsHtml;
+    gridBody.innerHTML = cellsHtml;
   }
 };
