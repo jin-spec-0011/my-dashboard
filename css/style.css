@@ -492,6 +492,107 @@ textarea.memo-text-input {
 .delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
 .parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
 
+/* ── 💰 가계부 예산 & 프로그레스 그래프 카드 ── */
+.budget-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.budget-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budget-sub-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.budget-spend-total {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.btn-budget-edit {
+  background: #f1f5f9;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-budget-edit:active {
+  background: #e2e8f0;
+  transform: scale(0.97);
+}
+
+.budget-bar-wrap {
+  width: 100%;
+}
+
+.budget-bar-track {
+  width: 100%;
+  height: 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.budget-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary-color);
+  border-radius: 6px;
+  transition: width 0.4s ease, background-color 0.3s ease;
+}
+
+.budget-info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: #f8fafc;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.budget-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.info-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.text-green { color: #16a34a !important; }
+.text-red { color: #dc2626 !important; }
+
 /* ── 📅 만년 캘린더 ── */
 .calendar-controls-bar {
   width: 100%;
