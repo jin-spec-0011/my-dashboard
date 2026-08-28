@@ -13,7 +13,6 @@ App.calendar = {
     this.generate();
   },
 
-  /* 📱 아이폰 / 아이패드 / 웹 3단 뷰어 전환 */
   setDeviceView(mode) {
     this.currentDeviceView = mode;
     const wrapper = document.getElementById('calendarViewportWrapper');
@@ -76,7 +75,7 @@ App.calendar = {
     }
   },
 
-  /* 🗓️ 7열 표(Table) 기반 캘린더 생성 */
+  /* 🗓️ 모든 주차 행의 높이를 100% 균등 분할 생성 */
   generate() {
     const yInp = document.getElementById('yearInput');
     const mInp = document.getElementById('monthInput');
@@ -87,13 +86,11 @@ App.calendar = {
     const month = this.currentMonth;
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
-    // 인쇄 시트 상단 타이틀 반영
     const printTitleEl = document.getElementById('calPrintTitle');
     if (printTitleEl) {
       printTitleEl.innerText = `${year}년 ${month}월`;
     }
 
-    // 목표 & 메모 로드
     const goalInp = document.getElementById('calendarGoalInput');
     const memoInp = document.getElementById('calendarMemoInput');
     if (goalInp) goalInp.value = safeGet(`calendar_goal_${monthKey}`) || '';
@@ -102,9 +99,15 @@ App.calendar = {
     const tbody = document.getElementById('calendarTableBody');
     if (!tbody) return;
 
-    // 1일 요일 및 총 일수 계산
     const firstDay = new Date(year, month - 1, 1).getDay(); // 0(일) ~ 6(토)
     const lastDate = new Date(year, month, 0).getDate();
+
+    // 1. 해당 월이 몇 주차(5주 또는 6주)인지 정확히 계산
+    const totalDaysNeeded = firstDay + lastDate;
+    const totalWeeks = Math.ceil(totalDaysNeeded / 7); // 5 또는 6
+    const rowHeightPercent = (100 / totalWeeks).toFixed(4); // 20% 또는 16.6667%
+
+    tbody.className = `cal-rows-${totalWeeks}`;
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
     const now = new Date();
@@ -113,21 +116,17 @@ App.calendar = {
 
     let rowsHtml = '';
     let currentDay = 1;
-    let isMonthFinished = false;
 
-    // 최대 6주차 행 생성
-    for (let row = 0; row < 6; row++) {
-      if (isMonthFinished) break;
+    for (let row = 0; row < totalWeeks; row++) {
       let rowCells = '';
 
       for (let col = 0; col < 7; col++) {
         if (row === 0 && col < firstDay) {
-          // 1일 이전 빈 칸
+          // 1일 이전 빈 셀
           rowCells += `<td class="cal-table-td td-empty"></td>`;
         } else if (currentDay > lastDate) {
-          // 월말 이후 빈 칸
+          // 말일 이후 빈 셀
           rowCells += `<td class="cal-table-td td-empty"></td>`;
-          isMonthFinished = true;
         } else {
           const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
           const isToday = (dateStr === todayStr);
@@ -159,13 +158,11 @@ App.calendar = {
           `;
 
           currentDay++;
-          if (currentDay > lastDate) {
-            isMonthFinished = true;
-          }
         }
       }
 
-      rowsHtml += `<tr>${rowCells}</tr>`;
+      // 각 행(tr)에 정확히 균등한 높이(%) 부여
+      rowsHtml += `<tr style="height: ${rowHeightPercent}%;">${rowCells}</tr>`;
     }
 
     tbody.innerHTML = rowsHtml;
