@@ -3,6 +3,7 @@ window.App = window.App || {};
 App.calendar = {
   currentYear: new Date().getFullYear(),
   currentMonth: new Date().getMonth() + 1,
+  currentDeviceView: 'web', // 'iphone' | 'ipad' | 'web'
 
   init() {
     const now = new Date();
@@ -10,6 +11,26 @@ App.calendar = {
     this.currentMonth = now.getMonth() + 1;
     this.updateInputs();
     this.generate();
+  },
+
+  /* 📱 아이폰 / 아이패드 / 웹 3단 뷰어 전환 */
+  setDeviceView(mode) {
+    this.currentDeviceView = mode;
+    const wrapper = document.getElementById('calendarViewportWrapper');
+    if (wrapper) {
+      wrapper.className = `calendar-viewport-wrapper view-${mode}`;
+    }
+
+    const btnIphone = document.getElementById('btn-view-iphone');
+    const btnIpad = document.getElementById('btn-view-ipad');
+    const btnWeb = document.getElementById('btn-view-web');
+
+    if (btnIphone) btnIphone.classList.toggle('active', mode === 'iphone');
+    if (btnIpad) btnIpad.classList.toggle('active', mode === 'ipad');
+    if (btnWeb) btnWeb.classList.toggle('active', mode === 'web');
+
+    const nameMap = { iphone: '📱 아이폰', ipad: '📟 아이패드', web: '💻 PC/웹' };
+    App.ui.toast(`${nameMap[mode]} 뷰로 전환되었습니다.`);
   },
 
   prevMonth() {
@@ -55,6 +76,7 @@ App.calendar = {
     }
   },
 
+  /* 🗓️ 7열 표(Table) 기반 캘린더 생성 */
   generate() {
     const yInp = document.getElementById('yearInput');
     const mInp = document.getElementById('monthInput');
@@ -65,62 +87,87 @@ App.calendar = {
     const month = this.currentMonth;
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
+    // 인쇄 시트 상단 타이틀 반영
+    const printTitleEl = document.getElementById('calPrintTitle');
+    if (printTitleEl) {
+      printTitleEl.innerText = `${year}년 ${month}월`;
+    }
+
+    // 목표 & 메모 로드
     const goalInp = document.getElementById('calendarGoalInput');
     const memoInp = document.getElementById('calendarMemoInput');
     if (goalInp) goalInp.value = safeGet(`calendar_goal_${monthKey}`) || '';
     if (memoInp) memoInp.value = safeGet(`calendar_memo_${monthKey}`) || '';
 
-    const gridEl = document.getElementById('calendarGrid');
-    if (!gridEl) return;
+    const tbody = document.getElementById('calendarTableBody');
+    if (!tbody) return;
 
-    // 1일의 시작 요일 (0 = 일요일, 6 = 토요일)
-    const firstDay = new Date(year, month - 1, 1).getDay();
-    // 해당 월의 마지막 날짜
+    // 1일 요일 및 총 일수 계산
+    const firstDay = new Date(year, month - 1, 1).getDay(); // 0(일) ~ 6(토)
     const lastDate = new Date(year, month, 0).getDate();
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
-    let cellsHtml = '';
-
-    // 1일 이전의 빈 셀 채우기
-    for (let i = 0; i < firstDay; i++) {
-      cellsHtml += `<div class="cal-cell empty"></div>`;
-    }
-
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
     const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
 
-    // 1일부터 마지막 날까지 렌더링
-    for (let day = 1; day <= lastDate; day++) {
-      const dateStr = `${monthKey}-${String(day).padStart(2, '0')}`;
-      const isToday = (dateStr === todayStr);
-      const dayOfWeek = (firstDay + day - 1) % 7; // 0 = 일요일, 6 = 토요일
+    let rowsHtml = '';
+    let currentDay = 1;
+    let isMonthFinished = false;
 
-      const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
+    // 최대 6주차 행 생성
+    for (let row = 0; row < 6; row++) {
+      if (isMonthFinished) break;
+      let rowCells = '';
 
-      let eventsHtml = '';
-      daySchedules.forEach(s => {
-        const titleText = s.title || s.text || '일정';
-        const lockIcon = s.isPrivate ? '🔒' : '';
-        const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
-        const isPriv = Boolean(s.isPrivate);
-        eventsHtml += `
-          <div class="cal-event-tag ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
-            ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
-          </div>
-        `;
-      });
+      for (let col = 0; col < 7; col++) {
+        if (row === 0 && col < firstDay) {
+          // 1일 이전 빈 칸
+          rowCells += `<td class="cal-table-td td-empty"></td>`;
+        } else if (currentDay > lastDate) {
+          // 월말 이후 빈 칸
+          rowCells += `<td class="cal-table-td td-empty"></td>`;
+          isMonthFinished = true;
+        } else {
+          const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
+          const isToday = (dateStr === todayStr);
+          const dayOfWeek = col; // 0: 일, 6: 토
 
-      const dayClass = dayOfWeek === 0 ? 'sun' : (dayOfWeek === 6 ? 'sat' : '');
+          const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
 
-      cellsHtml += `
-        <div class="cal-cell ${isToday ? 'today' : ''}">
-          <div class="cal-date-num ${dayClass}">${day}</div>
-          <div class="cal-events-wrap">${eventsHtml}</div>
-        </div>
-      `;
+          let eventsHtml = '';
+          daySchedules.forEach(s => {
+            const titleText = s.title || s.text || '일정';
+            const lockIcon = s.isPrivate ? '🔒' : '';
+            const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
+            const isPriv = Boolean(s.isPrivate);
+
+            eventsHtml += `
+              <div class="td-event-badge ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
+                ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
+              </div>
+            `;
+          });
+
+          const numClass = dayOfWeek === 0 ? 'sun' : (dayOfWeek === 6 ? 'sat' : '');
+
+          rowCells += `
+            <td class="cal-table-td ${isToday ? 'td-today' : ''}">
+              <div class="td-date-num ${numClass}">${currentDay}</div>
+              <div class="td-events-list">${eventsHtml}</div>
+            </td>
+          `;
+
+          currentDay++;
+          if (currentDay > lastDate) {
+            isMonthFinished = true;
+          }
+        }
+      }
+
+      rowsHtml += `<tr>${rowCells}</tr>`;
     }
 
-    gridEl.innerHTML = cellsHtml;
+    tbody.innerHTML = rowsHtml;
   }
 };
