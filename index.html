@@ -96,7 +96,7 @@
             <span class="card-title">장보기 / 메모</span>
             <span class="menu-new-badge" id="badge-memo" style="display: none;">N</span>
           </div>
-          <span class="card-desc">체크리스트 & 컬러 고정메모</span>
+          <span class="card-desc">체크리스트 & 가계부 자동연동</span>
         </div>
       </div>
 
@@ -272,14 +272,13 @@
     </div>
   </section>
 
-  <!-- 4. 📅 만년 캘린더 (뷰어 & A4 꽉참 출력 최적화) -->
+  <!-- 4. 📅 만년 캘린더 화면 -->
   <section id="screen-calendar" class="screen">
     <div class="header-nav no-print">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>📅 만년 캘린더 (뷰어 & 인쇄)</h2>
     </div>
 
-    <!-- 📱 기기별 화면 전환 탭 (아이폰 / 아이패드 / PC웹) -->
     <div class="device-switch-bar no-print">
       <span class="device-switch-label">🖥️ 뷰어 모드:</span>
       <div class="device-btn-group">
@@ -289,7 +288,6 @@
       </div>
     </div>
 
-    <!-- 🗓️ 연월 이동 및 A4 인쇄 버튼 -->
     <div class="calendar-controls-bar no-print">
       <div class="cal-nav-group">
         <button type="button" class="btn-prof" onclick="App.calendar.prevMonth()">◀ 이전달</button>
@@ -302,11 +300,8 @@
       <button type="button" class="btn-print-action" onclick="window.print()">🖨️ A4 꽉 차게 인쇄</button>
     </div>
 
-    <!-- 🖨️ 인쇄 & 뷰어 컨테이너 (A4 1장 꽉 채움) -->
     <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
       <div class="print-calendar-sheet" id="printCalendarSheet">
-        
-        <!-- [A4 상단] 헤더 & 이달의 슬로건 -->
         <div class="cal-sheet-header">
           <div class="cal-sheet-title-row">
             <h1 class="cal-sheet-title" id="calPrintTitle">2026년 8월</h1>
@@ -318,7 +313,6 @@
           </div>
         </div>
 
-        <!-- [A4 중앙] 7열 표(Table) 달력 -->
         <div class="cal-sheet-table-wrap">
           <table class="cal-sheet-table">
             <thead>
@@ -332,20 +326,16 @@
                 <th class="th-sat">토 (SAT)</th>
               </tr>
             </thead>
-            <tbody id="calendarTableBody">
-              <!-- JS 동적 생성 -->
-            </tbody>
+            <tbody id="calendarTableBody"></tbody>
           </table>
         </div>
 
-        <!-- [A4 하단] 이달의 결산 및 중요 메모 -->
         <div class="cal-sheet-footer">
           <div class="cal-sheet-memo-box">
             <span class="memo-tag">📌 이달의 중요 메모 / 결산 & 피드백</span>
             <textarea id="calendarMemoInput" class="memo-textarea" rows="2" placeholder="이달의 중요 사항, 가족 회의 내용, 결산 피드백을 기록하세요..." oninput="App.calendar.saveMemo(this.value)"></textarea>
           </div>
         </div>
-
       </div>
     </div>
   </section>
@@ -527,6 +517,46 @@
       <div class="modal-actions">
         <button type="button" class="btn-modal-save" onclick="App.auth.saveNewPIN()">새 비밀번호 저장</button>
         <button type="button" class="btn-modal-cancel" onclick="App.auth.closeChangePinModal()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 (신규) -->
+  <div id="shopping-ledger-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 360px; text-align: left;">
+      <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeLedgerModal()" title="닫기">✕</button>
+      <div class="modal-header" style="text-align: center; margin-bottom: 12px;">
+        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">🛒 장보기 ➔ 가계부 연동</h3>
+        <p style="font-size: 12px; color: #64748b; margin-top: 4px;">구매 금액을 가계부 지출로 기록합니다.</p>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">구매 항목 / 내역</label>
+          <input type="text" id="shopLedgerDescInput" class="memo-text-input" placeholder="예: 우유, 버팔로 윙">
+        </div>
+        <div class="grid-2">
+          <div>
+            <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">결제 금액 (원)</label>
+            <input type="number" id="shopLedgerAmountInput" class="memo-text-input" placeholder="예: 4500" onkeydown="if(event.key==='Enter') App.memo.submitLedgerAndComplete()">
+          </div>
+          <div>
+            <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">구매 날짜</label>
+            <input type="date" id="shopLedgerDateInput" class="memo-text-input">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 11.5px; font-weight: 700; color: #64748b;">결제자</label>
+          <div class="toggle-group" id="shopLedgerAuthorGroup">
+            <button type="button" class="btn-toggle active" id="btn-shop-author-jinse" onclick="App.memo.selectLedgerAuthor('진세')">진세</button>
+            <button type="button" class="btn-toggle" id="btn-shop-author-jihye" onclick="App.memo.selectLedgerAuthor('지혜')">지혜</button>
+            <button type="button" class="btn-toggle" id="btn-shop-author-family" onclick="App.memo.selectLedgerAuthor('가족')">가족</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 14px; display: flex; flex-direction: column; gap: 6px;">
+        <button type="button" class="btn-modal-save" style="background: #2563eb;" onclick="App.memo.submitLedgerAndComplete()">💰 가계부에 기록하고 완료</button>
+        <button type="button" class="btn-modal-cancel" style="background: #f1f5f9; color: #475569; border-radius: 10px; height: 38px; font-weight: 700;" onclick="App.memo.completeWithoutLedger()">금액 기록 없이 체크만 하기</button>
+        <button type="button" class="btn-modal-cancel" onclick="App.memo.closeLedgerModal()">취소</button>
       </div>
     </div>
   </div>
