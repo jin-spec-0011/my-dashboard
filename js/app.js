@@ -1,5 +1,5 @@
-/* ── 공통 유틸리티 ── */
-function escapeHtml(str) {
+/* ── 공통 유틸리티 (전역 등록) ── */
+window.escapeHtml = function(str) {
   if (str == null) return '';
   return String(str)
     .replace(/&/g, '&amp;')
@@ -7,22 +7,28 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
+};
 
-async function sha256(str) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+window.sha256 = async function(str) {
+  try {
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (e) {}
+  return String(str);
+};
 
 const memoryStorage = {};
-function safeGet(key) {
+window.safeGet = function(key) {
   try { return localStorage.getItem(key) || memoryStorage[key] || ''; } 
   catch (e) { return memoryStorage[key] || ''; }
-}
-function safeSet(key, val) {
+};
+
+window.safeSet = function(key, val) {
   try { localStorage.setItem(key, val); } 
   catch (e) { memoryStorage[key] = val; }
-}
+};
 
 /* ── 🛡️ 데이터 유실 방지 및 Array 안전 보장 CRUD 팩토리 ── */
 function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
@@ -330,18 +336,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-// 1. 주차 기본값 확인 (기존 innerHTML 루프 제거 후 안전 유지)
-    const rowSelect = document.getElementById('rowSelect');
-    const colSelect = document.getElementById('colSelect');
-    if (rowSelect && !rowSelect.value) rowSelect.value = '18';
-    if (colSelect && !colSelect.value) colSelect.value = 'A';
-
-    const rowSelect = document.getElementById('rowSelect');
-    if (rowSelect) {
-      rowSelect.innerHTML = '';
-      for (let i = 1; i <= 50; i++) rowSelect.innerHTML += `<option value="${i}">${i}번</option>`;
-    }
-
+  init() {
     const now = new Date();
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
@@ -467,19 +462,17 @@ window.App = Object.assign(window.App || {}, {
       console.warn("Firebase 연결 대기 (로컬 모드 실행):", e);
     }
 
-    // 🔒 7. 직행 해시(#parking 등) 및 비밀번호 인증 분기 처리
+    // 🔒 직행 해시(#parking 등) 및 비밀번호 인증 분기 처리
     const targetHash = window.location.hash.replace('#', '');
     const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
 
     if (safeGet('gogo_auth_pass') === 'true') {
-      // 이미 비밀번호 인증이 완료된 경우 -> 목적지로 바로 이동
       if (validScreens.includes(targetHash)) {
         this.router.go(targetHash);
       } else {
         this.router.go('home');
       }
     } else {
-      // 미인증 상태 -> 직행 목적지를 보존해두고 잠금 화면을 먼저 표시
       if (validScreens.includes(targetHash)) {
         this.state.pendingRedirect = targetHash;
       }
