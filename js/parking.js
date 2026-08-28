@@ -3,7 +3,7 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
-  /* 🛡️ 셀렉트 옵션 비어있음 방지 초기화 */
+  /* 🛡️ 옵션 비어있음 방지 안전장치 */
   ensureOptions() {
     const rowSelect = document.getElementById('rowSelect');
     const colSelect = document.getElementById('colSelect');
