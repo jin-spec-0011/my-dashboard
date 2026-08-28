@@ -3,6 +3,29 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
+  /* 🛡️ 셀렉트 옵션 비어있음 방지 초기화 */
+  ensureOptions() {
+    const rowSelect = document.getElementById('rowSelect');
+    const colSelect = document.getElementById('colSelect');
+
+    if (rowSelect && rowSelect.options.length === 0) {
+      let html = '';
+      for (let i = 1; i <= 50; i++) {
+        html += `<option value="${i}" ${i === 18 ? 'selected' : ''}>${i}번</option>`;
+      }
+      rowSelect.innerHTML = html;
+    }
+
+    if (colSelect && colSelect.options.length === 0) {
+      let html = '';
+      for (let i = 65; i <= 90; i++) {
+        const char = String.fromCharCode(i);
+        html += `<option value="${char}" ${char === 'A' ? 'selected' : ''}>${char}</option>`;
+      }
+      colSelect.innerHTML = html;
+    }
+  },
+
   selectOption(type, value) {
     App.state.parking[type] = value;
 
@@ -106,17 +129,17 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 숫자 + 구역 순서 (예: B1 - 18A) */
+  /* 🚗 주차 저장: 숫자 + 구역 (예: B1 - 18A) */
   save() {
+    this.ensureOptions();
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
     const rowSelect = document.getElementById('rowSelect');
 
     const colVal = colSelect ? colSelect.value : 'A';
-    const rowVal = rowSelect ? rowSelect.value : '1';
+    const rowVal = rowSelect ? rowSelect.value : '18';
     const isOutdoor = (type === '야외');
 
-    // ★ [기둥 번호 + 구역열] 결합 (예: 18A)
     const slotCode = `${rowVal}${colVal}`;
 
     let locationText = '';
@@ -146,7 +169,7 @@ App.parking = {
     }
 
     this.removePhoto();
-    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 위치가 저장되었습니다!`);
+    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료!`);
 
     if (App.ticker) App.ticker.refresh();
   },
@@ -180,6 +203,7 @@ App.parking = {
   },
 
   render(items = []) {
+    this.ensureOptions();
     const listEl = document.getElementById('logList');
     if (!listEl) return;
 
