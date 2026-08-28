@@ -330,12 +330,12 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  init() {
+// 1. 주차 기본값 확인 (기존 innerHTML 루프 제거 후 안전 유지)
+    const rowSelect = document.getElementById('rowSelect');
     const colSelect = document.getElementById('colSelect');
-    if (colSelect) {
-      colSelect.innerHTML = '';
-      for (let i = 65; i <= 90; i++) colSelect.innerHTML += `<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}열</option>`;
-    }
+    if (rowSelect && !rowSelect.value) rowSelect.value = '18';
+    if (colSelect && !colSelect.value) colSelect.value = 'A';
+
     const rowSelect = document.getElementById('rowSelect');
     if (rowSelect) {
       rowSelect.innerHTML = '';
