@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GOGO 스마트 매니저</title>
   
-  <!-- Favicon & PWA -->
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
   <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
 
-  <!-- CSS -->
   <link rel="stylesheet" href="css/style.css">
   
   <!-- Firebase SDK -->
@@ -24,16 +22,13 @@
       <div class="lock-icon">🔒</div>
       <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">스마트 포털</h2>
       <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">보안 PIN 4자리를 입력하세요.</p>
-      
       <input type="password" id="pinInput" class="pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" onkeydown="if(event.key==='Enter') App.auth.checkPIN()">
-      
       <button type="button" class="btn-lock-unlock" onclick="App.auth.checkPIN()">잠금 해제</button>
     </div>
   </section>
 
   <!-- 1. 🏠 포털 메인 홈 -->
   <section id="screen-home" class="screen">
-    <!-- 상단 날짜 및 클라우드 상태 -->
     <header class="home-header">
       <div class="header-left">
         <h1 class="logo-title">🚗 GOGO 매니저</h1>
@@ -45,7 +40,6 @@
       </div>
     </header>
 
-    <!-- 실시간 세로 롤링 전광판 -->
     <div class="ticker-board-wrap" onclick="App.ticker.next()">
       <div class="ticker-badge">📢 알림</div>
       <div class="ticker-text-area">
@@ -53,7 +47,6 @@
       </div>
     </div>
 
-    <!-- 👤 사용자 프로필 바 -->
     <div class="profile-switch-bar">
       <div class="profile-info-wrap">
         <span class="profile-current-badge" id="currentProfileBadge">👥 가족 공용 모드</span>
@@ -65,9 +58,7 @@
       </div>
     </div>
 
-    <!-- 메인 대시보드 6대 기능 바로가기 그리드 -->
     <div class="menu-grid">
-      <!-- 1. 주차 위치 기록 -->
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
         <div class="card-text-wrap">
@@ -79,7 +70,6 @@
         </div>
       </div>
 
-      <!-- 2. 일정 관리 -->
       <div class="menu-card" onclick="App.router.go('schedule')">
         <div class="card-icon-wrap bg-indigo">🗓️</div>
         <div class="card-text-wrap">
@@ -91,7 +81,6 @@
         </div>
       </div>
 
-      <!-- 3. 만년 캘린더 -->
       <div class="menu-card" onclick="App.router.go('calendar')">
         <div class="card-icon-wrap bg-purple">📅</div>
         <div class="card-text-wrap">
@@ -100,19 +89,17 @@
         </div>
       </div>
 
-      <!-- 4. 장보기 / 메모 -->
       <div class="menu-card" onclick="App.router.go('memo')">
         <div class="card-icon-wrap bg-amber">📝</div>
         <div class="card-text-wrap">
           <div class="card-title-row">
-            <span class="card-title">장보기 / 할 일</span>
+            <span class="card-title">장보기 / 메모</span>
             <span class="menu-new-badge" id="badge-memo" style="display: none;">N</span>
           </div>
           <span class="card-desc">체크리스트 & 컬러 고정메모</span>
         </div>
       </div>
 
-      <!-- 5. 가계부 -->
       <div class="menu-card" onclick="App.router.go('ledger')">
         <div class="card-icon-wrap bg-emerald">💰</div>
         <div class="card-text-wrap">
@@ -124,7 +111,6 @@
         </div>
       </div>
 
-      <!-- 6. 가족 여행 -->
       <div class="menu-card" onclick="App.router.go('trip')">
         <div class="card-icon-wrap bg-pink">✈️</div>
         <div class="card-text-wrap">
@@ -132,7 +118,7 @@
             <span class="card-title">가족 여행 지도</span>
             <span class="menu-new-badge" id="badge-trip" style="display: none;">N</span>
           </div>
-          <span class="card-desc">추억 지도 및 앨범 기록</span>
+          <span class="card-desc">추억 기록 및 여행지 목록</span>
         </div>
       </div>
     </div>
@@ -146,7 +132,6 @@
     </div>
 
     <div class="card form-card">
-      <!-- 1. 차종 선택 -->
       <div class="form-group">
         <label>1. 차종 선택</label>
         <div class="toggle-group" id="carGroup">
@@ -155,7 +140,6 @@
         </div>
       </div>
 
-      <!-- 2. 주차장 유형 -->
       <div class="form-group">
         <label>2. 주차장 유형</label>
         <div class="toggle-group" id="typeGroup">
@@ -164,7 +148,6 @@
         </div>
       </div>
 
-      <!-- 3. 지하 층수 -->
       <div class="form-group" id="floorContainer">
         <label>3. 지하 층수</label>
         <div class="toggle-group" id="floorGroup">
@@ -174,7 +157,6 @@
         </div>
       </div>
 
-      <!-- 4. 기둥 번호(1~50) 좌측, 5. 구역(A~Z) 우측 -->
       <div class="grid-2">
         <div class="form-group">
           <label>4. 기둥 번호 (1~50)</label>
@@ -208,7 +190,6 @@
         </div>
       </div>
 
-      <!-- 야외 지도 영역 -->
       <div class="form-group" id="outdoorMapSection" style="display: none; flex-direction: column; gap: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <label>📍 야외 주차 위치 (GPS)</label>
@@ -218,7 +199,6 @@
         <iframe id="mapFrame" class="map-preview" src="about:blank"></iframe>
       </div>
 
-      <!-- 6. 사진 첨부 -->
       <div class="form-group">
         <label>6. 기둥 / 주차 위치 사진 (선택)</label>
         <div class="photo-upload-container">
@@ -237,7 +217,6 @@
       <button type="button" class="btn-save" onclick="App.parking.save()">📌 위치 및 사진 저장</button>
     </div>
 
-    <!-- 주차 기록 리스트 -->
     <div class="card list-card">
       <div class="list-header">
         <h3>📋 차량별 현재 주차 위치</h3>
@@ -302,15 +281,15 @@
     <div class="calendar-controls-bar">
       <div style="display: flex; gap: 6px; align-items: center;">
         <button type="button" class="btn-prof" onclick="App.calendar.prevMonth()">◀</button>
-        <input type="number" id="yearInput" style="width: 68px;" class="parking-select" onchange="App.calendar.generate()">
+        <input type="number" id="yearInput" style="width: 72px;" class="parking-select" onchange="App.calendar.generate()">
         <span>년</span>
-        <input type="number" id="monthInput" style="width: 50px;" class="parking-select" min="1" max="12" onchange="App.calendar.generate()">
+        <input type="number" id="monthInput" style="width: 52px;" class="parking-select" min="1" max="12" onchange="App.calendar.generate()">
         <span>월</span>
         <button type="button" class="btn-prof" onclick="App.calendar.nextMonth()">▶</button>
       </div>
       <button type="button" class="btn-prof" onclick="window.print()">🖨️ 인쇄</button>
     </div>
-    <div class="calendar-container card">
+    <div class="calendar-container">
       <div class="calendar-top-goal">
         <label style="font-size: 12px; font-weight: 700; color: var(--primary-color);">🎯 이달의 목표 / 슬로건</label>
         <input type="text" id="calendarGoalInput" class="editable-goal" placeholder="이달의 가족 목표를 입력하세요" oninput="App.calendar.saveGoal(this.value)">
@@ -327,7 +306,7 @@
     </div>
   </section>
 
-  <!-- 5. 📝 장보기 / 메모 화면 -->
+  <!-- 5. 📝 장보기 & 메모 화면 -->
   <section id="screen-memo" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -353,7 +332,7 @@
         <textarea id="stickyInput" class="memo-text-input" rows="3" placeholder="메모할 내용을 입력하세요..."></textarea>
       </div>
       <button type="button" class="btn-save" onclick="App.memo.addSticky()">📌 메모 저장</button>
-      <div id="stickyList" class="sticky-grid-wrap" style="margin-top: 14px;"></div>
+      <div id="stickyList" class="sticky-grid-wrap"></div>
     </div>
   </section>
 
@@ -473,10 +452,9 @@
     </div>
   </div>
 
-  <!-- 토스트 알림 메시지 -->
   <div id="toast" class="toast"></div>
 
-  <!-- 자바스크립트 모듈 로드 (순서 엄수) -->
+  <!-- 자바스크립트 모듈 로드 -->
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/parking.js"></script>
