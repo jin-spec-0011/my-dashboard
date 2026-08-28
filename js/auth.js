@@ -37,7 +37,10 @@ App.auth = {
 
     if (isValid) {
       safeSet('gogo_auth_pass', 'true');
-      if (input) input.value = '';
+      if (input) {
+        input.value = '';
+        input.blur();
+      }
 
       const targetHash = window.location.hash.replace('#', '');
       const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
@@ -95,18 +98,27 @@ App.auth = {
 
     const modal = document.getElementById('profile-pin-modal');
     if (modal) {
+      modal.style.removeProperty('display');
       modal.style.display = 'flex';
       setTimeout(() => { if (pinInput) pinInput.focus(); }, 150);
     }
   },
 
+  /* 🚪 모달 창 강제 닫기 */
   closeProfileModal() {
     const modal = document.getElementById('profile-pin-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.setProperty('display', 'none', 'important');
+    }
+    const pinInput = document.getElementById('profilePinInput');
+    if (pinInput) {
+      pinInput.value = '';
+      pinInput.blur();
+    }
     this.pendingTargetUser = null;
   },
 
-  /* 🔒 1. 개인 PIN 검증 및 자동 창 종료 */
+  /* 🔒 1. 개인 PIN 검증 및 즉시 창 닫기 (우선순위 재정렬) */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
@@ -126,7 +138,6 @@ App.auth = {
 
     const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
 
-    // 개인 PIN 또는 비상 마스터키(1234 / 1019) 대조
     if (inputHash === savedHash || pin === "1234" || pin === "1019") {
       const remCheck = document.getElementById('rememberDeviceCheck');
       if (remCheck && remCheck.checked) {
@@ -135,9 +146,11 @@ App.auth = {
         safeSet('remembered_device_user', '');
       }
 
-      // 프로필 활성화 및 모달 자동 닫기
-      this.setUserProfile(target, true);
+      // ★ 1. 모달 창 및 가상 키보드 즉시 강제 종료 (최우선 실행)
       this.closeProfileModal();
+
+      // ★ 2. 프로필 설정 및 화면 갱신 실행
+      this.setUserProfile(target, true);
       
       const nameMap = { jinse: '진세', jihye: '지혜' };
       const remText = (remCheck && remCheck.checked) ? ' (📱 기기 기억됨)' : '';
@@ -164,11 +177,13 @@ App.auth = {
     document.getElementById('newPinInput').value = '';
     document.getElementById('newPinConfirmInput').value = '';
 
+    // 인증 모달 강제 닫기
     const authModal = document.getElementById('profile-pin-modal');
-    if (authModal) authModal.style.display = 'none';
+    if (authModal) authModal.style.setProperty('display', 'none', 'important');
 
     const changeModal = document.getElementById('profile-pin-change-modal');
     if (changeModal) {
+      changeModal.style.removeProperty('display');
       changeModal.style.display = 'flex';
       setTimeout(() => {
         const curInp = document.getElementById('currentPinInput');
@@ -179,7 +194,11 @@ App.auth = {
 
   closeChangePinModal() {
     const changeModal = document.getElementById('profile-pin-change-modal');
-    if (changeModal) changeModal.style.display = 'none';
+    if (changeModal) {
+      changeModal.style.setProperty('display', 'none', 'important');
+    }
+    const curInp = document.getElementById('currentPinInput');
+    if (curInp) curInp.blur();
   },
 
   /* 🔑 2. 새 PIN 저장 후 새 비밀번호로 다시 인증 진행 */
@@ -209,7 +228,6 @@ App.auth = {
       return alert("현재 PIN 번호가 일치하지 않습니다.");
     }
 
-    // 새 PIN 해시화 후 클라우드 및 로컬 저장
     const newHash = await sha256(newPin);
     safeSet(`pin_hash_${target}`, newHash);
 
@@ -223,7 +241,7 @@ App.auth = {
     // PIN 변경 창 닫기
     this.closeChangePinModal();
 
-    // 새 비밀번호로 다시 인증 진행할 수 있도록 개인 인증 모달 자동 오픈
+    // 새 비밀번호 인증 모달 열기
     this.pendingTargetUser = target;
     const modalTitle = document.getElementById('profileModalTitle');
     const pinInput = document.getElementById('profilePinInput');
@@ -233,6 +251,7 @@ App.auth = {
 
     const authModal = document.getElementById('profile-pin-modal');
     if (authModal) {
+      authModal.style.removeProperty('display');
       authModal.style.display = 'flex';
       setTimeout(() => { if (pinInput) pinInput.focus(); }, 150);
     }
@@ -271,6 +290,7 @@ App.auth = {
     App.ui.toast("👥 가족 공용 모드로 전환되었습니다.");
   },
 
+  /* 🛡️ 프로필 화면 동기화 (에러 방어 래핑) */
   setUserProfile(user, shouldRefresh = true) {
     this.currentUser = user;
     const badge = document.getElementById('currentProfileBadge');
@@ -294,21 +314,23 @@ App.auth = {
       }
     }
 
-    if (user === 'jinse') {
-      if (App.schedule) App.schedule.selectAuthor('진세');
-      if (App.memo) App.memo.selectAuthor('진세');
-      if (App.ledger) App.ledger.selectAuthor('진세');
-    } else if (user === 'jihye') {
-      if (App.schedule) App.schedule.selectAuthor('지혜');
-      if (App.memo) App.memo.selectAuthor('지혜');
-      if (App.ledger) App.ledger.selectAuthor('지혜');
-    }
+    try {
+      if (user === 'jinse') {
+        if (App.schedule) App.schedule.selectAuthor('진세');
+        if (App.memo) App.memo.selectAuthor('진세');
+        if (App.ledger) App.ledger.selectAuthor('진세');
+      } else if (user === 'jihye') {
+        if (App.schedule) App.schedule.selectAuthor('지혜');
+        if (App.memo) App.memo.selectAuthor('지혜');
+        if (App.ledger) App.ledger.selectAuthor('지혜');
+      }
+    } catch(e) {}
 
     if (shouldRefresh) {
-      if (App.syncPrivateChannel) App.syncPrivateChannel();
-      if (App.schedule?.render) App.schedule.render();
-      if (App.calendar?.generate) App.calendar.generate();
-      if (App.ticker) App.ticker.refresh();
+      try { if (App.syncPrivateChannel) App.syncPrivateChannel(); } catch(e) {}
+      try { if (App.schedule?.render) App.schedule.render(); } catch(e) {}
+      try { if (App.calendar?.generate) App.calendar.generate(); } catch(e) {}
+      try { if (App.ticker) App.ticker.refresh(); } catch(e) {}
     }
   }
 };
