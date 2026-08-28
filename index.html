@@ -272,36 +272,80 @@
     </div>
   </section>
 
-  <!-- 4. 📅 만년 캘린더 화면 -->
+  <!-- 4. 📅 만년 캘린더 (뷰어 & A4 꽉참 출력 최적화) -->
   <section id="screen-calendar" class="screen">
-    <div class="header-nav">
+    <div class="header-nav no-print">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
-      <h2>📅 만년 캘린더</h2>
+      <h2>📅 만년 캘린더 (뷰어 & 인쇄)</h2>
     </div>
-    <div class="calendar-controls-bar">
-      <div style="display: flex; gap: 6px; align-items: center;">
-        <button type="button" class="btn-prof" onclick="App.calendar.prevMonth()">◀</button>
-        <input type="number" id="yearInput" style="width: 72px;" class="parking-select" onchange="App.calendar.generate()">
-        <span>년</span>
-        <input type="number" id="monthInput" style="width: 52px;" class="parking-select" min="1" max="12" onchange="App.calendar.generate()">
-        <span>월</span>
-        <button type="button" class="btn-prof" onclick="App.calendar.nextMonth()">▶</button>
+
+    <!-- 📱 기기별 화면 전환 탭 (아이폰 / 아이패드 / PC웹) -->
+    <div class="device-switch-bar no-print">
+      <span class="device-switch-label">🖥️ 뷰어 모드:</span>
+      <div class="device-btn-group">
+        <button type="button" class="btn-device" id="btn-view-iphone" onclick="App.calendar.setDeviceView('iphone')">📱 아이폰</button>
+        <button type="button" class="btn-device" id="btn-view-ipad" onclick="App.calendar.setDeviceView('ipad')">📟 아이패드</button>
+        <button type="button" class="btn-device active" id="btn-view-web" onclick="App.calendar.setDeviceView('web')">💻 PC / 웹</button>
       </div>
-      <button type="button" class="btn-prof" onclick="window.print()">🖨️ 인쇄</button>
     </div>
-    <div class="calendar-container">
-      <div class="calendar-top-goal">
-        <label style="font-size: 12px; font-weight: 700; color: var(--primary-color);">🎯 이달의 목표 / 슬로건</label>
-        <input type="text" id="calendarGoalInput" class="editable-goal" placeholder="이달의 가족 목표를 입력하세요" oninput="App.calendar.saveGoal(this.value)">
+
+    <!-- 🗓️ 연월 이동 및 A4 인쇄 버튼 -->
+    <div class="calendar-controls-bar no-print">
+      <div class="cal-nav-group">
+        <button type="button" class="btn-prof" onclick="App.calendar.prevMonth()">◀ 이전달</button>
+        <input type="number" id="yearInput" class="cal-input-year" onchange="App.calendar.generate()">
+        <span class="cal-unit">년</span>
+        <input type="number" id="monthInput" class="cal-input-month" min="1" max="12" onchange="App.calendar.generate()">
+        <span class="cal-unit">월</span>
+        <button type="button" class="btn-prof" onclick="App.calendar.nextMonth()">다음달 ▶</button>
       </div>
-      <div class="calendar-grid-header">
-        <div class="cal-th sun">일</div><div class="cal-th">월</div><div class="cal-th">화</div>
-        <div class="cal-th">수</div><div class="cal-th">목</div><div class="cal-th">금</div><div class="cal-th sat">토</div>
-      </div>
-      <div id="calendarGrid" class="calendar-grid-body"></div>
-      <div class="calendar-bottom-memo-wrap">
-        <label style="font-size: 12px; font-weight: 700; color: #475569;">📌 이달의 중요 메모 / 결산</label>
-        <textarea id="calendarMemoInput" class="editable-bottom-memo" rows="2" placeholder="이달의 공유 메모를 입력하세요" oninput="App.calendar.saveMemo(this.value)"></textarea>
+      <button type="button" class="btn-print-action" onclick="window.print()">🖨️ A4 꽉 차게 인쇄</button>
+    </div>
+
+    <!-- 🖨️ 인쇄 & 뷰어 컨테이너 (A4 1장 꽉 채움) -->
+    <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
+      <div class="print-calendar-sheet" id="printCalendarSheet">
+        
+        <!-- [A4 상단] 헤더 & 이달의 슬로건 -->
+        <div class="cal-sheet-header">
+          <div class="cal-sheet-title-row">
+            <h1 class="cal-sheet-title" id="calPrintTitle">2026년 8월</h1>
+            <span class="cal-sheet-sub">GOGO FAMILY CALENDAR</span>
+          </div>
+          <div class="cal-sheet-goal-box">
+            <span class="goal-tag">🎯 이달의 목표 / 슬로건</span>
+            <input type="text" id="calendarGoalInput" class="goal-input" placeholder="이달의 목표 및 가족 슬로건을 입력하세요..." oninput="App.calendar.saveGoal(this.value)">
+          </div>
+        </div>
+
+        <!-- [A4 중앙] 7열 표(Table) 달력 -->
+        <div class="cal-sheet-table-wrap">
+          <table class="cal-sheet-table">
+            <thead>
+              <tr>
+                <th class="th-sun">일 (SUN)</th>
+                <th>월 (MON)</th>
+                <th>화 (TUE)</th>
+                <th>수 (WED)</th>
+                <th>목 (THU)</th>
+                <th>금 (FRI)</th>
+                <th class="th-sat">토 (SAT)</th>
+              </tr>
+            </thead>
+            <tbody id="calendarTableBody">
+              <!-- JS 동적 생성 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- [A4 하단] 이달의 결산 및 중요 메모 -->
+        <div class="cal-sheet-footer">
+          <div class="cal-sheet-memo-box">
+            <span class="memo-tag">📌 이달의 중요 메모 / 결산 & 피드백</span>
+            <textarea id="calendarMemoInput" class="memo-textarea" rows="2" placeholder="이달의 중요 사항, 가족 회의 내용, 결산 피드백을 기록하세요..." oninput="App.calendar.saveMemo(this.value)"></textarea>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -336,14 +380,13 @@
     </div>
   </section>
 
-  <!-- 6. 💰 간편 가계부 화면 (예산 그래프 & 설정 복원) -->
+  <!-- 6. 💰 간편 가계부 화면 -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>💰 간편 가계부</h2>
     </div>
 
-    <!-- 📊 이달의 예산 및 사용 그래프 카드 -->
     <div class="card budget-card">
       <div class="budget-card-header">
         <div>
@@ -353,14 +396,12 @@
         <button type="button" class="btn-budget-edit" onclick="App.ledger.promptBudgetChange()">⚙️ 예산 설정</button>
       </div>
 
-      <!-- 프로그레스 바 게이지 그래프 -->
       <div class="budget-bar-wrap">
         <div class="budget-bar-track">
           <div id="ledgerProgressBar" class="budget-bar-fill" style="width: 0%;"></div>
         </div>
       </div>
 
-      <!-- 예산 요약 정보 그리드 -->
       <div class="budget-info-row">
         <div class="budget-info-item">
           <span class="info-label">설정 예산</span>
@@ -377,7 +418,6 @@
       </div>
     </div>
 
-    <!-- ✍️ 지출 입력 카드 -->
     <div class="card form-card">
       <div class="grid-2">
         <div class="form-group">
@@ -396,7 +436,6 @@
       <button type="button" class="btn-save" onclick="App.ledger.add()">지출 내역 저장</button>
     </div>
 
-    <!-- 📋 지출 목록 카드 -->
     <div class="card list-card">
       <div class="list-header">
         <h3 id="ledgerSummaryTitle">📋 이달의 지출 상세 내역</h3>
@@ -494,7 +533,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- 자바스크립트 모듈 로드 -->
+  <!-- JS 모듈 로드 -->
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/parking.js"></script>
