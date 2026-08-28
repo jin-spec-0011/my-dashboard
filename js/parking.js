@@ -1,238 +1,229 @@
 window.App = window.App || {};
 
 App.parking = {
-  selectOption(cat, val) {
-    App.state.parking[cat] = val;
-    const groupMap = { car: 'carGroup', type: 'typeGroup', floor: 'floorGroup' };
-    const group = document.getElementById(groupMap[cat]);
-    if (group) {
-      group.querySelectorAll('.btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText === val);
-      });
-    }
+  currentFilter: 'all',
 
-    if (cat === 'type') {
-      const isOutdoor = (val === '야외');
+  selectOption(type, value) {
+    App.state.parking[type] = value;
+
+    if (type === 'car') {
+      document.querySelectorAll('#carGroup .btn-toggle').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.trim() === value);
+      });
+    } else if (type === 'type') {
+      document.querySelectorAll('#typeGroup .btn-toggle').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.trim() === value);
+      });
+      const isOutdoor = (value === '야외');
       const floorCont = document.getElementById('floorContainer');
-      const outdoorMap = document.getElementById('outdoorMapSection');
+      const mapSec = document.getElementById('outdoorMapSection');
       if (floorCont) floorCont.style.display = isOutdoor ? 'none' : 'flex';
-      if (outdoorMap) outdoorMap.style.display = isOutdoor ? 'flex' : 'none';
+      if (mapSec) mapSec.style.display = isOutdoor ? 'flex' : 'none';
       if (isOutdoor) this.getCurrentLocation();
+    } else if (type === 'floor') {
+      document.querySelectorAll('#floorGroup .btn-toggle').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.trim() === value);
+      });
     }
   },
 
   getCurrentLocation() {
     const status = document.getElementById('gpsStatus');
-    if (status) status.innerText = "⏳ 위치 찾는 중...";
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      if (status) status.innerText = "❌ GPS 미지원 기기";
+      return;
+    }
+    if (status) status.innerText = "🔄 GPS 좌표 수신 중...";
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         App.state.parking.lat = pos.coords.latitude;
         App.state.parking.lng = pos.coords.longitude;
+        if (status) status.innerText = `📍 좌표 갱신 완료`;
         const frame = document.getElementById('mapFrame');
-        if (frame) frame.src = `https://maps.google.com/maps?q=${App.state.parking.lat},${App.state.parking.lng}&z=17&output=embed`;
-        if (status) status.innerText = "✅ 위치 갱신 완료";
+        if (frame) {
+          frame.src = `https://maps.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}&z=17&output=embed`;
+        }
       },
-      () => { if (status) status.innerText = "📍 기본 위치"; },
-      { enableHighAccuracy: true, timeout: 6000 }
+      (err) => {
+        if (status) status.innerText = "⚠️ GPS 수신 실패 (기본 위치)";
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
     );
   },
 
-  /* 📸 사진 업로드 및 경량화(Canvas 압축) */
   handlePhoto(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
-    const reader = new FileReader();
 
+    const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 600; // Firebase 저장 용량을 고려한 600px 최적화
-        let w = img.width, h = img.height;
-        if (w > h && w > maxDim) {
-          h = Math.round((h * maxDim) / w);
-          w = maxDim;
-        } else if (h > maxDim) {
-          w = Math.round((w * maxDim) / h);
-          h = maxDim;
+        const MAX_WIDTH = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
         }
 
-        canvas.width = w;
-        canvas.height = h;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
+        ctx.drawImage(img, 0, 0, width, height);
 
-        App.state.parking.photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        
-        const preview = document.getElementById('parkingPhotoPreviewImg');
+        App.state.parking.photoBase64 = canvas.toDataURL('image/jpeg', 0.65);
+
+        const previewImg = document.getElementById('parkingPhotoPreviewImg');
         const placeholder = document.getElementById('parkingPhotoPlaceholder');
         const btnRemove = document.getElementById('btnRemoveParkingPhoto');
 
-        if (preview) {
-          preview.src = App.state.parking.photoBase64;
-          preview.style.display = 'block';
+        if (previewImg) {
+          previewImg.src = App.state.parking.photoBase64;
+          previewImg.style.display = 'block';
         }
         if (placeholder) placeholder.style.display = 'none';
         if (btnRemove) btnRemove.style.display = 'inline-block';
-        
-        App.ui.toast("📸 사진이 첨부되었습니다!");
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   },
 
-  /* 첨부된 사진 삭제 */
   removePhoto() {
     App.state.parking.photoBase64 = '';
     const input = document.getElementById('parkingPhotoInput');
-    const preview = document.getElementById('parkingPhotoPreviewImg');
+    const previewImg = document.getElementById('parkingPhotoPreviewImg');
     const placeholder = document.getElementById('parkingPhotoPlaceholder');
     const btnRemove = document.getElementById('btnRemoveParkingPhoto');
 
     if (input) input.value = '';
-    if (preview) {
-      preview.src = '';
-      preview.style.display = 'none';
-    }
-    if (placeholder) placeholder.style.display = 'inline-block';
+    if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+    if (placeholder) placeholder.style.display = 'block';
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  setFilter(filter) {
-    App.state.parking.filter = filter;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    const btn = document.getElementById('filter-' + filter);
-    if (btn) btn.classList.add('active');
-    this.render(App.stores.parking.getItems());
-  },
-
-  /* 주차 위치 및 사진 저장 */
+  /* 🚗 주차 저장: 숫자 + 구역 순서 (예: B1 - 18A) */
   save() {
-    const col = document.getElementById('colSelect').value;
-    const row = document.getElementById('rowSelect').value;
-    const slot = `${col}${row}`;
-    const p = App.state.parking;
-    const logString = (p.type === '야외') ? `${p.car}-야외 주차 - ${slot}` : `${p.car}-${p.type} - ${p.floor}-${slot}`;
+    const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
+    const colSelect = document.getElementById('colSelect');
+    const rowSelect = document.getElementById('rowSelect');
+
+    const colVal = colSelect ? colSelect.value : 'A';
+    const rowVal = rowSelect ? rowSelect.value : '1';
+    const isOutdoor = (type === '야외');
+
+    // ★ [기둥 번호 + 구역열] 결합 (예: 18A)
+    const slotCode = `${rowVal}${colVal}`;
+
+    let locationText = '';
+    if (isOutdoor) {
+      locationText = `${car} - 야외 - ${slotCode}`;
+    } else {
+      locationText = `${car} - 지하 주차장 - ${floor} - ${slotCode}`;
+    }
 
     const now = new Date();
-    const timeString = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-    const currentLogs = App.stores.parking.getItems();
-
-    // 기존 동일 차종 기록 정리 (최신 1건 유지)
-    currentLogs.forEach(item => {
-      if (item.car === p.car || (item.text && item.text.startsWith(p.car))) {
-        if (App.isFirebaseActive) App.db.ref('parking_logs/' + item.id).remove();
-      }
-    });
-
-    const otherCarLogs = currentLogs.filter(item => item.car !== p.car && (!item.text || !item.text.startsWith(p.car)));
+    const timeStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const newLog = {
       id: Date.now(),
-      car: p.car,
-      text: logString,
-      time: timeString,
-      photo: p.photoBase64 || '', // 👈 리사이징된 기둥 사진 포함
-      isOutdoor: p.type === '야외',
-      lat: p.type === '야외' ? p.lat : null,
-      lng: p.type === '야외' ? p.lng : null
+      car: car,
+      type: type,
+      text: locationText,
+      time: timeStr,
+      isOutdoor: isOutdoor,
+      lat: isOutdoor ? lat : null,
+      lng: isOutdoor ? lng : null,
+      photoBase64: photoBase64 || ''
     };
 
-    otherCarLogs.unshift(newLog);
-    safeSet('parking_logs', JSON.stringify(otherCarLogs));
+    if (App.stores?.parking) {
+      App.stores.parking.add(newLog);
+    }
 
-    if (App.isFirebaseActive) App.db.ref('parking_logs/' + newLog.id).set(newLog);
+    this.removePhoto();
+    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 위치가 저장되었습니다!`);
 
-    this.removePhoto(); // 폼 초기화
-    App.stores.parking.load();
-    App.ui.toast(`✅ ${p.car} 주차 위치와 사진이 저장되었습니다!`);
-    if (navigator.vibrate) navigator.vibrate(40);
+    if (App.ticker) App.ticker.refresh();
   },
 
   delete(id) {
-    App.stores.parking.remove(id);
+    if (confirm("해당 주차 기록을 삭제하시겠습니까?")) {
+      if (App.stores?.parking) {
+        App.stores.parking.remove(id);
+      }
+      App.ui.toast("🗑️ 주차 기록이 삭제되었습니다.");
+      if (App.ticker) App.ticker.refresh();
+    }
   },
 
   clear() {
-    const f = App.state.parking.filter;
-    if (confirm(`${f === 'all' ? '모든' : '[' + f + ']'} 차량의 주차 기록을 삭제하시겠습니까?`)) {
-      if (f === 'all') {
+    if (confirm("차량 주차 기록을 모두 삭제하시겠습니까?")) {
+      if (App.stores?.parking) {
         App.stores.parking.clear();
-      } else {
-        const currentLogs = App.stores.parking.getItems();
-        const keepItems = currentLogs.filter(i => i.car !== f && (!i.text || !i.text.startsWith(f)));
-        safeSet('parking_logs', JSON.stringify(keepItems));
-        if (App.isFirebaseActive) {
-          currentLogs.forEach(i => {
-            if (i.car === f || (i.text && i.text.startsWith(f))) {
-              App.db.ref('parking_logs/' + i.id).remove();
-            }
-          });
-        }
-        App.stores.parking.load();
       }
+      App.ui.toast("🗑️ 전체 주차 기록이 초기화되었습니다.");
+      if (App.ticker) App.ticker.refresh();
     }
   },
 
-  /* 사진 확대 팝업 보기 */
-  viewPhoto(photoUrl) {
-    if (!photoUrl) return;
-    const w = window.open("");
-    w.document.write(`<img src="${photoUrl}" style="max-width:100%; height:auto; display:block; margin:20px auto; border-radius:10px;">`);
+  setFilter(filter) {
+    this.currentFilter = filter;
+    document.querySelectorAll('.log-filter-bar .filter-btn').forEach(b => {
+      b.classList.toggle('active', b.id === `filter-${filter}`);
+    });
+    this.render(App.stores?.parking ? App.stores.parking.getItems() : []);
   },
 
-  render(items) {
-    const logList = document.getElementById('logList');
-    if (!logList) return;
-    const filter = App.state.parking.filter;
+  render(items = []) {
+    const listEl = document.getElementById('logList');
+    if (!listEl) return;
 
-    const latestPerCar = [];
-    const seenCars = new Set();
-    items.forEach(item => {
-      const carKey = item.car || (item.text ? item.text.split('-')[0] : '기타');
-      if (!seenCars.has(carKey)) {
-        seenCars.add(carKey);
-        latestPerCar.push(item);
-      }
-    });
+    let filtered = items;
+    if (this.currentFilter !== 'all') {
+      filtered = items.filter(i => (i.car || '').toLowerCase().includes(this.currentFilter.toLowerCase()));
+    }
 
-    let filtered = (filter === 'all') ? latestPerCar : latestPerCar.filter(i => i.car === filter || (i.text && i.text.startsWith(filter)));
-
-    if (!filtered || filtered.length === 0) {
-      logList.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">주차 기록이 없습니다.</div>`;
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">주차 기록이 없습니다. 🚗</div>`;
       return;
     }
 
-    logList.innerHTML = filtered.map((item) => {
+    listEl.innerHTML = filtered.map(item => {
       let mapLinks = '';
       if (item.isOutdoor && item.lat && item.lng) {
+        const kmap = `kakaomap://look?p=${item.lat},${item.lng}`;
+        const nmap = `nmap://action/path?dlat=${item.lat}&dlng=${item.lng}&dname=주차위치&appname=gogo`;
+        const gmap = `https://www.google.com/maps?q=${item.lat},${item.lng}`;
         mapLinks = `
           <div class="map-links-group">
-            <a href="https://www.google.com/maps?q=${item.lat},${item.lng}" target="_blank" class="log-map-link">🗺️ 구글 지도</a>
-            <a href="https://map.kakao.com/link/map/주차위치,${item.lat},${item.lng}" target="_blank" class="log-map-link">📍 카카오맵</a>
-          </div>`;
+            <a href="${kmap}" class="log-map-link">카카오맵</a>
+            <a href="${nmap}" class="log-map-link">네이버지도</a>
+            <a href="${gmap}" target="_blank" class="log-map-link">구글지도</a>
+          </div>
+        `;
       }
-      
-      const photoHtml = item.photo ? `
-        <img src="${item.photo}" class="parking-log-thumb" onclick="App.parking.viewPhoto('${item.photo}')" alt="기둥 사진" title="클릭 시 사진 확인">
-      ` : '';
+
+      let photoHtml = '';
+      if (item.photoBase64) {
+        photoHtml = `<img src="${item.photoBase64}" class="parking-log-thumb" onclick="window.open('${item.photoBase64}')" title="사진 확대보기">`;
+      }
 
       return `
         <div class="log-item">
-          ${photoHtml}
           <div class="log-content">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span class="log-text">${escapeHtml(item.text)}</span>
-              <span style="font-size:10px; font-weight:800; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px; border:1px solid #86efac;">현재 위치</span>
-            </div>
-            <span class="log-time">${escapeHtml(item.time)} 갱신</span>
+            <div class="log-text">${escapeHtml(item.text)}</div>
+            <div class="log-time">🕒 ${escapeHtml(item.time)}</div>
             ${mapLinks}
           </div>
+          ${photoHtml}
           <button type="button" class="delete-item-btn" onclick="App.parking.delete('${item.id}')">✕</button>
-        </div>`;
+        </div>
+      `;
     }).join('');
   }
 };
