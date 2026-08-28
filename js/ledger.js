@@ -1,13 +1,59 @@
 window.App = window.App || {};
 
 App.ledger = {
+  currentMonthKey: '',
+
   init() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    this.currentMonthKey = todayStr.substring(0, 7);
+
     const dateInp = document.getElementById('ledgerDateInput');
     if (dateInp) {
-      const now = new Date();
-      const offset = now.getTimezoneOffset() * 60000;
-      dateInp.value = new Date(now.getTime() - offset).toISOString().split('T')[0];
+      dateInp.value = todayStr;
     }
+  },
+
+  /* 💰 예산 상한선 조회 (기본값 150만원) */
+  getBudget() {
+    const key = `budget_${this.currentMonthKey}`;
+    const val = safeGet(key);
+    if (val && !isNaN(Number(val)) && Number(val) > 0) {
+      return Number(val);
+    }
+    return 1500000; // 150만원 기본값
+  },
+
+  /* 💰 예산 상한선 저장 및 Firebase 동기화 */
+  setBudget(newAmount) {
+    if (isNaN(newAmount) || newAmount <= 0) {
+      return alert("올바른 예산 금액을 입력해주세요.");
+    }
+    const key = `budget_${this.currentMonthKey}`;
+    safeSet(key, String(newAmount));
+
+    if (App.isFirebaseActive && App.db) {
+      App.db.ref(`family_budget/${this.currentMonthKey}`).set(Number(newAmount));
+    }
+
+    const monthNum = parseInt(this.currentMonthKey.substring(5), 10);
+    App.ui.toast(`💰 ${monthNum}월 예산이 ${Number(newAmount).toLocaleString()}원으로 설정되었습니다.`);
+    this.render(App.stores?.ledger ? App.stores.ledger.getItems() : []);
+    if (App.ticker) App.ticker.refresh();
+  },
+
+  /* ⚙️ 사용자가 직접 예산 수정 팝업 */
+  promptBudgetChange() {
+    const current = this.getBudget();
+    const monthNum = parseInt(this.currentMonthKey.substring(5), 10);
+    const input = prompt(`[${monthNum}월 가계부] 월간 예산 상한선을 설정하세요 (원 단위):`, current);
+    if (input === null) return;
+    const cleanNum = Number(String(input).replace(/[^0-9]/g, ''));
+    if (!cleanNum || cleanNum <= 0) {
+      return alert("올바른 숫자를 입력해주세요.");
+    }
+    this.setBudget(cleanNum);
   },
 
   add() {
@@ -59,27 +105,73 @@ App.ledger = {
     }
   },
 
+  /* 📊 가계부 전체 렌더링 (그래프 및 세부 지출) */
   render(items = []) {
-    const listEl = document.getElementById('ledgerList');
-    const titleEl = document.getElementById('ledgerSummaryTitle');
-    if (!listEl) return;
-
     const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
+    const offset = now.getTimezoneOffset() * 60000;
+    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    const currentMonthKey = this.currentMonthKey || todayStr.substring(0, 7);
+    this.currentMonthKey = currentMonthKey;
 
+    const monthNum = parseInt(currentMonthKey.substring(5), 10);
+    const yearNum = currentMonthKey.substring(0, 4);
+
+    // 1. 당월 지출 필터링 및 합계 집계
+    const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
     const totalSpend = thisMonthItems.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
 
-    if (titleEl) {
-      titleEl.innerHTML = `📊 ${now.getMonth() + 1}월 지출 합계: <span style="color:#ef4444; font-weight:800;">${totalSpend.toLocaleString()}원</span>`;
+    // 2. 예산 상한선 및 사용률/잔여금 계산
+    const budgetAmount = this.getBudget();
+    const percent = budgetAmount > 0 ? Math.round((totalSpend / budgetAmount) * 100) : 0;
+    const remain = budgetAmount - totalSpend;
+
+    // 3. 카드 상단 텍스트 및 라벨 업데이트
+    const monthLabelEl = document.getElementById('ledgerMonthLabel');
+    const totalSpendEl = document.getElementById('ledgerTotalSpendDisplay');
+    const budgetDisplayEl = document.getElementById('ledgerBudgetDisplay');
+    const percentDisplayEl = document.getElementById('ledgerPercentDisplay');
+    const remainDisplayEl = document.getElementById('ledgerRemainDisplay');
+    const progressBarEl = document.getElementById('ledgerProgressBar');
+
+    if (monthLabelEl) monthLabelEl.innerText = `${yearNum}년 ${monthNum}월 총 지출`;
+    if (totalSpendEl) totalSpendEl.innerText = `${totalSpend.toLocaleString()}원`;
+    if (budgetDisplayEl) budgetDisplayEl.innerText = `${budgetAmount.toLocaleString()}원`;
+    if (percentDisplayEl) percentDisplayEl.innerText = `${percent}%`;
+
+    if (remainDisplayEl) {
+      if (remain >= 0) {
+        remainDisplayEl.innerText = `${remain.toLocaleString()}원`;
+        remainDisplayEl.className = 'info-val text-green';
+      } else {
+        remainDisplayEl.innerText = `+${Math.abs(remain).toLocaleString()}원 초과`;
+        remainDisplayEl.className = 'info-val text-red';
+      }
     }
 
-    if (items.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">지출 내역이 없습니다. 💰</div>`;
+    // 4. 프로그레스 바 게이지 그래프 반영
+    if (progressBarEl) {
+      const fillWidth = Math.min(100, Math.max(0, percent));
+      progressBarEl.style.width = `${fillWidth}%`;
+
+      if (percent >= 100) {
+        progressBarEl.style.background = '#ef4444'; // 100% 초과: 빨강
+      } else if (percent >= 80) {
+        progressBarEl.style.background = '#f59e0b'; // 80% 이상 경고: 주황
+      } else {
+        progressBarEl.style.background = '#2563eb'; // 정상 범위: 파랑
+      }
+    }
+
+    // 5. 지출 상세 목록 렌더링
+    const listEl = document.getElementById('ledgerList');
+    if (!listEl) return;
+
+    if (thisMonthItems.length === 0) {
+      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">이번 달 지출 내역이 없습니다. 💰</div>`;
       return;
     }
 
-    listEl.innerHTML = items.map(item => {
+    listEl.innerHTML = thisMonthItems.map(item => {
       const descText = item.desc || item.title || item.text || '지출 내역';
       return `
         <div class="log-item">
