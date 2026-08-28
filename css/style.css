@@ -795,15 +795,14 @@ body {
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 100% 꽉 채움 무손실 인쇄 전용 CSS (최종 해결)
+   🖨️ A4 1장 100% 꽉 채움 무손실 인쇄 CSS (행 비율 1:1 완벽 보장)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 5mm 8mm !important; /* 브라우저 기본 여백 최적화 */
+    margin: 4mm 6mm !important;
   }
 
-  /* 모든 스크롤바 원천 제거 */
   * {
     overflow: visible !important;
     scrollbar-width: none !important;
@@ -852,11 +851,10 @@ body {
     height: 100% !important;
   }
 
-  /* A4 높이(297mm)에서 여백을 제외한 정확한 282mm 높이 고정 및 flex 분할 */
   .print-calendar-sheet {
     width: 100% !important;
-    height: 280mm !important;
-    max-height: 280mm !important;
+    height: 285mm !important;
+    max-height: 285mm !important;
     box-shadow: none !important;
     border: 2px solid #000000 !important;
     border-radius: 0 !important;
@@ -867,10 +865,9 @@ body {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    gap: 4mm !important;
+    gap: 3mm !important;
   }
 
-  /* 상단 헤더 */
   .cal-sheet-header {
     flex-shrink: 0 !important;
     gap: 2mm !important;
@@ -886,9 +883,7 @@ body {
     color: #000000 !important;
   }
 
-  .cal-sheet-sub {
-    color: #000000 !important;
-  }
+  .cal-sheet-sub { color: #000000 !important; }
 
   .cal-sheet-goal-box {
     border: 1px solid #000000 !important;
@@ -899,7 +894,7 @@ body {
   .goal-tag { color: #000000 !important; font-size: 9pt !important; }
   .goal-input { color: #000000 !important; font-size: 11pt !important; }
 
-  /* 중앙 표: 5주 또는 6주 행을 전체 남은 높이에 균등하게 100% 채움 */
+  /* 📊 표 영역: 남은 높이를 100% 차지하며 각 행을 정확히 균등 분할 */
   .cal-sheet-table-wrap {
     flex: 1 1 auto !important;
     display: flex !important;
@@ -915,24 +910,45 @@ body {
     table-layout: fixed !important;
   }
 
-  .cal-sheet-table th {
+  .cal-sheet-table thead {
+    height: 6.5mm !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cal-sheet-table thead th {
     border: 1px solid #000000 !important;
     font-size: 10pt !important;
-    padding: 2mm 0 !important;
-    height: 6mm !important;
+    padding: 1.5mm 0 !important;
+    height: 6.5mm !important;
     background: #f1f5f9 !important;
     color: #000000 !important;
   }
 
-  .cal-sheet-table th.th-sun { background: #fee2e2 !important; color: #dc2626 !important; }
-  .cal-sheet-table th.th-sat { background: #dbeafe !important; color: #2563eb !important; }
+  .cal-sheet-table thead th.th-sun { background: #fee2e2 !important; color: #dc2626 !important; }
+  .cal-sheet-table thead th.th-sat { background: #dbeafe !important; color: #2563eb !important; }
 
-  /* 각 주차 행의 높이를 자동 균등 분할 */
+  .cal-sheet-table tbody {
+    height: calc(100% - 6.5mm) !important;
+  }
+
+  /* 5주차 / 6주차 행 높이 강제 100% 균등 분할 규칙 */
+  .cal-sheet-table tbody.cal-rows-5 tr {
+    height: 20% !important;
+    max-height: 20% !important;
+  }
+
+  .cal-sheet-table tbody.cal-rows-6 tr {
+    height: 16.6667% !important;
+    max-height: 16.6667% !important;
+  }
+
   .cal-table-td {
-    height: auto !important;
+    height: 100% !important;
     border: 1px solid #000000 !important;
     padding: 1.5mm 1.5mm !important;
     background: #ffffff !important;
+    vertical-align: top !important;
+    box-sizing: border-box !important;
   }
 
   .cal-table-td.td-today {
@@ -947,7 +963,7 @@ body {
   }
 
   .td-events-list {
-    max-height: 100% !important;
+    max-height: calc(100% - 5mm) !important;
     gap: 1mm !important;
   }
 
@@ -959,7 +975,6 @@ body {
     padding: 0.5mm 1.5mm !important;
   }
 
-  /* 하단 메모 */
   .cal-sheet-footer {
     flex-shrink: 0 !important;
   }
