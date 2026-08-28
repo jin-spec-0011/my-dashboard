@@ -1,4 +1,3 @@
-/* ── 공통 유틸리티 (전역 등록) ── */
 window.escapeHtml = function(str) {
   if (str == null) return '';
   return String(str)
@@ -30,31 +29,30 @@ window.safeSet = function(key, val) {
   catch (e) { memoryStorage[key] = val; }
 };
 
-/* ── 🛡️ 데이터 유실 방지 및 Array 안전 보장 CRUD 팩토리 ── */
-function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
+/* ── 🛡️ 데이터 스토어 팩토리 ── */
+function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
   let items = [];
+
+  const normalizeItems = (list) => {
+    if (!list) return [];
+    const arr = Array.isArray(list) ? list.filter(Boolean) : Object.values(list).filter(Boolean);
+    return arr.map(it => {
+      if (typeof it === 'object' && it !== null) {
+        it.id = it.id || Date.now() + Math.floor(Math.random() * 1000);
+      }
+      return it;
+    });
+  };
 
   const load = () => {
     try { 
       const raw = safeGet(key);
-      const parsed = JSON.parse(raw || '[]');
-      if (Array.isArray(parsed)) {
-        items = parsed;
-      } else if (parsed && typeof parsed === 'object') {
-        items = Object.values(parsed);
-      } else {
-        items = [];
-      }
+      items = normalizeItems(JSON.parse(raw || '[]'));
     } catch(e) { 
       items = []; 
     }
 
-    if (Array.isArray(items)) {
-      items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
-    } else {
-      items = [];
-    }
-
+    items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
     if (App.badge) App.badge.refresh();
@@ -114,24 +112,9 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
 
   const syncFromFirebase = (data) => {
     if (data) {
-      items = Array.isArray(data) ? data : Object.values(data);
+      items = normalizeItems(data);
       items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       safeSet(key, JSON.stringify(items));
-    } else {
-      const localData = safeGet(key);
-      if (localData && localData !== '[]') {
-        try {
-          const parsed = JSON.parse(localData);
-          const list = Array.isArray(parsed) ? parsed : Object.values(parsed);
-          if (Array.isArray(list) && list.length > 0 && App.isFirebaseActive && firebasePath) {
-            list.forEach(item => {
-              if (item && item.id) {
-                App.db.ref(firebasePath + '/' + item.id).set(item);
-              }
-            });
-          }
-        } catch(e) {}
-      }
     }
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
@@ -141,18 +124,14 @@ function createDataStore({ key, firebasePath, maxItems = 100, onRender }) {
   return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, update, clear, syncFromFirebase };
 }
 
-/* ── App 메인 코어 ── */
+/* ── App 메인 ── */
 window.App = Object.assign(window.App || {}, {
   db: null,
   isFirebaseActive: false,
   
   state: {
     pendingRedirect: null,
-    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' },
-    memo: { author: '진세', stickyColor: 'yellow', tab: 'todo', isAddingTodo: false, isAddingSticky: false },
-    schedule: { author: '진세' },
-    trip: { coords: { lat: 37.5665, lng: 126.9780 }, photoBase64: '', map: null, markers: [], tempMarker: null },
-    calendar: { syncTimeout: null }
+    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' }
   },
 
   stores: {},
@@ -180,26 +159,28 @@ window.App = Object.assign(window.App || {}, {
           if (App.badge) App.badge.refresh();
         }
 
-        if (screenName === 'calendar' && App.calendar?.generate) {
-          App.calendar.generate();
+        if (screenName === 'parking' && App.parking?.render) {
+          App.parking.render(App.stores.parking ? App.stores.parking.getItems() : []);
         }
         if (screenName === 'schedule' && App.schedule?.render) {
           App.schedule.render();
         }
+        if (screenName === 'calendar' && App.calendar?.generate) {
+          App.calendar.generate();
+        }
+        if (screenName === 'memo' && App.memo?.render) {
+          App.memo.render();
+        }
         if (screenName === 'ledger' && App.ledger?.render) {
           App.ledger.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
         }
-        if (screenName === 'trip' && App.trip?.initMap) {
-          App.trip.initMap();
-        }
-        if (screenName === 'parking' && App.parking?.render) {
-          App.parking.render(App.stores.parking ? App.stores.parking.getItems() : []);
+        if (screenName === 'trip' && App.trip?.renderList) {
+          App.trip.renderList(App.stores.trips ? App.stores.trips.getItems() : []);
         }
       }
     }
   },
 
-  /* 📢 세로 롤링 전광판 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -216,8 +197,8 @@ window.App = Object.assign(window.App || {}, {
 
       if (upcoming.length > 0) {
         const nextEvt = upcoming[0];
-        const prefix = nextEvt.isPrivate ? '🔒' : `[${nextEvt.author}]`;
-        lines.push(`🗓️ ${prefix} ${nextEvt.title} (${nextEvt.date.substring(5)})`);
+        const prefix = nextEvt.isPrivate ? '🔒' : `[${nextEvt.author || '가족'}]`;
+        lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
@@ -250,7 +231,7 @@ window.App = Object.assign(window.App || {}, {
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
-        const preview = pending.slice(0, 3).map(t => t.text).join(', ');
+        const preview = pending.slice(0, 3).map(t => t.text || t.title).join(', ');
         lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
       }
 
@@ -344,12 +325,12 @@ window.App = Object.assign(window.App || {}, {
     if (dateEl) dateEl.innerText = dateStr;
 
     // 통합 스토어 초기화
-    this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking.render(items) });
-    this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo.renderTodos(items) });
-    this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo.renderStickies(items) });
-    this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip.renderList(items) });
-    this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => { if (this.ledger) this.ledger.render(items); } });
-    this.stores.schedules = createDataStore({ key: 'family_schedules', firebasePath: 'family_schedules', maxItems: 500, onRender: (items) => { 
+    this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
+    this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: () => this.memo?.render && this.memo.render() });
+    this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: () => this.memo?.render && this.memo.render() });
+    this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip?.renderList && this.trip.renderList(items) });
+    this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => this.ledger?.render && this.ledger.render(items) });
+    this.stores.schedules = createDataStore({ key: 'family_schedules', firebasePath: 'family_schedules', maxItems: 500, onRender: () => { 
       if (this.schedule) this.schedule.render(); 
       if (this.calendar) this.calendar.generate();
     } });
@@ -367,18 +348,10 @@ window.App = Object.assign(window.App || {}, {
     Object.values(this.stores).forEach(s => s.load());
 
     if (this.auth) this.auth.init();
-    if (this.ledger) this.ledger.init();
     if (this.schedule) this.schedule.init();
-
-    if (this.calendar) {
-      const yearInput = document.getElementById('yearInput');
-      const monthInput = document.getElementById('monthInput');
-      const tripDateInput = document.getElementById('tripDateInput');
-      if (yearInput) yearInput.value = now.getFullYear();
-      if (monthInput) monthInput.value = now.getMonth() + 1;
-      if (tripDateInput) tripDateInput.value = now.toISOString().split('T')[0];
-      this.calendar.generate();
-    }
+    if (this.calendar) this.calendar.init();
+    if (this.ledger) this.ledger.init();
+    if (this.trip) this.trip.init();
 
     this.ticker.start();
     this.badge.refresh();
@@ -431,9 +404,10 @@ window.App = Object.assign(window.App || {}, {
           if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
           this.ticker.refresh();
         });
+
         this.db.ref('family_trips').on('value', snap => {
           this.stores.trips.syncFromFirebase(snap.val());
-          if (this.trip) this.trip.renderMarkers(this.stores.trips.getItems());
+          if (this.trip) this.trip.renderList(this.stores.trips.getItems());
         });
 
         this.db.ref('calendar_data').on('value', snap => {
@@ -459,10 +433,17 @@ window.App = Object.assign(window.App || {}, {
         });
       }
     } catch (e) {
-      console.warn("Firebase 연결 대기 (로컬 모드 실행):", e);
+      console.warn("Firebase 연결 대기:", e);
     }
 
-    // 🔒 직행 해시(#parking 등) 및 비밀번호 인증 분기 처리
+    // 각 화면 최초 1회 렌더링 강제 실행
+    if (this.parking) this.parking.render(this.stores.parking.getItems());
+    if (this.schedule) this.schedule.render();
+    if (this.memo) this.memo.render();
+    if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
+    if (this.trip) this.trip.renderList(this.stores.trips.getItems());
+
+    // 직행 분기
     const targetHash = window.location.hash.replace('#', '');
     const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
 
