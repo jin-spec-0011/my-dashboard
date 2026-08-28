@@ -2,6 +2,8 @@ window.App = window.App || {};
 
 App.memo = {
   currentTab: 'todo',
+  pendingTodoItem: null,
+  selectedLedgerAuthor: '진세',
 
   switchTab(tab) {
     this.currentTab = tab;
@@ -41,12 +43,134 @@ App.memo = {
     App.ui.toast("🛒 장보기 항목이 추가되었습니다.");
   },
 
+  /* 🛒 체크박스 토글 핸들러: 미완료 항목 체크 시 가계부 팝업 실행 */
   toggleTodo(id) {
     const items = App.stores?.todos ? App.stores.todos.getItems() : [];
     const item = items.find(i => String(i.id) === String(id));
-    if (item && App.stores?.todos) {
-      App.stores.todos.update(id, { completed: !item.completed });
+    if (!item) return;
+
+    if (!item.completed) {
+      // 미완료 ➔ 완료로 전환 시: 가계부 지출 입력 팝업 띄우기
+      this.openLedgerModal(item);
+    } else {
+      // 이미 완료된 항목 ➔ 미완료로 되돌릴 때는 팝업 없이 체크 해제
+      App.stores.todos.update(id, { completed: false });
+      App.ui.toast("⬜ 미완료 상태로 변경되었습니다.");
     }
+  },
+
+  /* 팝업 열기 */
+  openLedgerModal(item) {
+    this.pendingTodoItem = item;
+
+    const modal = document.getElementById('shopping-ledger-modal');
+    const descInp = document.getElementById('shopLedgerDescInput');
+    const amountInp = document.getElementById('shopLedgerAmountInput');
+    const dateInp = document.getElementById('shopLedgerDateInput');
+
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+
+    const defaultAuthor = (App.auth && App.auth.currentUser !== 'public')
+      ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
+      : (item.author || '진세');
+
+    this.selectLedgerAuthor(defaultAuthor);
+
+    if (descInp) descInp.value = item.text || item.title || '';
+    if (amountInp) amountInp.value = '';
+    if (dateInp) dateInp.value = todayStr;
+
+    if (modal) {
+      modal.style.removeProperty('display');
+      modal.style.display = 'flex';
+      setTimeout(() => {
+        if (amountInp) amountInp.focus();
+      }, 150);
+    }
+  },
+
+  /* 팝업 닫기 (자동 종료) */
+  closeLedgerModal() {
+    const modal = document.getElementById('shopping-ledger-modal');
+    if (modal) {
+      modal.style.setProperty('display', 'none', 'important');
+    }
+    const amountInp = document.getElementById('shopLedgerAmountInput');
+    if (amountInp) amountInp.blur();
+    this.pendingTodoItem = null;
+  },
+
+  selectLedgerAuthor(author) {
+    this.selectedLedgerAuthor = author;
+    const btnJinse = document.getElementById('btn-shop-author-jinse');
+    const btnJihye = document.getElementById('btn-shop-author-jihye');
+    const btnFam = document.getElementById('btn-shop-author-family');
+
+    if (btnJinse) btnJinse.classList.toggle('active', author === '진세');
+    if (btnJihye) btnJihye.classList.toggle('active', author === '지혜');
+    if (btnFam) btnFam.classList.toggle('active', author === '가족');
+  },
+
+  /* 💰 1. 가계부에 기록하고 장보기 완료 처리 후 팝업 자동 닫기 */
+  submitLedgerAndComplete() {
+    if (!this.pendingTodoItem) return;
+
+    const descInp = document.getElementById('shopLedgerDescInput');
+    const amountInp = document.getElementById('shopLedgerAmountInput');
+    const dateInp = document.getElementById('shopLedgerDateInput');
+
+    const desc = descInp ? descInp.value.trim() : (this.pendingTodoItem.text || '장보기');
+    const amount = amountInp ? parseInt(amountInp.value, 10) : 0;
+    const date = dateInp ? dateInp.value : new Date().toISOString().split('T')[0];
+    const author = this.selectedLedgerAuthor || '가족';
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return alert("올바른 결제 금액을 숫자로 입력해주세요.\n(금액 없이 체크만 하려면 아래 '금액 기록 없이 체크' 버튼을 누르세요.)");
+    }
+
+    // 1. 가계부에 지출 내역 추가
+    const newEntry = {
+      id: Date.now(),
+      date: date,
+      month: date.substring(0, 7),
+      amount: amount,
+      desc: desc,
+      author: author
+    };
+
+    if (App.stores?.ledger) {
+      App.stores.ledger.add(newEntry);
+    }
+
+    // 2. 장보기 체크 완료 처리
+    if (App.stores?.todos) {
+      App.stores.todos.update(this.pendingTodoItem.id, { completed: true });
+    }
+
+    // 3. 팝업 창 자동 닫기
+    this.closeLedgerModal();
+
+    // 4. UI 및 가계부 실시간 갱신
+    App.ui.toast(`🛒 '${desc}' (${amount.toLocaleString()}원) 가계부에 기록 완료!`);
+    if (App.ledger?.render) {
+      App.ledger.render(App.stores?.ledger ? App.stores.ledger.getItems() : []);
+    }
+    if (App.ticker) App.ticker.refresh();
+  },
+
+  /* 2. 금액 기록 없이 체크만 완료 처리 후 팝업 자동 닫기 */
+  completeWithoutLedger() {
+    if (!this.pendingTodoItem) return;
+
+    if (App.stores?.todos) {
+      App.stores.todos.update(this.pendingTodoItem.id, { completed: true });
+    }
+
+    this.closeLedgerModal();
+    App.ui.toast("☑️ 장보기 완료 처리되었습니다.");
+    if (App.ticker) App.ticker.refresh();
   },
 
   deleteTodo(id) {
