@@ -336,12 +336,48 @@
     </div>
   </section>
 
-  <!-- 6. 💰 간편 가계부 화면 -->
+  <!-- 6. 💰 간편 가계부 화면 (예산 그래프 & 설정 복원) -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>💰 간편 가계부</h2>
     </div>
+
+    <!-- 📊 이달의 예산 및 사용 그래프 카드 -->
+    <div class="card budget-card">
+      <div class="budget-card-header">
+        <div>
+          <span class="budget-sub-title" id="ledgerMonthLabel">2026년 8월 총 지출</span>
+          <h3 class="budget-spend-total" id="ledgerTotalSpendDisplay">0원</h3>
+        </div>
+        <button type="button" class="btn-budget-edit" onclick="App.ledger.promptBudgetChange()">⚙️ 예산 설정</button>
+      </div>
+
+      <!-- 프로그레스 바 게이지 그래프 -->
+      <div class="budget-bar-wrap">
+        <div class="budget-bar-track">
+          <div id="ledgerProgressBar" class="budget-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- 예산 요약 정보 그리드 -->
+      <div class="budget-info-row">
+        <div class="budget-info-item">
+          <span class="info-label">설정 예산</span>
+          <span class="info-val" id="ledgerBudgetDisplay">1,500,000원</span>
+        </div>
+        <div class="budget-info-item">
+          <span class="info-label">사용률</span>
+          <span class="info-val" id="ledgerPercentDisplay">0%</span>
+        </div>
+        <div class="budget-info-item">
+          <span class="info-label">잔여 금액</span>
+          <span class="info-val text-green" id="ledgerRemainDisplay">1,500,000원</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✍️ 지출 입력 카드 -->
     <div class="card form-card">
       <div class="grid-2">
         <div class="form-group">
@@ -359,8 +395,12 @@
       </div>
       <button type="button" class="btn-save" onclick="App.ledger.add()">지출 내역 저장</button>
     </div>
+
+    <!-- 📋 지출 목록 카드 -->
     <div class="card list-card">
-      <div class="list-header"><h3 id="ledgerSummaryTitle">📊 이달의 지출 요약</h3></div>
+      <div class="list-header">
+        <h3 id="ledgerSummaryTitle">📋 이달의 지출 상세 내역</h3>
+      </div>
       <div id="ledgerList" class="log-list"></div>
     </div>
   </section>
