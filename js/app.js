@@ -124,7 +124,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
   return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, update, clear, syncFromFirebase };
 }
 
-/* ── App 메인 ── */
+/* ── App 메인 코어 ── */
 window.App = Object.assign(window.App || {}, {
   db: null,
   isFirebaseActive: false,
@@ -398,9 +398,10 @@ window.App = Object.assign(window.App || {}, {
 
         this.syncPrivateChannel();
 
+        // 💰 실시간 예산 동기화
         this.db.ref('family_budget').on('value', snap => {
           const data = snap.val() || {};
-          Object.keys(data).forEach(k => safeSet(`budget_${k}`, data[k]));
+          Object.keys(data).forEach(k => safeSet(`budget_${k}`, String(data[k])));
           if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
           this.ticker.refresh();
         });
@@ -436,7 +437,7 @@ window.App = Object.assign(window.App || {}, {
       console.warn("Firebase 연결 대기:", e);
     }
 
-    // 각 화면 최초 1회 렌더링 강제 실행
+    // 초기 렌더링 강제 실행
     if (this.parking) this.parking.render(this.stores.parking.getItems());
     if (this.schedule) this.schedule.render();
     if (this.memo) this.memo.render();
