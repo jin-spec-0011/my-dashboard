@@ -1,4 +1,4 @@
-/* ── 1. 글로벌 리셋 및 테마 변수 ── */
+/* ── 글로벌 리셋 및 테마 ── */
 :root {
   --primary-color: #2563eb;
   --primary-hover: #1d4ed8;
@@ -29,7 +29,6 @@ body {
   padding: 16px 12px 40px;
 }
 
-/* ── 2. 화면 전환 래퍼 ── */
 .screen {
   display: none;
   width: 100%;
@@ -43,7 +42,7 @@ body {
   display: flex;
 }
 
-/* ── 3. 🔒 잠금 화면 UI ── */
+/* ── 🔒 잠금 화면 ── */
 #screen-lock {
   justify-content: center;
   min-height: 80vh;
@@ -56,7 +55,7 @@ body {
   border-radius: 20px;
   padding: 36px 24px;
   text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--border-color);
 }
 
@@ -98,15 +97,9 @@ body {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-  transition: all 0.2s ease;
 }
 
-.btn-lock-unlock:active {
-  transform: scale(0.98);
-  background: var(--primary-hover);
-}
-
-/* ── 4. 🏠 홈 화면 헤더 ── */
+/* ── 🏠 홈 화면 ── */
 .home-header {
   width: 100%;
   display: flex;
@@ -166,7 +159,7 @@ body {
   font-size: 14px;
 }
 
-/* ── 5. 📢 실시간 세로 롤링 전광판 ── */
+/* ── 📢 실시간 롤링 전광판 ── */
 .ticker-board-wrap {
   width: 100%;
   background: #ffffff;
@@ -209,17 +202,10 @@ body {
   transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
-.slide-down-out {
-  transform: translateY(100%);
-  opacity: 0;
-}
+.slide-down-out { transform: translateY(100%); opacity: 0; }
+.slide-down-in { transform: translateY(-100%); opacity: 0; }
 
-.slide-down-in {
-  transform: translateY(-100%);
-  opacity: 0;
-}
-
-/* ── 6. 👤 사용자 프로필 바 ── */
+/* ── 👤 프로필 바 ── */
 .profile-switch-bar {
   width: 100%;
   background: #ffffff;
@@ -251,10 +237,7 @@ body {
   border: 1px solid #bbf7d0;
 }
 
-.profile-actions-wrap {
-  display: flex;
-  gap: 5px;
-}
+.profile-actions-wrap { display: flex; gap: 5px; }
 
 .btn-prof {
   border: 1px solid var(--border-color);
@@ -276,7 +259,7 @@ body {
 .btn-prof-jinse.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
 .btn-prof-jihye.active { background: #db2777; color: #ffffff; border-color: #be185d; }
 
-/* ── 7. 📱 메인 대시보드 메뉴 카드 그리드 ── */
+/* ── 📱 메인 대시보드 메뉴 카드 ── */
 .menu-grid {
   width: 100%;
   display: grid;
@@ -319,23 +302,9 @@ body {
 .bg-emerald { background: #d1fae5; }
 .bg-pink { background: #fce7f3; }
 
-.card-text-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.card-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #0f172a;
-}
+.card-text-wrap { display: flex; flex-direction: column; gap: 3px; }
+.card-title-row { display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 15px; font-weight: 800; color: #0f172a; }
 
 .menu-new-badge {
   background: #ef4444;
@@ -346,13 +315,9 @@ body {
   border-radius: 10px;
 }
 
-.card-desc {
-  font-size: 11.5px;
-  color: var(--text-sub);
-  line-height: 1.35;
-}
+.card-desc { font-size: 11.5px; color: var(--text-sub); line-height: 1.35; }
 
-/* ── 8. 일반 폼 & 서브 화면 공통 ── */
+/* ── 폼 & 공통 UI ── */
 .header-nav {
   width: 100%;
   display: flex;
@@ -361,10 +326,7 @@ body {
   margin-bottom: 2px;
 }
 
-.header-nav h2 {
-  font-size: 18px;
-  font-weight: 800;
-}
+.header-nav h2 { font-size: 18px; font-weight: 800; }
 
 .btn-back {
   background: #ffffff;
@@ -386,23 +348,9 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
 }
 
-.form-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #475569;
-}
+.form-card { display: flex; flex-direction: column; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 12.5px; font-weight: 700; color: #475569; }
 
 .grid-2 {
   display: grid;
@@ -437,10 +385,7 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-.select-wrapper {
-  position: relative;
-  width: 100%;
-}
+.select-wrapper { position: relative; width: 100%; }
 
 .parking-select, .memo-text-input {
   width: 100%;
@@ -478,16 +423,10 @@ textarea.memo-text-input {
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
-.btn-save:active {
-  transform: scale(0.99);
-}
+.btn-save:active { transform: scale(0.99); }
 
-/* ── 9. 주차 사진 업로드 ── */
-.photo-upload-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+/* ── 🚗 주차 사진 업로드 ── */
+.photo-upload-container { display: flex; align-items: center; gap: 12px; }
 
 .photo-upload-box {
   width: 60px;
@@ -503,56 +442,17 @@ textarea.memo-text-input {
   overflow: hidden;
 }
 
-.photo-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.photo-preview-img { width: 100%; height: 100%; object-fit: cover; }
+.btn-photo-select { font-size: 12px; font-weight: 700; color: var(--primary-color); cursor: pointer; }
+.btn-photo-remove { background: none; border: none; font-size: 11.5px; font-weight: 700; color: var(--danger-color); cursor: pointer; }
 
-.btn-photo-select {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--primary-color);
-  cursor: pointer;
-}
+/* ── 📋 목록 공통 ── */
+.list-card { margin-top: 10px; }
+.list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.list-header h3 { font-size: 15px; font-weight: 800; }
+.btn-clear { background: none; border: none; font-size: 12px; font-weight: 700; color: var(--danger-color); cursor: pointer; }
 
-.btn-photo-remove {
-  background: none;
-  border: none;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--danger-color);
-  cursor: pointer;
-  text-align: left;
-}
-
-/* ── 10. 목록 및 필터 바 ── */
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.list-header h3 {
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.btn-clear {
-  background: none;
-  border: none;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--danger-color);
-  cursor: pointer;
-}
-
-.log-filter-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-}
+.log-filter-bar { display: flex; gap: 6px; margin-bottom: 12px; }
 
 .filter-btn {
   flex: 1;
@@ -572,60 +472,176 @@ textarea.memo-text-input {
   border-color: #334155;
 }
 
-.log-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.log-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 
 .log-item {
   background: #f8fafc;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
-.log-content {
-  flex: 1;
+.log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.log-text { font-size: 13.5px; font-weight: 700; color: #0f172a; }
+.log-time { font-size: 11.5px; color: var(--text-sub); }
+.delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
+.parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
+
+/* ── 📅 만년 캘린더 ── */
+.calendar-controls-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendar-container {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 10px;
 }
 
-.log-text {
+.calendar-top-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.editable-goal {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+
+.calendar-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.cal-th { font-size: 12px; font-weight: 800; color: #64748b; padding: 6px 0; }
+.cal-th.sun { color: #ef4444; }
+.cal-th.sat { color: #2563eb; }
+
+.calendar-grid-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  min-height: 58px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cal-cell.empty { background: transparent; border: none; }
+.cal-cell.today { border: 2px solid var(--primary-color); background: #eff6ff; }
+.cal-date-num { font-size: 11px; font-weight: 800; color: #1e293b; line-height: 1; margin-bottom: 2px; }
+
+.cal-events-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 48px;
+}
+
+.cal-event-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 4px;
+  padding: 1px 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-event-tag.private { background: #fce7f3; color: #be185d; }
+
+.calendar-bottom-memo-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.editable-bottom-memo {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* ── 📝 메모 탭 ── */
+.memo-tab-bar {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.tab-btn {
+  flex: 1;
+  height: 40px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #0f172a;
-}
-
-.log-time {
-  font-size: 11px;
-  color: var(--text-sub);
-}
-
-.delete-item-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
-  padding: 4px;
+  transition: all 0.2s;
 }
 
-.parking-log-thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  object-fit: cover;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
+.tab-btn.active {
+  background: #334155;
+  color: #ffffff;
+  border-color: #334155;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-/* ── 11. 모달 팝업 & 토스트 ── */
+.todo-list-wrap, .sticky-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ── 팝업 & 토스트 ── */
 .modal-overlay {
   position: fixed;
   inset: 0;
