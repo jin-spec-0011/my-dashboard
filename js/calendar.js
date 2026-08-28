@@ -73,21 +73,28 @@ App.calendar = {
     const gridEl = document.getElementById('calendarGrid');
     if (!gridEl) return;
 
+    // 1일의 시작 요일 (0 = 일요일, 6 = 토요일)
     const firstDay = new Date(year, month - 1, 1).getDay();
+    // 해당 월의 마지막 날짜
     const lastDate = new Date(year, month, 0).getDate();
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
     let cellsHtml = '';
 
+    // 1일 이전의 빈 셀 채우기
     for (let i = 0; i < firstDay; i++) {
       cellsHtml += `<div class="cal-cell empty"></div>`;
     }
 
-    const todayStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
 
+    // 1일부터 마지막 날까지 렌더링
     for (let day = 1; day <= lastDate; day++) {
       const dateStr = `${monthKey}-${String(day).padStart(2, '0')}`;
       const isToday = (dateStr === todayStr);
+      const dayOfWeek = (firstDay + day - 1) % 7; // 0 = 일요일, 6 = 토요일
 
       const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
 
@@ -95,17 +102,20 @@ App.calendar = {
       daySchedules.forEach(s => {
         const titleText = s.title || s.text || '일정';
         const lockIcon = s.isPrivate ? '🔒' : '';
-        const authorBadge = s.isPrivate ? '' : `[${s.author || '가족'}]`;
+        const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
+        const isPriv = Boolean(s.isPrivate);
         eventsHtml += `
-          <div class="cal-event-tag ${s.isPrivate ? 'private' : ''}" title="${escapeHtml(titleText)}">
+          <div class="cal-event-tag ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
             ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
           </div>
         `;
       });
 
+      const dayClass = dayOfWeek === 0 ? 'sun' : (dayOfWeek === 6 ? 'sat' : '');
+
       cellsHtml += `
         <div class="cal-cell ${isToday ? 'today' : ''}">
-          <div class="cal-date-num">${day}</div>
+          <div class="cal-date-num ${dayClass}">${day}</div>
           <div class="cal-events-wrap">${eventsHtml}</div>
         </div>
       `;
