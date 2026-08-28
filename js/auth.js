@@ -14,7 +14,6 @@ App.auth = {
   pendingTargetUser: null,
 
   init() {
-    // 📱 1. 저장된 기기 기억 여부 확인 및 자동 로그인 실행
     const rememberedUser = safeGet('remembered_device_user');
     if (rememberedUser === 'jinse' || rememberedUser === 'jihye') {
       this.setUserProfile(rememberedUser, true);
@@ -23,38 +22,51 @@ App.auth = {
     }
   },
 
+  /* 🔓 포털 비밀번호 검증 & 직행 목적지 자동 이동 */
   async checkPIN() {
     const input = document.getElementById('pinInput');
-    const val = input.value.trim();
+    const val = input ? input.value.trim() : '';
     if (!val) return;
 
     const hash = await sha256(val);
     if (hash === this.portalPINHash || val === "1234") {
       safeSet('gogo_auth_pass', 'true');
-      input.value = '';
-      App.router.go('home');
+      if (input) input.value = '';
+
+      // 사용자가 접속하려고 했던 원래 화면(#parking 등)으로 자동 직행
+      const targetHash = window.location.hash.replace('#', '');
+      const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
+      
+      let destination = 'home';
+      if (App.state && App.state.pendingRedirect) {
+        destination = App.state.pendingRedirect;
+        App.state.pendingRedirect = null;
+      } else if (validScreens.includes(targetHash)) {
+        destination = targetHash;
+      }
+
+      App.router.go(destination);
       App.ui.toast("🔓 포털이 열렸습니다!");
     } else {
       alert("비밀번호가 일치하지 않습니다.");
-      input.value = '';
-      input.focus();
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
     }
   },
 
   lock() {
     safeSet('gogo_auth_pass', 'false');
-    // 공용 기기일 때만 공용으로 초기화
     if (!safeGet('remembered_device_user')) {
       this.switchToPublic();
     }
     App.router.go('lock');
   },
 
-  /* 👤 상단 프로필 버튼 클릭 시 */
   requestProfileSwitch(targetUser) {
     const nameMap = { jinse: '진세', jihye: '지혜', public: '가족 공용' };
 
-    // 이미 해당 모드로 로그인되어 있는 경우
     if (this.currentUser === targetUser) {
       const isRemembered = (safeGet('remembered_device_user') === targetUser);
       App.ui.toast(`현재 이미 [${nameMap[targetUser]}] 모드입니다.${isRemembered ? ' (기기 저장됨 📱)' : ''}`);
@@ -73,8 +85,6 @@ App.auth = {
 
     if (modalTitle) modalTitle.innerText = `👤 ${nameMap[targetUser]} 개인 인증`;
     if (pinInput) pinInput.value = '';
-    
-    // 스마트폰 편의를 위해 기본적으로 '이 기기 기억하기' 체크 활성화
     if (remCheck) remCheck.checked = true;
 
     const modal = document.getElementById('profile-pin-modal');
@@ -90,7 +100,6 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
-  /* 🔒 개인 PIN 검증 및 기기 기억 저장 */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
@@ -104,8 +113,6 @@ App.auth = {
 
     if (inputHash === savedHash || pin === "1234") {
       const remCheck = document.getElementById('rememberDeviceCheck');
-      
-      // 📱 기기 기억하기 체크 여부에 따라 영구 저장
       if (remCheck && remCheck.checked) {
         safeSet('remembered_device_user', target);
       } else {
@@ -211,13 +218,11 @@ App.auth = {
     App.ui.toast("👥 가족 공용 모드로 전환되었습니다.");
   },
 
-  /* 🌟 프로필 상태 화면 동기화 및 버튼 활성화(Active) 하이라이트 */
   setUserProfile(user, shouldRefresh = true) {
     this.currentUser = user;
     const badge = document.getElementById('currentProfileBadge');
     const isRemembered = (safeGet('remembered_device_user') === user);
 
-    // 버튼 활성화 상태 표시
     const btnPublic = document.getElementById('btn-prof-public');
     const btnJinse = document.getElementById('btn-prof-jinse');
     const btnJihye = document.getElementById('btn-prof-jihye');
@@ -236,7 +241,6 @@ App.auth = {
       }
     }
 
-    // 작성자 기본값 매칭
     if (user === 'jinse') {
       if (App.schedule) App.schedule.selectAuthor('진세');
       if (App.memo) App.memo.selectAuthor('진세');
