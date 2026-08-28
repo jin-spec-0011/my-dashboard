@@ -273,10 +273,18 @@
           <span class="cat-chip" onclick="App.schedule.selectCategory('개인/업무')">💼 개인/업무</span>
         </div>
 
+        <!-- 4. 번호(1~50) 먼저, 5. 구역(A~Z) 나중에 -->
         <div class="grid-2">
-          <input type="date" id="scheduleDateInput" class="memo-text-input" style="padding: 10px;">
-          <input type="text" id="scheduleTitleInput" class="memo-text-input" placeholder="일정 제목 (예: 치과 진료, 약속)">
+          <div class="form-group">
+            <label>4. 기둥 번호 (1~50)</label>
+            <div class="select-wrapper"><select class="parking-select" id="rowSelect"></select></div>
+          </div>
+          <div class="form-group">
+            <label>5. 구역 / 열 (A~Z)</label>
+            <div class="select-wrapper"><select class="parking-select" id="colSelect"></select></div>
+          </div>
         </div>
+      
 
         <div class="memo-input-row">
           <input type="text" id="scheduleMemoInput" class="memo-text-input" placeholder="상세 메모 (선택 입력)">
