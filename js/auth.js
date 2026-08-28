@@ -1,9 +1,9 @@
 window.App = window.App || {};
 
 App.auth = {
-  // 포털 기본 진입 비밀번호 (1234)
-  portalPINHash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
-  
+  // 평시 로그인 코드: 1019 / 마스터 비상 코드: 1234
+  validPortalPINs: ["1019", "1234"],
+
   // 개인별 기본 PIN 해시 (진세: 1111, 지혜: 2222)
   defaultPINHashes: {
     jinse: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5ab67e", // 1111
@@ -22,18 +22,23 @@ App.auth = {
     }
   },
 
-  /* 🔓 포털 비밀번호 검증 & 직행 목적지 자동 이동 */
+  /* 🔓 포털 로그인 검증 */
   async checkPIN() {
     const input = document.getElementById('pinInput');
     const val = input ? input.value.trim() : '';
-    if (!val) return;
+    
+    if (!val) {
+      alert("PIN 번호 4자리를 입력해주세요.");
+      if (input) input.focus();
+      return;
+    }
 
-    const hash = await sha256(val);
-    if (hash === this.portalPINHash || val === "1234") {
+    const isValid = this.validPortalPINs.includes(val);
+
+    if (isValid) {
       safeSet('gogo_auth_pass', 'true');
       if (input) input.value = '';
 
-      // 사용자가 접속하려고 했던 원래 화면(#parking 등)으로 자동 직행
       const targetHash = window.location.hash.replace('#', '');
       const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
       
@@ -48,7 +53,7 @@ App.auth = {
       App.router.go(destination);
       App.ui.toast("🔓 포털이 열렸습니다!");
     } else {
-      alert("비밀번호가 일치하지 않습니다.");
+      alert("비밀번호가 일치하지 않습니다.\n(평시: 1019 / 마스터: 1234)");
       if (input) {
         input.value = '';
         input.focus();
@@ -100,6 +105,7 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
+  /* 🔒 개인 PIN 검증 */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
@@ -108,10 +114,14 @@ App.auth = {
     if (!target) return;
     if (!pin) return alert("PIN 4자리를 입력하세요.");
 
-    const inputHash = await sha256(pin);
+    let inputHash = '';
+    try {
+      inputHash = await sha256(pin);
+    } catch(e) {}
+
     const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
 
-    if (inputHash === savedHash || pin === "1234") {
+    if (inputHash === savedHash || pin === "1234" || pin === "1019") {
       const remCheck = document.getElementById('rememberDeviceCheck');
       if (remCheck && remCheck.checked) {
         safeSet('remembered_device_user', target);
@@ -167,10 +177,11 @@ App.auth = {
     if (newPin.length !== 4 || isNaN(Number(newPin))) return alert("새 PIN은 숫자 4자리로 입력해주세요.");
     if (newPin !== confirmPin) return alert("새 PIN 번호가 서로 일치하지 않습니다.");
 
-    const curHash = await sha256(curPin);
+    let curHash = '';
+    try { curHash = await sha256(curPin); } catch(e) {}
     const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
 
-    if (curHash !== savedHash && curPin !== "1234") {
+    if (curHash !== savedHash && curPin !== "1234" && curPin !== "1019") {
       return alert("현재 PIN 번호가 일치하지 않습니다.");
     }
 
@@ -186,16 +197,17 @@ App.auth = {
     this.closeChangePinModal();
   },
 
+  /* 🔄 마스터 코드(1234) 또는 로그인 코드(1019)로 개인 PIN 초기화 */
   async resetPersonalPIN(targetUser) {
     const target = targetUser || this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
     const nameMap = { jinse: '진세', jihye: '지혜' };
     const defaultPinMap = { jinse: '1111', jihye: '2222' };
 
-    const masterKey = prompt(`[${nameMap[target]}] 비밀번호 초기화를 위해 마스터 비밀번호(4자리)를 입력하세요:`);
+    const masterKey = prompt(`[${nameMap[target]}] 비밀번호 초기화를 위해 마스터 코드(1234)를 입력하세요:`);
     if (masterKey === null) return;
 
-    const masterHash = await sha256(masterKey.trim());
-    if (masterHash === this.portalPINHash || masterKey.trim() === "1234") {
+    const key = masterKey.trim();
+    if (key === "1234" || key === "1019") {
       if (App.isFirebaseActive && App.db) {
         App.db.ref(`auth_pins/${target}`).remove();
       }
@@ -208,7 +220,7 @@ App.auth = {
         pinInput.focus();
       }
     } else {
-      alert("❌ 마스터 비밀번호가 일치하지 않습니다.");
+      alert("❌ 코드가 일치하지 않습니다.");
     }
   },
 
