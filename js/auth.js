@@ -22,7 +22,7 @@ App.auth = {
     }
   },
 
-  /* 🔓 포털 로그인 검증 */
+  /* 🔓 포털 메인 로그인 검증 */
   async checkPIN() {
     const input = document.getElementById('pinInput');
     const val = input ? input.value.trim() : '';
@@ -69,6 +69,7 @@ App.auth = {
     App.router.go('lock');
   },
 
+  /* 👤 프로필 전환 요청 모달 열기 */
   requestProfileSwitch(targetUser) {
     const nameMap = { jinse: '진세', jihye: '지혜', public: '가족 공용' };
 
@@ -105,14 +106,18 @@ App.auth = {
     this.pendingTargetUser = null;
   },
 
-  /* 🔒 개인 PIN 검증 */
+  /* 🔒 1. 개인 PIN 검증 및 자동 창 종료 */
   async verifyProfilePIN() {
     const pinInput = document.getElementById('profilePinInput');
     const pin = pinInput ? pinInput.value.trim() : '';
     const target = this.pendingTargetUser;
 
     if (!target) return;
-    if (!pin) return alert("PIN 4자리를 입력하세요.");
+    if (!pin) {
+      alert("PIN 4자리를 입력하세요.");
+      if (pinInput) pinInput.focus();
+      return;
+    }
 
     let inputHash = '';
     try {
@@ -121,6 +126,7 @@ App.auth = {
 
     const savedHash = safeGet(`pin_hash_${target}`) || this.defaultPINHashes[target];
 
+    // 개인 PIN 또는 비상 마스터키(1234 / 1019) 대조
     if (inputHash === savedHash || pin === "1234" || pin === "1019") {
       const remCheck = document.getElementById('rememberDeviceCheck');
       if (remCheck && remCheck.checked) {
@@ -129,6 +135,7 @@ App.auth = {
         safeSet('remembered_device_user', '');
       }
 
+      // 프로필 활성화 및 모달 자동 닫기
       this.setUserProfile(target, true);
       this.closeProfileModal();
       
@@ -137,10 +144,14 @@ App.auth = {
       App.ui.toast(`🔓 [${nameMap[target]}] 모드가 활성화되었습니다.${remText}`);
     } else {
       alert("개인 PIN 번호가 일치하지 않습니다.");
-      if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
     }
   },
 
+  /* 🔑 PIN 변경 모달 열기/닫기 */
   openChangePinModal() {
     const target = this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
     this.pendingTargetUser = target;
@@ -157,7 +168,13 @@ App.auth = {
     if (authModal) authModal.style.display = 'none';
 
     const changeModal = document.getElementById('profile-pin-change-modal');
-    if (changeModal) changeModal.style.display = 'flex';
+    if (changeModal) {
+      changeModal.style.display = 'flex';
+      setTimeout(() => {
+        const curInp = document.getElementById('currentPinInput');
+        if (curInp) curInp.focus();
+      }, 150);
+    }
   },
 
   closeChangePinModal() {
@@ -165,6 +182,7 @@ App.auth = {
     if (changeModal) changeModal.style.display = 'none';
   },
 
+  /* 🔑 2. 새 PIN 저장 후 새 비밀번호로 다시 인증 진행 */
   async saveNewPIN() {
     const target = this.pendingTargetUser;
     if (!target) return;
@@ -173,9 +191,15 @@ App.auth = {
     const newPin = document.getElementById('newPinInput').value.trim();
     const confirmPin = document.getElementById('newPinConfirmInput').value.trim();
 
-    if (!curPin || !newPin || !confirmPin) return alert("모든 항목을 입력해주세요.");
-    if (newPin.length !== 4 || isNaN(Number(newPin))) return alert("새 PIN은 숫자 4자리로 입력해주세요.");
-    if (newPin !== confirmPin) return alert("새 PIN 번호가 서로 일치하지 않습니다.");
+    if (!curPin || !newPin || !confirmPin) {
+      return alert("모든 항목을 입력해주세요.");
+    }
+    if (newPin.length !== 4 || isNaN(Number(newPin))) {
+      return alert("새 PIN은 숫자 4자리로 입력해주세요.");
+    }
+    if (newPin !== confirmPin) {
+      return alert("새 PIN 번호가 서로 일치하지 않습니다.");
+    }
 
     let curHash = '';
     try { curHash = await sha256(curPin); } catch(e) {}
@@ -185,6 +209,7 @@ App.auth = {
       return alert("현재 PIN 번호가 일치하지 않습니다.");
     }
 
+    // 새 PIN 해시화 후 클라우드 및 로컬 저장
     const newHash = await sha256(newPin);
     safeSet(`pin_hash_${target}`, newHash);
 
@@ -193,11 +218,27 @@ App.auth = {
     }
 
     const nameMap = { jinse: '진세', jihye: '지혜' };
-    alert(`[${nameMap[target]}] 새 비밀번호가 저장되었습니다!`);
+    alert(`[${nameMap[target]}] 새 비밀번호가 저장되었습니다!\n새 비밀번호로 인증을 진행해주세요.`);
+
+    // PIN 변경 창 닫기
     this.closeChangePinModal();
+
+    // 새 비밀번호로 다시 인증 진행할 수 있도록 개인 인증 모달 자동 오픈
+    this.pendingTargetUser = target;
+    const modalTitle = document.getElementById('profileModalTitle');
+    const pinInput = document.getElementById('profilePinInput');
+
+    if (modalTitle) modalTitle.innerText = `👤 ${nameMap[target]} 개인 인증 (새 PIN 입력)`;
+    if (pinInput) pinInput.value = '';
+
+    const authModal = document.getElementById('profile-pin-modal');
+    if (authModal) {
+      authModal.style.display = 'flex';
+      setTimeout(() => { if (pinInput) pinInput.focus(); }, 150);
+    }
   },
 
-  /* 🔄 마스터 코드(1234) 또는 로그인 코드(1019)로 개인 PIN 초기화 */
+  /* 🔄 마스터 코드(1234)로 개인 PIN 초기화 */
   async resetPersonalPIN(targetUser) {
     const target = targetUser || this.pendingTargetUser || (this.currentUser !== 'public' ? this.currentUser : 'jinse');
     const nameMap = { jinse: '진세', jihye: '지혜' };
