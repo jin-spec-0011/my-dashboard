@@ -563,7 +563,7 @@ body {
 .tab-btn.active { background: #334155; color: #ffffff; border-color: #334155; }
 .todo-list-wrap, .sticky-grid-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 
-/* ── 📅 만년 캘린더 뷰어 & 화면 스타일 ── */
+/* ── 📅 만년 캘린더 화면 뷰어 ── */
 .device-switch-bar {
   width: 100%;
   max-width: 900px;
@@ -666,76 +666,101 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
 }
 
-.cal-sheet-header { display: flex; flex-direction: column; gap: 10px; }
+.cal-sheet-header { display: flex; flex-direction: column; gap: 8px; }
 .cal-sheet-title-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   border-bottom: 2px solid #0f172a;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
-.cal-sheet-title { font-size: 26px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
-.cal-sheet-sub { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1.5px; }
+.cal-sheet-title { font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+.cal-sheet-sub { font-size: 11px; font-weight: 800; color: #64748b; letter-spacing: 1.5px; }
 
 .cal-sheet-goal-box {
   background: #f8fafc;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.goal-tag { font-size: 11.5px; font-weight: 800; color: #2563eb; }
+.goal-tag { font-size: 11px; font-weight: 800; color: #2563eb; }
 .goal-input {
   width: 100%;
   border: none;
   background: transparent;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #0f172a;
   outline: none;
 }
 
-.cal-sheet-table-wrap { width: 100%; }
-.cal-sheet-table {
+/* ── 🗓️ 화면 뷰어용 그리드 표 ── */
+.cal-sheet-grid-container {
   width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #0f172a;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.cal-sheet-table th {
+.cal-sheet-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   background: #f1f5f9;
-  border: 1px solid #94a3b8;
-  color: #1e293b;
-  font-size: 12px;
-  font-weight: 800;
+  border-bottom: 1.5px solid #0f172a;
   text-align: center;
-  padding: 8px 2px;
 }
 
-.cal-sheet-table th.th-sun { color: #dc2626; background: #fee2e2; }
-.cal-sheet-table th.th-sat { color: #2563eb; background: #dbeafe; }
+.cal-sheet-grid-header > div {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #1e293b;
+  padding: 6px 0;
+  border-right: 1px solid #cbd5e1;
+}
+.cal-sheet-grid-header > div:last-child { border-right: none; }
+.cal-sheet-grid-header .th-sun { color: #dc2626; background: #fee2e2; }
+.cal-sheet-grid-header .th-sat { color: #2563eb; background: #dbeafe; }
 
-.cal-table-td {
-  border: 1px solid #cbd5e1;
-  min-height: 64px;
-  height: 64px;
-  vertical-align: top;
-  padding: 4px 3px;
+.cal-sheet-grid-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  background: #cbd5e1;
+  gap: 1px;
+}
+
+.cal-sheet-grid-body.cal-rows-5 {
+  grid-template-rows: repeat(5, minmax(68px, 1fr));
+}
+
+.cal-sheet-grid-body.cal-rows-6 {
+  grid-template-rows: repeat(6, minmax(58px, 1fr));
+}
+
+.cal-grid-cell {
   background: #ffffff;
+  padding: 4px 3px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.cal-table-td.td-empty { background: #f8fafc; }
-.cal-table-td.td-today { background: #eff6ff; border: 2px solid #2563eb; }
+.cal-grid-cell.cell-empty { background: #f8fafc; }
+.cal-grid-cell.cell-today { background: #eff6ff; }
 
-.td-date-num {
+.cell-date-num {
   font-size: 12px;
   font-weight: 800;
   color: #0f172a;
@@ -743,14 +768,13 @@ body {
   margin-bottom: 3px;
 }
 
-.td-date-num.sun { color: #dc2626; }
-.td-date-num.sat { color: #2563eb; }
+.cell-date-num.sun { color: #dc2626; }
+.cell-date-num.sat { color: #2563eb; }
 
-.td-events-list {
+.cell-events-wrap {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 48px;
   overflow-y: hidden;
 }
 
@@ -769,33 +793,33 @@ body {
 
 .td-event-badge.private { background: #fce7f3; color: #be185d; }
 
-.cal-sheet-footer { display: flex; flex-direction: column; gap: 6px; }
+.cal-sheet-footer { display: flex; flex-direction: column; gap: 4px; }
 .cal-sheet-memo-box {
   background: #f8fafc;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.memo-tag { font-size: 11.5px; font-weight: 800; color: #475569; }
+.memo-tag { font-size: 11px; font-weight: 800; color: #475569; }
 .memo-textarea {
   width: 100%;
   border: none;
   background: transparent;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: #1e293b;
   outline: none;
   resize: none;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 100% 꽉 채움 무손실 인쇄 CSS (행 비율 1:1 완벽 보장)
+   🖨️ A4 1장 인쇄 전용 CSS (1:1:1:1:1 엄격 균등 분할)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
@@ -806,12 +830,9 @@ body {
   * {
     overflow: visible !important;
     scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
   }
   *::-webkit-scrollbar {
     display: none !important;
-    width: 0 !important;
-    height: 0 !important;
   }
 
   html, body {
@@ -851,26 +872,27 @@ body {
     height: 100% !important;
   }
 
+  /* A4 높이에 정확히 맞추고 flex 비율 배치 */
   .print-calendar-sheet {
     width: 100% !important;
-    height: 285mm !important;
-    max-height: 285mm !important;
+    height: 284mm !important;
+    max-height: 284mm !important;
     box-shadow: none !important;
     border: 2px solid #000000 !important;
     border-radius: 0 !important;
-    padding: 6mm 6mm !important;
+    padding: 4mm 5mm !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
     page-break-after: avoid !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    gap: 3mm !important;
+    gap: 2mm !important;
   }
 
   .cal-sheet-header {
     flex-shrink: 0 !important;
-    gap: 2mm !important;
+    gap: 1.5mm !important;
   }
 
   .cal-sheet-title-row {
@@ -878,101 +900,98 @@ body {
     padding-bottom: 1mm !important;
   }
 
-  .cal-sheet-title {
-    font-size: 22pt !important;
-    color: #000000 !important;
-  }
-
-  .cal-sheet-sub { color: #000000 !important; }
+  .cal-sheet-title { font-size: 20pt !important; color: #000000 !important; }
+  .cal-sheet-sub { color: #000000 !important; font-size: 9pt !important; }
 
   .cal-sheet-goal-box {
     border: 1px solid #000000 !important;
-    padding: 2mm 3mm !important;
+    padding: 1.5mm 2.5mm !important;
     background: #ffffff !important;
   }
 
-  .goal-tag { color: #000000 !important; font-size: 9pt !important; }
-  .goal-input { color: #000000 !important; font-size: 11pt !important; }
+  .goal-tag { color: #000000 !important; font-size: 8.5pt !important; }
+  .goal-input { color: #000000 !important; font-size: 10pt !important; }
 
-  /* 📊 표 영역: 남은 높이를 100% 차지하며 각 행을 정확히 균등 분할 */
-  .cal-sheet-table-wrap {
+  /* 🌟 그리드 컨테이너: 남은 높이를 100% 차지 */
+  .cal-sheet-grid-container {
     flex: 1 1 auto !important;
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
-    overflow: hidden !important;
+    border: 1.5px solid #000000 !important;
+    border-radius: 0 !important;
+    background: #000000 !important;
+    gap: 0 !important;
   }
 
-  .cal-sheet-table {
-    width: 100% !important;
-    height: 100% !important;
-    border-collapse: collapse !important;
-    table-layout: fixed !important;
-  }
-
-  .cal-sheet-table thead {
+  .cal-sheet-grid-header {
     height: 6.5mm !important;
     flex-shrink: 0 !important;
+    border-bottom: 1.5px solid #000000 !important;
+    background: #f1f5f9 !important;
   }
 
-  .cal-sheet-table thead th {
-    border: 1px solid #000000 !important;
-    font-size: 10pt !important;
-    padding: 1.5mm 0 !important;
-    height: 6.5mm !important;
-    background: #f1f5f9 !important;
+  .cal-sheet-grid-header > div {
+    border-right: 1px solid #000000 !important;
+    font-size: 9.5pt !important;
+    padding: 1.2mm 0 !important;
     color: #000000 !important;
   }
 
-  .cal-sheet-table thead th.th-sun { background: #fee2e2 !important; color: #dc2626 !important; }
-  .cal-sheet-table thead th.th-sat { background: #dbeafe !important; color: #2563eb !important; }
+  .cal-sheet-grid-header .th-sun { background: #fee2e2 !important; color: #dc2626 !important; }
+  .cal-sheet-grid-header .th-sat { background: #dbeafe !important; color: #2563eb !important; }
 
-  .cal-sheet-table tbody {
+  /* 🌟 1:1:1:1:1 엄격한 균등 분할 코어 */
+  .cal-sheet-grid-body {
+    flex: 1 1 auto !important;
     height: calc(100% - 6.5mm) !important;
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    background: #000000 !important;
+    gap: 1px !important;
   }
 
-  /* 5주차 / 6주차 행 높이 강제 100% 균등 분할 규칙 */
-  .cal-sheet-table tbody.cal-rows-5 tr {
-    height: 20% !important;
-    max-height: 20% !important;
+  .cal-sheet-grid-body.cal-rows-5 {
+    grid-template-rows: repeat(5, 1fr) !important;
   }
 
-  .cal-sheet-table tbody.cal-rows-6 tr {
-    height: 16.6667% !important;
-    max-height: 16.6667% !important;
+  .cal-sheet-grid-body.cal-rows-6 {
+    grid-template-rows: repeat(6, 1fr) !important;
   }
 
-  .cal-table-td {
-    height: 100% !important;
-    border: 1px solid #000000 !important;
-    padding: 1.5mm 1.5mm !important;
+  .cal-grid-cell {
     background: #ffffff !important;
-    vertical-align: top !important;
+    border: none !important;
+    padding: 1.2mm 1.5mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important;
     box-sizing: border-box !important;
   }
 
-  .cal-table-td.td-today {
+  .cal-grid-cell.cell-today {
     background: #ffffff !important;
-    border: 2px solid #000000 !important;
   }
 
-  .td-date-num {
-    font-size: 11pt !important;
+  .cell-date-num {
+    font-size: 10pt !important;
     font-weight: 900 !important;
     margin-bottom: 1mm !important;
   }
 
-  .td-events-list {
-    max-height: calc(100% - 5mm) !important;
-    gap: 1mm !important;
+  .cell-events-wrap {
+    max-height: calc(100% - 4mm) !important;
+    gap: 0.8mm !important;
   }
 
   .td-event-badge {
-    font-size: 8.5pt !important;
+    font-size: 8pt !important;
     background: #e2e8f0 !important;
     color: #000000 !important;
     border: 0.5px solid #94a3b8 !important;
-    padding: 0.5mm 1.5mm !important;
+    padding: 0.4mm 1mm !important;
+    border-radius: 2px !important;
   }
 
   .cal-sheet-footer {
@@ -981,12 +1000,12 @@ body {
 
   .cal-sheet-memo-box {
     border: 1px solid #000000 !important;
-    padding: 2mm 3mm !important;
+    padding: 1.5mm 2.5mm !important;
     background: #ffffff !important;
   }
 
-  .memo-tag { color: #000000 !important; font-size: 9pt !important; }
-  .memo-textarea { color: #000000 !important; font-size: 10pt !important; }
+  .memo-tag { color: #000000 !important; font-size: 8.5pt !important; }
+  .memo-textarea { color: #000000 !important; font-size: 9.5pt !important; }
 }
 
 /* ── 팝업 & 토스트 ── */
