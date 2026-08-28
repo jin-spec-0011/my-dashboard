@@ -38,6 +38,13 @@ body {
   gap: 14px;
 }
 
+/* 만년 캘린더 화면은 너비를 유연하게 확장 */
+#screen-calendar.active {
+  display: flex;
+  max-width: 100%;
+  width: 100%;
+}
+
 .screen.active {
   display: flex;
 }
@@ -243,7 +250,7 @@ body {
   border: 1px solid var(--border-color);
   font-size: 11.5px;
   font-weight: 700;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   background: #f8fafc;
@@ -259,7 +266,7 @@ body {
 .btn-prof-jinse.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
 .btn-prof-jihye.active { background: #db2777; color: #ffffff; border-color: #be185d; }
 
-/* ── 📱 메인 대시보드 메뉴 카드 ── */
+/* ── 📱 대시보드 메뉴 카드 ── */
 .menu-grid {
   width: 100%;
   display: grid;
@@ -317,7 +324,7 @@ body {
 
 .card-desc { font-size: 11.5px; color: var(--text-sub); line-height: 1.35; }
 
-/* ── 폼 & 공통 UI ── */
+/* ── 공통 UI ── */
 .header-nav {
   width: 100%;
   display: flex;
@@ -400,16 +407,6 @@ body {
   outline: none;
 }
 
-.parking-select:focus, .memo-text-input:focus {
-  border-color: var(--primary-color);
-}
-
-textarea.memo-text-input {
-  height: auto;
-  padding: 10px 12px;
-  line-height: 1.5;
-}
-
 .btn-save {
   width: 100%;
   height: 46px;
@@ -422,8 +419,6 @@ textarea.memo-text-input {
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
-
-.btn-save:active { transform: scale(0.99); }
 
 /* ── 🚗 주차 사진 업로드 ── */
 .photo-upload-container { display: flex; align-items: center; gap: 12px; }
@@ -492,7 +487,7 @@ textarea.memo-text-input {
 .delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
 .parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
 
-/* ── 💰 가계부 예산 & 프로그레스 그래프 ── */
+/* ── 💰 가계부 ── */
 .budget-card {
   display: flex;
   flex-direction: column;
@@ -504,24 +499,9 @@ textarea.memo-text-input {
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
 }
 
-.budget-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.budget-sub-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-sub);
-}
-
-.budget-spend-total {
-  font-size: 24px;
-  font-weight: 800;
-  color: #0f172a;
-  margin-top: 2px;
-}
+.budget-card-header { display: flex; justify-content: space-between; align-items: center; }
+.budget-sub-title { font-size: 12px; font-weight: 700; color: var(--text-sub); }
+.budget-spend-total { font-size: 24px; font-weight: 800; color: #0f172a; margin-top: 2px; }
 
 .btn-budget-edit {
   background: #f1f5f9;
@@ -532,16 +512,9 @@ textarea.memo-text-input {
   font-weight: 700;
   color: #334155;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-budget-edit:active {
-  background: #e2e8f0;
-  transform: scale(0.97);
 }
 
 .budget-bar-wrap { width: 100%; }
-
 .budget-bar-track {
   width: 100%;
   height: 12px;
@@ -550,13 +523,12 @@ textarea.memo-text-input {
   overflow: hidden;
   border: 1px solid #e2e8f0;
 }
-
 .budget-bar-fill {
   height: 100%;
   width: 0%;
   background: var(--primary-color);
   border-radius: 6px;
-  transition: width 0.4s ease, background-color 0.3s ease;
+  transition: width 0.4s ease;
 }
 
 .budget-info-row {
@@ -570,189 +542,14 @@ textarea.memo-text-input {
   text-align: center;
 }
 
-.budget-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.info-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-sub);
-}
-
-.info-val {
-  font-size: 13px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
+.budget-info-item { display: flex; flex-direction: column; gap: 2px; }
+.info-label { font-size: 11px; font-weight: 700; color: var(--text-sub); }
+.info-val { font-size: 13px; font-weight: 800; color: #0f172a; }
 .text-green { color: #16a34a !important; }
 .text-red { color: #dc2626 !important; }
 
-/* ── 📅 7열 만년 캘린더 그리드 완전 복원 ── */
-.calendar-controls-bar {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.calendar-container {
-  width: 100%;
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-sizing: border-box;
-}
-
-.calendar-top-goal {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.editable-goal {
-  width: 100%;
-  height: 36px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-}
-
-/* 7열 요일 헤더 (일 ~ 토) */
-.calendar-grid-header {
-  width: 100%;
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  text-align: center;
-  gap: 4px;
-  margin-top: 4px;
-  box-sizing: border-box;
-}
-
-.cal-th {
-  font-size: 12px;
-  font-weight: 800;
-  color: #64748b;
-  padding: 6px 0;
-  text-align: center;
-}
-.cal-th.sun { color: #ef4444; }
-.cal-th.sat { color: #2563eb; }
-
-/* 7열 날짜 본문 그리드 */
-.calendar-grid-body {
-  width: 100%;
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 4px;
-  box-sizing: border-box;
-}
-
-.cal-cell {
-  min-height: 58px;
-  min-width: 0;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 4px 2px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.cal-cell.empty {
-  background: transparent;
-  border: 1px dashed transparent;
-}
-
-.cal-cell.today {
-  border: 2px solid var(--primary-color);
-  background: #eff6ff;
-}
-
-.cal-date-num {
-  font-size: 11px;
-  font-weight: 800;
-  color: #1e293b;
-  line-height: 1;
-  padding-left: 2px;
-  margin-bottom: 2px;
-}
-
-.cal-date-num.sun { color: #ef4444; }
-.cal-date-num.sat { color: #2563eb; }
-
-.cal-events-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-  max-height: 44px;
-  width: 100%;
-}
-
-.cal-event-tag {
-  font-size: 9px;
-  font-weight: 700;
-  background: #dbeafe;
-  color: #1e40af;
-  border-radius: 3px;
-  padding: 1px 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.cal-event-tag.private {
-  background: #fce7f3;
-  color: #be185d;
-}
-
-.calendar-bottom-memo-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-color);
-}
-
-.editable-bottom-memo {
-  width: 100%;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  line-height: 1.4;
-  outline: none;
-  font-family: inherit;
-  resize: vertical;
-}
-
 /* ── 📝 메모 탭 ── */
-.memo-tab-bar {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 4px;
-}
-
+.memo-tab-bar { display: flex; gap: 8px; width: 100%; margin-bottom: 4px; }
 .tab-btn {
   flex: 1;
   height: 40px;
@@ -763,21 +560,379 @@ textarea.memo-text-input {
   font-weight: 700;
   color: #64748b;
   cursor: pointer;
-  transition: all 0.2s;
+}
+.tab-btn.active { background: #334155; color: #ffffff; border-color: #334155; }
+.todo-list-wrap, .sticky-grid-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+/* ── 📅 만년 캘린더 뷰어 & A4 인쇄 코어 ── */
+
+/* 1. 기기별 뷰어 전환 바 */
+.device-switch-bar {
+  width: 100%;
+  max-width: 900px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.tab-btn.active {
-  background: #334155;
+.device-switch-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.device-btn-group {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-device {
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-device.active {
+  background: #1e293b;
   color: #ffffff;
-  border-color: #334155;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.todo-list-wrap, .sticky-grid-wrap {
+/* 2. 연월 컨트롤 및 인쇄 액션 바 */
+.calendar-controls-bar {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cal-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-input-year {
+  width: 78px;
+  height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  outline: none;
+}
+
+.cal-input-month {
+  width: 54px;
+  height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  outline: none;
+}
+
+.cal-unit {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.btn-print-action {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+}
+
+/* 3. 뷰포트 반응형 래퍼 (기기별 너비 자동 조절) */
+.calendar-viewport-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-viewport-wrapper.view-iphone { max-width: 390px; }
+.calendar-viewport-wrapper.view-ipad { max-width: 768px; }
+.calendar-viewport-wrapper.view-web { max-width: 900px; }
+
+/* 4. A4 캘린더 시트 (목표 + 표 + 결산) */
+.print-calendar-sheet {
+  width: 100%;
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  border-radius: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* [A4 상단] */
+.cal-sheet-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cal-sheet-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 6px;
+}
+
+.cal-sheet-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.cal-sheet-sub {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 1.5px;
+}
+
+.cal-sheet-goal-box {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goal-tag {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.goal-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  outline: none;
+}
+
+/* [A4 중앙] 7열 표(Table) */
+.cal-sheet-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.cal-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.cal-sheet-table th {
+  background: #f1f5f9;
+  border: 1px solid #94a3b8;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  padding: 8px 2px;
+}
+
+.cal-sheet-table th.th-sun { color: #dc2626; background: #fee2e2; }
+.cal-sheet-table th.th-sat { color: #2563eb; background: #dbeafe; }
+
+.cal-table-td {
+  border: 1px solid #cbd5e1;
+  height: 76px;
+  vertical-align: top;
+  padding: 4px 3px;
+  background: #ffffff;
+}
+
+.cal-table-td.td-empty {
+  background: #f8fafc;
+}
+
+.cal-table-td.td-today {
+  background: #eff6ff;
+  border: 2px solid #2563eb;
+}
+
+.td-date-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.td-date-num.sun { color: #dc2626; }
+.td-date-num.sat { color: #2563eb; }
+
+.td-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 54px;
+  overflow-y: hidden;
+}
+
+.td-event-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 1.5px 3px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.td-event-badge.private {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* [A4 하단] */
+.cal-sheet-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cal-sheet-memo-box {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memo-tag {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.memo-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+/* ── 🖨️ A4 1장 100% 꽉참 출력 규칙 (중요) ── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm; /* A4 최적 여백 */
+  }
+
+  body {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .no-print,
+  #screen-lock,
+  #screen-home,
+  #screen-parking,
+  #screen-schedule,
+  #screen-memo,
+  #screen-ledger,
+  #screen-trip,
+  .modal-overlay,
+  .toast {
+    display: none !important;
+  }
+
+  #screen-calendar {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .calendar-viewport-wrapper {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .print-calendar-sheet {
+    box-shadow: none !important;
+    border: 2px solid #000000 !important;
+    border-radius: 0 !important;
+    padding: 10mm 8mm !important;
+    height: 275mm !important; /* A4 1장 정확히 채움 */
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+
+  .cal-sheet-title {
+    font-size: 28pt !important;
+  }
+
+  .cal-table-td {
+    height: 34mm !important; /* 5주 기준 1장 꽉 채움 */
+    border: 1px solid #000000 !important;
+  }
+
+  .cal-sheet-table th {
+    border: 1px solid #000000 !important;
+    font-size: 11pt !important;
+    padding: 6px 0 !important;
+  }
+
+  .goal-input, .memo-textarea {
+    color: #000000 !important;
+  }
 }
 
 /* ── 팝업 & 토스트 ── */
