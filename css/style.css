@@ -492,7 +492,7 @@ textarea.memo-text-input {
 .delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
 .parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
 
-/* ── 💰 가계부 예산 & 프로그레스 그래프 카드 ── */
+/* ── 💰 가계부 예산 & 프로그레스 그래프 ── */
 .budget-card {
   display: flex;
   flex-direction: column;
@@ -540,9 +540,7 @@ textarea.memo-text-input {
   transform: scale(0.97);
 }
 
-.budget-bar-wrap {
-  width: 100%;
-}
+.budget-bar-wrap { width: 100%; }
 
 .budget-bar-track {
   width: 100%;
@@ -593,7 +591,7 @@ textarea.memo-text-input {
 .text-green { color: #16a34a !important; }
 .text-red { color: #dc2626 !important; }
 
-/* ── 📅 만년 캘린더 ── */
+/* ── 📅 7열 만년 캘린더 그리드 완전 복원 ── */
 .calendar-controls-bar {
   width: 100%;
   display: flex;
@@ -611,6 +609,7 @@ textarea.memo-text-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-sizing: border-box;
 }
 
 .calendar-top-goal {
@@ -632,60 +631,99 @@ textarea.memo-text-input {
   outline: none;
 }
 
+/* 7열 요일 헤더 (일 ~ 토) */
 .calendar-grid-header {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
   text-align: center;
-  gap: 2px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-top: 4px;
+  box-sizing: border-box;
 }
 
-.cal-th { font-size: 12px; font-weight: 800; color: #64748b; padding: 6px 0; }
+.cal-th {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  padding: 6px 0;
+  text-align: center;
+}
 .cal-th.sun { color: #ef4444; }
 .cal-th.sat { color: #2563eb; }
 
+/* 7열 날짜 본문 그리드 */
 .calendar-grid-body {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
   gap: 4px;
+  box-sizing: border-box;
 }
 
 .cal-cell {
   min-height: 58px;
+  min-width: 0;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 4px;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.cal-cell.empty { background: transparent; border: none; }
-.cal-cell.today { border: 2px solid var(--primary-color); background: #eff6ff; }
-.cal-date-num { font-size: 11px; font-weight: 800; color: #1e293b; line-height: 1; margin-bottom: 2px; }
+.cal-cell.empty {
+  background: transparent;
+  border: 1px dashed transparent;
+}
+
+.cal-cell.today {
+  border: 2px solid var(--primary-color);
+  background: #eff6ff;
+}
+
+.cal-date-num {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1;
+  padding-left: 2px;
+  margin-bottom: 2px;
+}
+
+.cal-date-num.sun { color: #ef4444; }
+.cal-date-num.sat { color: #2563eb; }
 
 .cal-events-wrap {
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
-  max-height: 48px;
+  max-height: 44px;
+  width: 100%;
 }
 
 .cal-event-tag {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   background: #dbeafe;
   color: #1e40af;
-  border-radius: 4px;
-  padding: 1px 3px;
+  border-radius: 3px;
+  padding: 1px 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.cal-event-tag.private { background: #fce7f3; color: #be185d; }
+.cal-event-tag.private {
+  background: #fce7f3;
+  color: #be185d;
+}
 
 .calendar-bottom-memo-wrap {
   display: flex;
