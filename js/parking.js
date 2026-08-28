@@ -3,29 +3,6 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
-  /* 🛡️ 옵션 비어있음 방지 안전장치 */
-  ensureOptions() {
-    const rowSelect = document.getElementById('rowSelect');
-    const colSelect = document.getElementById('colSelect');
-
-    if (rowSelect && rowSelect.options.length === 0) {
-      let html = '';
-      for (let i = 1; i <= 50; i++) {
-        html += `<option value="${i}" ${i === 18 ? 'selected' : ''}>${i}번</option>`;
-      }
-      rowSelect.innerHTML = html;
-    }
-
-    if (colSelect && colSelect.options.length === 0) {
-      let html = '';
-      for (let i = 65; i <= 90; i++) {
-        const char = String.fromCharCode(i);
-        html += `<option value="${char}" ${char === 'A' ? 'selected' : ''}>${char}</option>`;
-      }
-      colSelect.innerHTML = html;
-    }
-  },
-
   selectOption(type, value) {
     App.state.parking[type] = value;
 
@@ -68,7 +45,7 @@ App.parking = {
           frame.src = `https://maps.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}&z=17&output=embed`;
         }
       },
-      (err) => {
+      () => {
         if (status) status.innerText = "⚠️ GPS 수신 실패 (기본 위치)";
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -129,9 +106,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 숫자 + 구역 (예: B1 - 18A) */
   save() {
-    this.ensureOptions();
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
     const rowSelect = document.getElementById('rowSelect');
@@ -170,7 +145,6 @@ App.parking = {
 
     this.removePhoto();
     App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료!`);
-
     if (App.ticker) App.ticker.refresh();
   },
 
@@ -203,7 +177,6 @@ App.parking = {
   },
 
   render(items = []) {
-    this.ensureOptions();
     const listEl = document.getElementById('logList');
     if (!listEl) return;
 
