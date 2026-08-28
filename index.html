@@ -272,7 +272,7 @@
     </div>
   </section>
 
-  <!-- 4. 📅 만년 캘린더 화면 -->
+  <!-- 4. 📅 만년 캘린더 화면 (CSS Grid 정밀 렌더링) -->
   <section id="screen-calendar" class="screen">
     <div class="header-nav no-print">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -302,6 +302,7 @@
 
     <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
       <div class="print-calendar-sheet" id="printCalendarSheet">
+        <!-- [상단] 헤더 및 슬로건 -->
         <div class="cal-sheet-header">
           <div class="cal-sheet-title-row">
             <h1 class="cal-sheet-title" id="calPrintTitle">2026년 8월</h1>
@@ -313,23 +314,23 @@
           </div>
         </div>
 
-        <div class="cal-sheet-table-wrap">
-          <table class="cal-sheet-table">
-            <thead>
-              <tr>
-                <th class="th-sun">일 (SUN)</th>
-                <th>월 (MON)</th>
-                <th>화 (TUE)</th>
-                <th>수 (WED)</th>
-                <th>목 (THU)</th>
-                <th>금 (FRI)</th>
-                <th class="th-sat">토 (SAT)</th>
-              </tr>
-            </thead>
-            <tbody id="calendarTableBody"></tbody>
-          </table>
+        <!-- [중앙] 7열 만년 달력 그리드 표 -->
+        <div class="cal-sheet-grid-container">
+          <div class="cal-sheet-grid-header">
+            <div class="th-sun">일 (SUN)</div>
+            <div>월 (MON)</div>
+            <div>화 (TUE)</div>
+            <div>수 (WED)</div>
+            <div>목 (THU)</div>
+            <div>금 (FRI)</div>
+            <div class="th-sat">토 (SAT)</div>
+          </div>
+          <div id="calendarGridBody" class="cal-sheet-grid-body cal-rows-6">
+            <!-- JS 동적 셀 생성 -->
+          </div>
         </div>
 
+        <!-- [하단] 메모 & 결산 -->
         <div class="cal-sheet-footer">
           <div class="cal-sheet-memo-box">
             <span class="memo-tag">📌 이달의 중요 메모 / 결산 & 피드백</span>
@@ -521,7 +522,7 @@
     </div>
   </div>
 
-  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 (신규) -->
+  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 -->
   <div id="shopping-ledger-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 360px; text-align: left;">
       <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeLedgerModal()" title="닫기">✕</button>
