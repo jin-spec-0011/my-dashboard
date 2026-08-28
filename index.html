@@ -273,18 +273,39 @@
           <span class="cat-chip" onclick="App.schedule.selectCategory('개인/업무')">💼 개인/업무</span>
         </div>
 
-        <!-- 4. 번호(1~50) 먼저, 5. 구역(A~Z) 나중에 -->
+        <!-- 4. 기둥 번호(1~50) 먼저, 5. 구역(A~Z) 나중에 -->
         <div class="grid-2">
           <div class="form-group">
             <label>4. 기둥 번호 (1~50)</label>
-            <div class="select-wrapper"><select class="parking-select" id="rowSelect"></select></div>
+            <div class="select-wrapper">
+              <select class="parking-select" id="rowSelect">
+                <option value="1">1번</option><option value="2">2번</option><option value="3">3번</option><option value="4">4번</option><option value="5">5번</option>
+                <option value="6">6번</option><option value="7">7번</option><option value="8">8번</option><option value="9">9번</option><option value="10">10번</option>
+                <option value="11">11번</option><option value="12">12번</option><option value="13">13번</option><option value="14">14번</option><option value="15">15번</option>
+                <option value="16">16번</option><option value="17">17번</option><option value="18" selected>18번</option><option value="19">19번</option><option value="20">20번</option>
+                <option value="21">21번</option><option value="22">22번</option><option value="23">23번</option><option value="24">24번</option><option value="25">25번</option>
+                <option value="26">26번</option><option value="27">27번</option><option value="28">28번</option><option value="29">29번</option><option value="30">30번</option>
+                <option value="31">31번</option><option value="32">32번</option><option value="33">33번</option><option value="34">34번</option><option value="35">35번</option>
+                <option value="36">36번</option><option value="37">37번</option><option value="38">38번</option><option value="39">39번</option><option value="40">40번</option>
+                <option value="41">41번</option><option value="42">42번</option><option value="43">43번</option><option value="44">44번</option><option value="45">45번</option>
+                <option value="46">46번</option><option value="47">47번</option><option value="48">48번</option><option value="49">49번</option><option value="50">50번</option>
+              </select>
+            </div>
           </div>
+
           <div class="form-group">
             <label>5. 구역 / 열 (A~Z)</label>
-            <div class="select-wrapper"><select class="parking-select" id="colSelect"></select></div>
+            <div class="select-wrapper">
+              <select class="parking-select" id="colSelect">
+                <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                <option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option>
+                <option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option>
+                <option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option>
+                <option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
+              </select>
+            </div>
           </div>
         </div>
-      
 
         <div class="memo-input-row">
           <input type="text" id="scheduleMemoInput" class="memo-text-input" placeholder="상세 메모 (선택 입력)">
