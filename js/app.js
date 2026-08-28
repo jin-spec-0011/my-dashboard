@@ -470,11 +470,20 @@ window.App = Object.assign(window.App || {}, {
       console.warn("Firebase 연결 대기 (로컬 모드 실행):", e);
     }
 
+        // 해시 주소(#parking 등)가 있으면 해당 화면으로 직행, 없으면 home으로 이동
+    const targetHash = window.location.hash.replace('#', '');
+    const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
+
     if (safeGet('gogo_auth_pass') === 'true') {
-      this.router.go('home');
+      if (validScreens.includes(targetHash)) {
+        this.router.go(targetHash);
+      } else {
+        this.router.go('home');
+      }
     } else {
       this.router.go('lock');
     }
+
   }
 });
 
