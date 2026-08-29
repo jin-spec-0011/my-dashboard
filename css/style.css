@@ -799,7 +799,7 @@ textarea:focus {
   outline: none;
 }
 
-/* ── 🗓️ 화면 뷰어용 그리드 달력 (테두리 일관성 강화) ── */
+/* ── 🗓️ 화면 뷰어용 그리드 달력 ── */
 .cal-sheet-grid-container {
   width: 100%;
   display: flex;
@@ -807,8 +807,7 @@ textarea:focus {
   border: 2px solid #0f172a;
   border-radius: 4px;
   overflow: hidden;
-  background: #0f172a;
-  gap: 0;
+  box-sizing: border-box;
 }
 
 .cal-sheet-grid-header {
@@ -817,6 +816,8 @@ textarea:focus {
   background: #f1f5f9;
   text-align: center;
   width: 100%;
+  border-bottom: 2px solid #0f172a;
+  box-sizing: border-box;
 }
 
 .cal-sheet-grid-header > div {
@@ -825,19 +826,18 @@ textarea:focus {
   color: #1e293b;
   padding: 6px 0;
   border-right: 1px solid #cbd5e1;
-  border-bottom: 2px solid #0f172a;
-  background-clip: padding-box;
+  box-sizing: border-box;
 }
 .cal-sheet-grid-header > div:last-child { border-right: none; }
-.cal-sheet-grid-header .th-sun { color: #dc2626; background-color: #fee2e2; }
-.cal-sheet-grid-header .th-sat { color: #2563eb; background-color: #dbeafe; }
+.cal-sheet-grid-header .th-sun { color: #dc2626; background: #fee2e2; }
+.cal-sheet-grid-header .th-sat { color: #2563eb; background: #dbeafe; }
 
 .cal-sheet-grid-body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   width: 100%;
   background: #ffffff;
-  gap: 0;
+  box-sizing: border-box;
 }
 
 .cal-sheet-grid-body.cal-rows-5 {
@@ -857,7 +857,6 @@ textarea:focus {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  background-clip: padding-box;
 }
 
 .cal-grid-cell:nth-child(7n) {
@@ -949,7 +948,7 @@ textarea:focus {
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 무손실 인쇄 전용 CSS (일·토 그리드 완전 연결 픽스)
+   🖨️ A4 1장 무손실 인쇄 전용 CSS (요일 구분선 및 전체 그리드 픽스)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
@@ -1047,7 +1046,7 @@ textarea:focus {
   .goal-tag { color: #000000 !important; font-size: 8pt !important; }
   .goal-input { color: #000000 !important; font-size: 9.5pt !important; }
 
-  /* 🌟 [핵심] 컨테이너 및 헤더 전체 구분선 완벽 연결 */
+  /* 🌟 [핵심 수정] 달력 전체 외곽선 2px 고정 */
   .cal-sheet-grid-container {
     flex: 1 1 auto !important;
     display: flex !important;
@@ -1055,32 +1054,32 @@ textarea:focus {
     height: 100% !important;
     border: 2px solid #000000 !important;
     border-radius: 0 !important;
-    background: transparent !important;
-    gap: 0 !important;
     box-sizing: border-box !important;
+    background: transparent !important;
   }
 
+  /* 🌟 [핵심 수정] 요일 헤더 아래에 굵고 선명한 2px 검은색 가로선 직접 부여 */
   .cal-sheet-grid-header {
     height: 6.5mm !important;
     flex-shrink: 0 !important;
-    background: #f1f5f9 !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
     width: 100% !important;
+    border-bottom: 2px solid #000000 !important;
+    box-sizing: border-box !important;
+    background: #f1f5f9 !important;
   }
 
-  /* 🌟 [핵심] 일요일/토요일 포함 모든 헤더 셀에 동일한 하단선 및 우측선 강제 부여 */
   .cal-sheet-grid-header > div {
     border-right: 1px solid #000000 !important;
-    border-bottom: 2px solid #000000 !important;
     font-size: 9pt !important;
-    padding: 1.2mm 0 !important;
+    font-weight: 800 !important;
     color: #000000 !important;
-    background-clip: padding-box !important;
-    box-sizing: border-box !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    box-sizing: border-box !important;
+    height: 100% !important;
   }
 
   .cal-sheet-grid-header > div:last-child {
@@ -1097,14 +1096,15 @@ textarea:focus {
     color: #2563eb !important;
   }
 
+  /* 🌟 [핵심 수정] 날짜 본체 영역 그리드 */
   .cal-sheet-grid-body {
     flex: 1 1 auto !important;
     height: calc(100% - 6.5mm) !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
-    background: transparent !important;
-    gap: 0 !important;
     width: 100% !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
   }
 
   .cal-sheet-grid-body.cal-rows-5 {
@@ -1125,7 +1125,6 @@ textarea:focus {
     min-height: 0 !important;
     height: 100% !important;
     box-sizing: border-box !important;
-    background-clip: padding-box !important;
   }
 
   .cal-grid-cell:nth-child(7n) {
@@ -1141,6 +1140,7 @@ textarea:focus {
     background-color: #ffffff !important;
   }
 
+  /* ★ 일자 숫자 폰트 40px 유지 ★ */
   .cell-date-num {
     font-size: 40px !important;
     font-weight: 900 !important;
