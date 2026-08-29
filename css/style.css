@@ -27,8 +27,10 @@ body {
   justify-content: center;
   min-height: 100vh;
   padding: 16px 12px 40px;
+  width: 100%;
 }
 
+/* 📱 전 기기 반응형 화면 컨테이너 (아이폰/아이패드/PC 자동 맞춤) */
 .screen {
   display: none;
   width: 100%;
@@ -36,6 +38,13 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .screen {
+    max-width: 560px;
+  }
 }
 
 #screen-calendar.active {
@@ -355,13 +364,20 @@ body {
 }
 
 .form-card { display: flex; flex-direction: column; gap: 14px; }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .form-group label { font-size: 12.5px; font-weight: 700; color: #475569; }
 
+/* 🌟 [수정] 2열 그리드 1:1 완벽 고정 분할 및 넘침 방지 */
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.grid-2 > div {
+  min-width: 0;
+  width: 100%;
 }
 
 .toggle-group {
@@ -369,20 +385,32 @@ body {
   background: #f1f5f9;
   padding: 3px;
   border-radius: 12px;
-  gap: 3px;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  align-items: center;
 }
 
 .btn-toggle {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
-  padding: 9px 0;
-  font-size: 13.5px;
+  padding: 0 2px;
+  height: 38px;
+  font-size: 12px;
   font-weight: 700;
   color: #64748b;
   border-radius: 9px;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-toggle.active {
@@ -391,19 +419,49 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-.select-wrapper { position: relative; width: 100%; }
+.select-wrapper { position: relative; width: 100%; min-width: 0; }
 
-.parking-select, .memo-text-input {
+/* 🌟 [수정] 모든 입력창(텍스트/날짜/숫자) iOS Safari 호환성 완벽 초기화 */
+.parking-select,
+.memo-text-input,
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="password"],
+select,
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 100%;
+  min-width: 0;
   height: 44px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
   background: #ffffff;
-  padding: 0 12px;
-  font-size: 14px;
+  padding: 0 10px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #0f172a;
   outline: none;
+  box-sizing: border-box;
+}
+
+/* 🌟 iOS 사파리 날짜 입력창 정렬 및 크기 최적화 */
+input[type="date"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12.5px;
+  padding: 0 4px;
+}
+
+.parking-select:focus,
+.memo-text-input:focus,
+input:focus,
+textarea:focus {
+  border-color: var(--primary-color);
 }
 
 .btn-save {
@@ -417,6 +475,32 @@ body {
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+/* 🌟 [수정] 장보기 추가 입력 행: 버튼 줄바꿈 방지 */
+.input-with-btn-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.input-with-btn-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-inline-action {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: auto !important;
+  min-width: 64px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* ── 🚗 주차 사진 업로드 ── */
@@ -480,8 +564,8 @@ body {
   width: 100%;
 }
 
-.log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.log-text { font-size: 13.5px; font-weight: 700; color: #0f172a; }
+.log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.log-text { font-size: 13.5px; font-weight: 700; color: #0f172a; word-break: break-all; }
 .log-time { font-size: 11.5px; color: var(--text-sub); }
 .delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
 .parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
@@ -561,7 +645,7 @@ body {
   cursor: pointer;
 }
 .tab-btn.active { background: #334155; color: #ffffff; border-color: #334155; }
-.todo-list-wrap, .sticky-grid-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.todo-list-wrap, .sticky-grid-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; width: 100%; }
 
 /* ── 📅 만년 캘린더 뷰어 스타일 ── */
 .device-switch-bar {
