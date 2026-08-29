@@ -837,7 +837,7 @@ body {
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 인쇄 전용 CSS (빈 목표/메모 완전 숨김 및 균등 확장)
+   🖨️ A4 1장 인쇄 전용 CSS (날짜 숫자 40px 고정 적용)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
@@ -993,14 +993,16 @@ body {
     background: #ffffff !important;
   }
 
+  /* ★ 일자 부분 숫자 폰트 사이즈 40 고정 ★ */
   .cell-date-num {
-    font-size: 10pt !important;
+    font-size: 40px !important;
     font-weight: 900 !important;
+    line-height: 1 !important;
     margin-bottom: 1mm !important;
   }
 
   .cell-events-wrap {
-    max-height: calc(100% - 4mm) !important;
+    max-height: calc(100% - 12mm) !important;
     gap: 0.8mm !important;
   }
 
