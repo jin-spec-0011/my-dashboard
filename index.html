@@ -233,7 +233,7 @@
     </div>
   </section>
 
-  <!-- 3. 🗓️ 가족 일정 화면 -->
+  <!-- 3. 🗓️ 가족 일정 관리 화면 (날짜/작성자 1:1 완벽 정렬) -->
   <section id="screen-schedule" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -303,7 +303,6 @@
     <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
       <div class="print-calendar-sheet" id="printCalendarSheet">
         
-        <!-- [상단 헤더 & 목표] -->
         <div class="cal-sheet-header">
           <div class="cal-sheet-title-row">
             <h1 class="cal-sheet-title" id="calPrintTitle">2026년 8월</h1>
@@ -315,7 +314,6 @@
           </div>
         </div>
 
-        <!-- [중앙 7열 균등 격자 달력] -->
         <div class="cal-sheet-grid-container">
           <div class="cal-sheet-grid-header">
             <div class="th-sun">일 (SUN)</div>
@@ -329,7 +327,6 @@
           <div id="calendarGridBody" class="cal-sheet-grid-body cal-rows-6"></div>
         </div>
 
-        <!-- [하단 결산 및 일정 메모] -->
         <div class="cal-sheet-footer" id="calFooterBox">
           <div class="cal-sheet-memo-box" id="calMemoBox">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -344,7 +341,7 @@
     </div>
   </section>
 
-  <!-- 5. 📝 장보기 & 메모 화면 -->
+  <!-- 5. 📝 장보기 & 메모 화면 (버튼 줄바꿈 방지 클래스 적용) -->
   <section id="screen-memo" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -357,9 +354,9 @@
     <div id="memoTodoSection" class="card form-card">
       <div class="form-group">
         <label>장보기 품목 / 할 일 추가</label>
-        <div style="display: flex; gap: 8px;">
+        <div class="input-with-btn-row">
           <input type="text" id="todoInput" class="memo-text-input" placeholder="살 물건 또는 할 일..." onkeydown="if(event.key==='Enter') App.memo.addTodo()">
-          <button type="button" class="btn-save" style="width: auto; padding: 0 16px; margin: 0;" onclick="App.memo.addTodo()">추가</button>
+          <button type="button" class="btn-save btn-inline-action" onclick="App.memo.addTodo()">추가</button>
         </div>
       </div>
       <div id="todoList" class="todo-list-wrap"></div>
@@ -374,7 +371,7 @@
     </div>
   </section>
 
-  <!-- 6. 💰 간편 가계부 화면 -->
+  <!-- 6. 💰 간편 가계부 화면 (날짜/금액 1:1 완벽 정렬) -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -438,7 +435,7 @@
     </div>
   </section>
 
-  <!-- 7. ✈️ 가족 여행 지도 화면 -->
+  <!-- 7. ✈️ 가족 여행 지도 화면 (여행지/날짜 1:1 완벽 정렬) -->
   <section id="screen-trip" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -525,7 +522,7 @@
     </div>
   </div>
 
-  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 -->
+  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 (금액/날짜 1:1 완벽 정렬) -->
   <div id="shopping-ledger-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 360px; text-align: left;">
       <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeLedgerModal()" title="닫기">✕</button>
