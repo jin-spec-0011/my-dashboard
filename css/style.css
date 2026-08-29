@@ -799,22 +799,24 @@ textarea:focus {
   outline: none;
 }
 
-/* ── 🗓️ 화면 뷰어용 그리드 달력 ── */
+/* ── 🗓️ 화면 뷰어용 그리드 달력 (테두리 일관성 강화) ── */
 .cal-sheet-grid-container {
   width: 100%;
   display: flex;
   flex-direction: column;
-  border: 1.5px solid #0f172a;
+  border: 2px solid #0f172a;
   border-radius: 4px;
   overflow: hidden;
+  background: #0f172a;
+  gap: 0;
 }
 
 .cal-sheet-grid-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   background: #f1f5f9;
-  border-bottom: 1.5px solid #0f172a;
   text-align: center;
+  width: 100%;
 }
 
 .cal-sheet-grid-header > div {
@@ -823,17 +825,19 @@ textarea:focus {
   color: #1e293b;
   padding: 6px 0;
   border-right: 1px solid #cbd5e1;
+  border-bottom: 2px solid #0f172a;
+  background-clip: padding-box;
 }
 .cal-sheet-grid-header > div:last-child { border-right: none; }
-.cal-sheet-grid-header .th-sun { color: #dc2626; background: #fee2e2; }
-.cal-sheet-grid-header .th-sat { color: #2563eb; background: #dbeafe; }
+.cal-sheet-grid-header .th-sun { color: #dc2626; background-color: #fee2e2; }
+.cal-sheet-grid-header .th-sat { color: #2563eb; background-color: #dbeafe; }
 
 .cal-sheet-grid-body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   width: 100%;
-  background: #cbd5e1;
-  gap: 1px;
+  background: #ffffff;
+  gap: 0;
 }
 
 .cal-sheet-grid-body.cal-rows-5 {
@@ -846,11 +850,23 @@ textarea:focus {
 
 .cal-grid-cell {
   background: #ffffff;
+  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
   padding: 4px 3px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  background-clip: padding-box;
+}
+
+.cal-grid-cell:nth-child(7n) {
+  border-right: none;
+}
+
+.cal-sheet-grid-body.cal-rows-5 .cal-grid-cell:nth-child(n+29),
+.cal-sheet-grid-body.cal-rows-6 .cal-grid-cell:nth-child(n+36) {
+  border-bottom: none;
 }
 
 .cal-grid-cell.cell-empty { background: #f8fafc; }
@@ -933,12 +949,12 @@ textarea:focus {
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 무손실 인쇄 전용 CSS (격자선 영구 고정 & 하단 잘림 해결)
+   🖨️ A4 1장 무손실 인쇄 전용 CSS (일·토 그리드 완전 연결 픽스)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 6mm 6mm 6mm 6mm !important; /* 상하좌우 안전 여백 */
+    margin: 6mm 6mm 6mm 6mm !important;
   }
 
   * {
@@ -988,7 +1004,6 @@ textarea:focus {
     height: 100% !important;
   }
 
-  /* A4 높이 안전 치수(270mm) 고정으로 하단 잘림 원천 차단 */
   .print-calendar-sheet {
     width: 100% !important;
     height: 270mm !important;
@@ -1032,7 +1047,7 @@ textarea:focus {
   .goal-tag { color: #000000 !important; font-size: 8pt !important; }
   .goal-input { color: #000000 !important; font-size: 9.5pt !important; }
 
-  /* 🌟 [핵심] 격자선이 절대 사라지지 않는 보더 박스 구조 */
+  /* 🌟 [핵심] 컨테이너 및 헤더 전체 구분선 완벽 연결 */
   .cal-sheet-grid-container {
     flex: 1 1 auto !important;
     display: flex !important;
@@ -1042,38 +1057,54 @@ textarea:focus {
     border-radius: 0 !important;
     background: transparent !important;
     gap: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .cal-sheet-grid-header {
-    height: 6mm !important;
+    height: 6.5mm !important;
     flex-shrink: 0 !important;
-    border-bottom: 2px solid #000000 !important;
     background: #f1f5f9 !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
+    width: 100% !important;
   }
 
+  /* 🌟 [핵심] 일요일/토요일 포함 모든 헤더 셀에 동일한 하단선 및 우측선 강제 부여 */
   .cal-sheet-grid-header > div {
     border-right: 1px solid #000000 !important;
+    border-bottom: 2px solid #000000 !important;
     font-size: 9pt !important;
-    padding: 1mm 0 !important;
+    padding: 1.2mm 0 !important;
     color: #000000 !important;
+    background-clip: padding-box !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
+
   .cal-sheet-grid-header > div:last-child {
     border-right: none !important;
   }
 
-  .cal-sheet-grid-header .th-sun { background: #fee2e2 !important; color: #dc2626 !important; }
-  .cal-sheet-grid-header .th-sat { background: #dbeafe !important; color: #2563eb !important; }
+  .cal-sheet-grid-header .th-sun {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+  }
 
-  /* 🌟 모든 셀에 명시적 테두리(border)를 직접 주어 배경 그래픽 꺼짐에도 완벽 인쇄 */
+  .cal-sheet-grid-header .th-sat {
+    background-color: #dbeafe !important;
+    color: #2563eb !important;
+  }
+
   .cal-sheet-grid-body {
     flex: 1 1 auto !important;
-    height: calc(100% - 6mm) !important;
+    height: calc(100% - 6.5mm) !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
     background: transparent !important;
     gap: 0 !important;
+    width: 100% !important;
   }
 
   .cal-sheet-grid-body.cal-rows-5 {
@@ -1085,7 +1116,7 @@ textarea:focus {
   }
 
   .cal-grid-cell {
-    background: #ffffff !important;
+    background-color: #ffffff !important;
     border-right: 1px solid #000000 !important;
     border-bottom: 1px solid #000000 !important;
     padding: 1mm 1.5mm !important;
@@ -1094,24 +1125,22 @@ textarea:focus {
     min-height: 0 !important;
     height: 100% !important;
     box-sizing: border-box !important;
+    background-clip: padding-box !important;
   }
 
-  /* 7번째 열(토요일)은 우측 테두리 제거 */
   .cal-grid-cell:nth-child(7n) {
     border-right: none !important;
   }
 
-  /* 마지막 5/6주차 행은 하단 테두리 제거 (컨테이너 외곽선과 겹침 방지) */
   .cal-sheet-grid-body.cal-rows-5 .cal-grid-cell:nth-child(n+29),
   .cal-sheet-grid-body.cal-rows-6 .cal-grid-cell:nth-child(n+36) {
     border-bottom: none !important;
   }
 
   .cal-grid-cell.cell-today {
-    background: #ffffff !important;
+    background-color: #ffffff !important;
   }
 
-  /* ★ 일자 부분 숫자 폰트 사이즈 40px 정밀 고정 ★ */
   .cell-date-num {
     font-size: 40px !important;
     font-weight: 900 !important;
