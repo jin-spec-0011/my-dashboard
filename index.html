@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GOGO 스마트 매니저</title>
   
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="GOGO매니저">
+
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
   <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
 
@@ -13,6 +18,8 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- PDF 엑스포트 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -35,6 +42,7 @@
         <span class="today-date-text" id="homeTodayDate"></span>
       </div>
       <div class="header-right">
+        <button type="button" class="btn-push-toggle" id="btnPushToggle" onclick="App.push.requestPermission()" title="푸시 알림 켜기">🔔 알림 켜기</button>
         <span class="cloud-badge" id="cloudStatusBadge">☁️ 동기화 중</span>
         <button type="button" class="btn-icon-lock" onclick="App.auth.lock()" title="화면 잠금">🔒</button>
       </div>
@@ -107,7 +115,7 @@
             <span class="card-title">간편 가계부</span>
             <span class="menu-new-badge" id="badge-ledger" style="display: none;">N</span>
           </div>
-          <span class="card-desc">월별 예산 및 지출 집계</span>
+          <span class="card-desc">월별 예산 및 엑셀 다운로드</span>
         </div>
       </div>
 
@@ -219,7 +227,10 @@
 
     <div class="card list-card">
       <div class="list-header">
-        <h3>📋 차량별 현재 주차 위치</h3>
+        <div>
+          <h3>📋 차량별 현재 주차 위치</h3>
+          <span style="font-size: 11px; color: var(--text-sub);">차종별 최근 2개 기록 유지</span>
+        </div>
         <button type="button" class="btn-clear" onclick="App.parking.clear()">전체삭제</button>
       </div>
 
@@ -233,12 +244,19 @@
     </div>
   </section>
 
-  <!-- 3. 🗓️ 가족 일정 관리 화면 (날짜/작성자 1:1 완벽 정렬) -->
+  <!-- 3. 🗓️ 가족 일정 관리 화면 (클릭 시 수정 모드 연동) -->
   <section id="screen-schedule" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>🗓️ 가족 일정 관리</h2>
     </div>
+
+    <!-- 수정 모드 안내 바 -->
+    <div id="scheduleEditBanner" class="edit-mode-banner" style="display: none;">
+      <span>✏️ 일정 수정 모드 중입니다.</span>
+      <button type="button" class="btn-cancel-edit" onclick="App.schedule.cancelEdit()">수정 취소</button>
+    </div>
+
     <div class="card form-card">
       <div class="form-group">
         <label>일정 제목</label>
@@ -252,9 +270,9 @@
         <div class="form-group">
           <label>작성자</label>
           <div class="toggle-group" id="scheduleAuthorGroup">
-            <button type="button" class="btn-toggle active" onclick="App.schedule.selectAuthor('진세')">진세</button>
-            <button type="button" class="btn-toggle" onclick="App.schedule.selectAuthor('지혜')">지혜</button>
-            <button type="button" class="btn-toggle" onclick="App.schedule.selectAuthor('가족')">가족</button>
+            <button type="button" class="btn-toggle active" id="btn-author-jinse" onclick="App.schedule.selectAuthor('진세')">진세</button>
+            <button type="button" class="btn-toggle" id="btn-author-jihye" onclick="App.schedule.selectAuthor('지혜')">지혜</button>
+            <button type="button" class="btn-toggle" id="btn-author-fam" onclick="App.schedule.selectAuthor('가족')">가족</button>
           </div>
         </div>
       </div>
@@ -264,15 +282,17 @@
           <span style="font-size: 13px; font-weight: 700; color: #be185d;">🔒 나만 보기 (비공개 개인 일정)</span>
         </label>
       </div>
-      <button type="button" class="btn-save" onclick="App.schedule.add()">일정 등록</button>
+      <button type="button" id="btnSaveSchedule" class="btn-save" onclick="App.schedule.saveOrUpdate()">일정 등록</button>
     </div>
     <div class="card list-card">
-      <div class="list-header"><h3>📋 등록된 일정</h3></div>
+      <div class="list-header">
+        <h3>📋 등록된 일정 (클릭하여 수정)</h3>
+      </div>
       <div id="scheduleList" class="log-list"></div>
     </div>
   </section>
 
-  <!-- 4. 📅 만년 캘린더 화면 -->
+  <!-- 4. 📅 만년 캘린더 화면 (PDF 엑스포트 탑재) -->
   <section id="screen-calendar" class="screen">
     <div class="header-nav no-print">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -297,7 +317,10 @@
         <span class="cal-unit">월</span>
         <button type="button" class="btn-prof" onclick="App.calendar.nextMonth()">다음달 ▶</button>
       </div>
-      <button type="button" class="btn-print-action" onclick="window.print()">🖨️ A4 꽉 차게 인쇄</button>
+      <div style="display: flex; gap: 6px;">
+        <button type="button" class="btn-pdf-export" onclick="App.calendar.exportPDF()">📄 PDF 저장</button>
+        <button type="button" class="btn-print-action" onclick="window.print()">🖨️ A4 인쇄</button>
+      </div>
     </div>
 
     <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
@@ -305,7 +328,7 @@
         
         <div class="cal-sheet-header">
           <div class="cal-sheet-title-row">
-            <h1 class="cal-sheet-title" id="calPrintTitle">2026년 8월</h1>
+            <h1 class="cal-sheet-title" id="calPrintTitle">2026년 9월</h1>
             <span class="cal-sheet-sub">GOGO FAMILY CALENDAR</span>
           </div>
           <div class="cal-sheet-goal-box" id="calGoalBox">
@@ -341,7 +364,7 @@
     </div>
   </section>
 
-  <!-- 5. 📝 장보기 & 메모 화면 (버튼 줄바꿈 방지 클래스 적용) -->
+  <!-- 5. 📝 장보기 & 메모 화면 -->
   <section id="screen-memo" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -371,17 +394,27 @@
     </div>
   </section>
 
-  <!-- 6. 💰 간편 가계부 화면 (날짜/금액 1:1 완벽 정렬) -->
+  <!-- 6. 💰 간편 가계부 화면 (월별 조회 & 엑셀 내보내기) -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>💰 간편 가계부</h2>
     </div>
 
+    <!-- 가계부 월별 선택 및 엑셀 내보내기 툴바 -->
+    <div class="ledger-month-toolbar">
+      <div class="ledger-month-nav">
+        <button type="button" class="btn-month-step" onclick="App.ledger.prevMonth()">◀</button>
+        <input type="month" id="ledgerMonthPicker" class="ledger-month-picker" onchange="App.ledger.changeMonth(this.value)">
+        <button type="button" class="btn-month-step" onclick="App.ledger.nextMonth()">▶</button>
+      </div>
+      <button type="button" class="btn-excel-export" onclick="App.ledger.exportExcel()">📥 엑셀(CSV) 저장</button>
+    </div>
+
     <div class="card budget-card">
       <div class="budget-card-header">
         <div>
-          <span class="budget-sub-title" id="ledgerMonthLabel">2026년 8월 총 지출</span>
+          <span class="budget-sub-title" id="ledgerMonthLabel">2026년 9월 총 지출</span>
           <h3 class="budget-spend-total" id="ledgerTotalSpendDisplay">0원</h3>
         </div>
         <button type="button" class="btn-budget-edit" onclick="App.ledger.promptBudgetChange()">⚙️ 예산 설정</button>
@@ -435,7 +468,7 @@
     </div>
   </section>
 
-  <!-- 7. ✈️ 가족 여행 지도 화면 (여행지/날짜 1:1 완벽 정렬) -->
+  <!-- 7. ✈️ 가족 여행 지도 화면 -->
   <section id="screen-trip" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -522,7 +555,7 @@
     </div>
   </div>
 
-  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 (금액/날짜 1:1 완벽 정렬) -->
+  <!-- 13. 🛒 장보기 체크 ➔ 가계부 지출 연동 모달 -->
   <div id="shopping-ledger-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 360px; text-align: left;">
       <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeLedgerModal()" title="닫기">✕</button>
@@ -567,6 +600,7 @@
   <!-- JS 모듈 로드 -->
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/push.js"></script>
   <script src="js/parking.js"></script>
   <script src="js/schedule.js"></script>
   <script src="js/calendar.js"></script>
