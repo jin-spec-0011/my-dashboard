@@ -106,7 +106,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 각 차종별 최대 2개까지만 유지 */
+  /* 🚗 주차 저장: 각 차종별 최대 2개만 엄격하게 보관 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -139,27 +139,36 @@ App.parking = {
     if (App.stores?.parking) {
       const allItems = App.stores.parking.getItems();
       
-      // 현재 차종의 기존 기록 중 최신 1개만 남기고 필터링 (새것 추가 시 총 2개 유지)
+      // 현재 차종의 기존 기록 중 최신 1개만 남김 (새 기록 추가 시 총 2개)
       const sameCarItems = allItems.filter(i => (i.car || '').toLowerCase() === car.toLowerCase());
       const otherCarItems = allItems.filter(i => (i.car || '').toLowerCase() !== car.toLowerCase());
       
-      const keptSameCar = sameCarItems.slice(0, 1); // 1개만 보존
-      const updatedList = [newLog, ...keptSameCar, ...otherCarItems];
+      const keptSameCar = sameCarItems.slice(0, 1);
+      const combinedList = [newLog, ...keptSameCar, ...otherCarItems];
 
-      // 스토어 갱신
-      safeSet('parking_logs', JSON.stringify(updatedList));
+      // 모든 차종에 대해 각각 최대 2개만 유지되도록 보장
+      const finalCleanList = [];
+      const countMap = {};
+      combinedList.forEach(item => {
+        const cKey = (item.car || '').toLowerCase();
+        countMap[cKey] = (countMap[cKey] || 0) + 1;
+        if (countMap[cKey] <= 2) {
+          finalCleanList.push(item);
+        }
+      });
+
+      safeSet('parking_logs', JSON.stringify(finalCleanList));
       if (App.isFirebaseActive && App.db) {
-        App.db.ref('parking_logs').set(updatedList);
+        App.db.ref('parking_logs').set(finalCleanList);
       }
-      this.render(updatedList);
+      this.render(finalCleanList);
     }
 
     this.removePhoto();
-    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료! (최신 2개 유지)`);
+    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료! (차종별 2개 유지)`);
     if (App.ticker) App.ticker.refresh();
   },
 
-  /* 0번 요구사항: 삭제 시 팝업 확인 */
   delete(id) {
     if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
       if (App.stores?.parking) {
@@ -188,7 +197,6 @@ App.parking = {
     this.render(App.stores?.parking ? App.stores.parking.getItems() : []);
   },
 
-  /* 1번 요구사항: 최신 일자 업데이트는 테두리 강조 처리 */
   render(items = []) {
     const listEl = document.getElementById('logList');
     if (!listEl) return;
@@ -203,7 +211,7 @@ App.parking = {
       return;
     }
 
-    // 각 차종별 가장 최신 아이템의 ID를 식별하여 테두리 강조
+    // 각 차종별 가장 최신 1개 아이템의 ID를 식별하여 테두리 강조
     const latestIds = {};
     items.forEach(it => {
       const carKey = (it.car || '').toLowerCase();
