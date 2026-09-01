@@ -162,10 +162,13 @@ App.memo = {
     if (App.ticker) App.ticker.refresh();
   },
 
+  /* 0번 요구사항: 장보기 삭제 시 팝업 확인 */
   deleteTodo(id) {
-    if (App.stores?.todos) {
-      App.stores.todos.remove(id);
-      App.ui.toast("🗑️ 항목이 삭제되었습니다.");
+    if (confirm("해당 장보기 항목을 삭제하시겠습니까?")) {
+      if (App.stores?.todos) {
+        App.stores.todos.remove(id);
+        App.ui.toast("🗑️ 항목이 삭제되었습니다.");
+      }
     }
   },
 
@@ -211,8 +214,9 @@ App.memo = {
     App.ui.toast("📌 고정 메모가 저장되었습니다.");
   },
 
+  /* 0번 요구사항: 메모 삭제 시 팝업 확인 */
   deleteSticky(id) {
-    if (confirm("해당 메모를 삭제하시겠습니까?")) {
+    if (confirm("해당 고정 메모를 삭제하시겠습니까?")) {
       if (App.stores?.stickies) {
         App.stores.stickies.remove(id);
         App.ui.toast("🗑️ 메모가 삭제되었습니다.");
