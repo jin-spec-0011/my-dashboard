@@ -871,16 +871,36 @@ textarea:focus {
 .cal-grid-cell.cell-empty { background: #f8fafc; }
 .cal-grid-cell.cell-today { background: #eff6ff; }
 
+/* 🌟 날짜 숫자 + 공휴일 태그 헤더 행 */
+.cell-date-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
 .cell-date-num {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
-  margin-bottom: 3px;
 }
 
 .cell-date-num.sun { color: #dc2626; }
 .cell-date-num.sat { color: #2563eb; }
+
+/* 🇰🇷 공휴일 작은 글씨 태그 */
+.cell-holiday-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: #dc2626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
 
 .cell-events-wrap {
   display: flex;
@@ -948,7 +968,7 @@ textarea:focus {
 }
 
 /* ══════════════════════════════════════════════════
-   🖨️ A4 1장 무손실 인쇄 전용 CSS (일·토 배경색 침범 원천 차단)
+   🖨️ A4 1장 무손실 인쇄 전용 CSS (공휴일 작은 글씨 및 완벽 그리드)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
@@ -1046,7 +1066,6 @@ textarea:focus {
   .goal-tag { color: #000000 !important; font-size: 8pt !important; }
   .goal-input { color: #000000 !important; font-size: 9.5pt !important; }
 
-  /* 🌟 전체 외곽 테두리 */
   .cal-sheet-grid-container {
     flex: 1 1 auto !important;
     display: flex !important;
@@ -1058,7 +1077,6 @@ textarea:focus {
     background: transparent !important;
   }
 
-  /* 🌟 요일 헤더: 7열 분할 */
   .cal-sheet-grid-header {
     height: 6.5mm !important;
     flex-shrink: 0 !important;
@@ -1067,8 +1085,6 @@ textarea:focus {
     width: 100% !important;
     box-sizing: border-box !important;
     background: #f1f5f9 !important;
-    position: relative !important;
-    z-index: 1 !important;
   }
 
   .cal-sheet-grid-header > div {
@@ -1097,7 +1113,6 @@ textarea:focus {
     color: #2563eb !important;
   }
 
-  /* 🌟 [핵심] 날짜 영역 상단에 2px 검은색 실선을 부여하고 z-index로 헤더 배경색 위로 띄움 */
   .cal-sheet-grid-body {
     flex: 1 1 auto !important;
     height: calc(100% - 6.5mm) !important;
@@ -1107,8 +1122,6 @@ textarea:focus {
     border-top: 2px solid #000000 !important;
     box-sizing: border-box !important;
     background: transparent !important;
-    position: relative !important;
-    z-index: 5 !important;
   }
 
   .cal-sheet-grid-body.cal-rows-5 {
@@ -1144,12 +1157,32 @@ textarea:focus {
     background-color: #ffffff !important;
   }
 
+  /* 🌟 인쇄용 날짜 행 */
+  .cell-date-row {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    margin-bottom: 0.5mm !important;
+  }
+
+  /* ★ 일자 숫자 40px 고정 ★ */
   .cell-date-num {
     font-size: 40px !important;
     font-weight: 900 !important;
-    line-height: 0.95 !important;
-    margin-bottom: 0.5mm !important;
+    line-height: 0.9 !important;
     padding-left: 0.5mm !important;
+  }
+
+  /* ★ 공휴일 작은 글씨 (8pt) ★ */
+  .cell-holiday-tag {
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+    color: #dc2626 !important;
+    line-height: 1.1 !important;
+    text-align: right !important;
+    word-break: keep-all !important;
+    max-width: 50% !important;
   }
 
   .cell-events-wrap {
