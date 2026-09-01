@@ -106,6 +106,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
+  /* 🚗 주차 저장: 각 차종별 최대 2개까지만 유지 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -114,15 +115,11 @@ App.parking = {
     const colVal = colSelect ? colSelect.value : 'A';
     const rowVal = rowSelect ? rowSelect.value : '18';
     const isOutdoor = (type === '야외');
-
     const slotCode = `${rowVal}${colVal}`;
 
-    let locationText = '';
-    if (isOutdoor) {
-      locationText = `${car} - 야외 - ${slotCode}`;
-    } else {
-      locationText = `${car} - 지하 주차장 - ${floor} - ${slotCode}`;
-    }
+    let locationText = isOutdoor
+      ? `${car} - 야외 - ${slotCode}`
+      : `${car} - 지하 주차장 - ${floor} - ${slotCode}`;
 
     const now = new Date();
     const timeStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -140,16 +137,31 @@ App.parking = {
     };
 
     if (App.stores?.parking) {
-      App.stores.parking.add(newLog);
+      const allItems = App.stores.parking.getItems();
+      
+      // 현재 차종의 기존 기록 중 최신 1개만 남기고 필터링 (새것 추가 시 총 2개 유지)
+      const sameCarItems = allItems.filter(i => (i.car || '').toLowerCase() === car.toLowerCase());
+      const otherCarItems = allItems.filter(i => (i.car || '').toLowerCase() !== car.toLowerCase());
+      
+      const keptSameCar = sameCarItems.slice(0, 1); // 1개만 보존
+      const updatedList = [newLog, ...keptSameCar, ...otherCarItems];
+
+      // 스토어 갱신
+      safeSet('parking_logs', JSON.stringify(updatedList));
+      if (App.isFirebaseActive && App.db) {
+        App.db.ref('parking_logs').set(updatedList);
+      }
+      this.render(updatedList);
     }
 
     this.removePhoto();
-    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료!`);
+    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료! (최신 2개 유지)`);
     if (App.ticker) App.ticker.refresh();
   },
 
+  /* 0번 요구사항: 삭제 시 팝업 확인 */
   delete(id) {
-    if (confirm("해당 주차 기록을 삭제하시겠습니까?")) {
+    if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
       if (App.stores?.parking) {
         App.stores.parking.remove(id);
       }
@@ -159,7 +171,7 @@ App.parking = {
   },
 
   clear() {
-    if (confirm("차량 주차 기록을 모두 삭제하시겠습니까?")) {
+    if (confirm("전체 차량 주차 기록을 모두 초기화(삭제)하시겠습니까?")) {
       if (App.stores?.parking) {
         App.stores.parking.clear();
       }
@@ -176,6 +188,7 @@ App.parking = {
     this.render(App.stores?.parking ? App.stores.parking.getItems() : []);
   },
 
+  /* 1번 요구사항: 최신 일자 업데이트는 테두리 강조 처리 */
   render(items = []) {
     const listEl = document.getElementById('logList');
     if (!listEl) return;
@@ -190,7 +203,18 @@ App.parking = {
       return;
     }
 
+    // 각 차종별 가장 최신 아이템의 ID를 식별하여 테두리 강조
+    const latestIds = {};
+    items.forEach(it => {
+      const carKey = (it.car || '').toLowerCase();
+      if (!latestIds[carKey]) {
+        latestIds[carKey] = it.id;
+      }
+    });
+
     listEl.innerHTML = filtered.map(item => {
+      const isCarLatest = (latestIds[(item.car || '').toLowerCase()] === item.id);
+
       let mapLinks = '';
       if (item.isOutdoor && item.lat && item.lng) {
         const kmap = `kakaomap://look?p=${item.lat},${item.lng}`;
@@ -211,9 +235,12 @@ App.parking = {
       }
 
       return `
-        <div class="log-item">
+        <div class="log-item ${isCarLatest ? 'parking-latest-card' : ''}">
           <div class="log-content">
-            <div class="log-text">${escapeHtml(item.text)}</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="log-text">${escapeHtml(item.text)}</span>
+              ${isCarLatest ? '<span class="parking-latest-badge">⭐ 최신 주차</span>' : ''}
+            </div>
             <div class="log-time">🕒 ${escapeHtml(item.time)}</div>
             ${mapLinks}
           </div>
