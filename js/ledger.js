@@ -10,9 +10,65 @@ App.ledger = {
     this.currentMonthKey = todayStr.substring(0, 7);
 
     const dateInp = document.getElementById('ledgerDateInput');
-    if (dateInp) {
-      dateInp.value = todayStr;
+    const monthPicker = document.getElementById('ledgerMonthPicker');
+
+    if (dateInp) dateInp.value = todayStr;
+    if (monthPicker) monthPicker.value = this.currentMonthKey;
+  },
+
+  /* 2번 요구사항: 월별 이동 및 변경 */
+  changeMonth(newMonthKey) {
+    if (!newMonthKey) return;
+    this.currentMonthKey = newMonthKey;
+    const picker = document.getElementById('ledgerMonthPicker');
+    if (picker) picker.value = newMonthKey;
+    this.render(App.stores?.ledger ? App.stores.ledger.getItems() : []);
+  },
+
+  prevMonth() {
+    let [y, m] = this.currentMonthKey.split('-').map(Number);
+    m--;
+    if (m < 1) { m = 12; y--; }
+    this.changeMonth(`${y}-${String(m).padStart(2, '0')}`);
+  },
+
+  nextMonth() {
+    let [y, m] = this.currentMonthKey.split('-').map(Number);
+    m++;
+    if (m > 12) { m = 1; y++; }
+    this.changeMonth(`${y}-${String(m).padStart(2, '0')}`);
+  },
+
+  /* 2번 요구사항: 해당 월 지출 내역 엑셀(.CSV) 내보내기 */
+  exportExcel() {
+    const items = App.stores?.ledger ? App.stores.ledger.getItems() : [];
+    const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === this.currentMonthKey);
+
+    if (thisMonthItems.length === 0) {
+      return alert(`${this.currentMonthKey}월에 등록된 지출 내역이 없습니다.`);
     }
+
+    // CSV 헤더 및 데이터 생성 (UTF-8 BOM 추가로 엑셀 한글 깨짐 방지)
+    let csvContent = "\uFEFF날짜,사용처/내역,결제자,지출금액(원)\n";
+    thisMonthItems.forEach(item => {
+      const desc = `"${(item.desc || '').replace(/"/g, '""')}"`;
+      const date = item.date || '';
+      const author = item.author || '가족';
+      const amount = item.amount || 0;
+      csvContent += `${date},${desc},${author},${amount}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `GOGO가계부_${this.currentMonthKey}_지출내역.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    App.ui.toast(`📥 ${this.currentMonthKey}월 지출 엑셀 파일이 다운로드되었습니다.`);
   },
 
   getBudget() {
@@ -86,11 +142,14 @@ App.ledger = {
     if (amountInp) amountInp.value = '';
     if (descInp) descInp.value = '';
 
+    // 입력한 날짜의 월로 자동 뷰어 전환
+    this.changeMonth(date.substring(0, 7));
+
     App.ui.toast(`💰 ${amount.toLocaleString()}원 지출이 저장되었습니다.`);
-    this.render(App.stores?.ledger ? App.stores.ledger.getItems() : []);
     if (App.ticker) App.ticker.refresh();
   },
 
+  /* 0번 요구사항: 삭제 팝업 확인 */
   delete(id) {
     if (confirm("해당 지출 내역을 삭제하시겠습니까?")) {
       if (App.stores?.ledger) {
@@ -103,14 +162,9 @@ App.ledger = {
   },
 
   render(items = []) {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
-    const currentMonthKey = this.currentMonthKey || todayStr.substring(0, 7);
-    this.currentMonthKey = currentMonthKey;
-
-    const monthNum = parseInt(currentMonthKey.substring(5), 10);
-    const yearNum = currentMonthKey.substring(0, 4);
+    const currentMonthKey = this.currentMonthKey || new Date().toISOString().substring(0, 7);
+    const [yearNum, monthNumStr] = currentMonthKey.split('-');
+    const monthNum = parseInt(monthNumStr, 10);
 
     const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
     const totalSpend = thisMonthItems.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
@@ -125,8 +179,10 @@ App.ledger = {
     const percentDisplayEl = document.getElementById('ledgerPercentDisplay');
     const remainDisplayEl = document.getElementById('ledgerRemainDisplay');
     const progressBarEl = document.getElementById('ledgerProgressBar');
+    const summaryTitleEl = document.getElementById('ledgerSummaryTitle');
 
     if (monthLabelEl) monthLabelEl.innerText = `${yearNum}년 ${monthNum}월 총 지출`;
+    if (summaryTitleEl) summaryTitleEl.innerText = `📋 ${monthNum}월 지출 상세 내역 (${thisMonthItems.length}건)`;
     if (totalSpendEl) totalSpendEl.innerText = `${totalSpend.toLocaleString()}원`;
     if (budgetDisplayEl) budgetDisplayEl.innerText = `${budgetAmount.toLocaleString()}원`;
     if (percentDisplayEl) percentDisplayEl.innerText = `${percent}%`;
@@ -158,7 +214,7 @@ App.ledger = {
     if (!listEl) return;
 
     if (thisMonthItems.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">이번 달 지출 내역이 없습니다. 💰</div>`;
+      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">${monthNum}월 지출 내역이 없습니다. 💰</div>`;
       return;
     }
 
@@ -168,7 +224,7 @@ App.ledger = {
         <div class="log-item">
           <div class="log-content">
             <div class="log-text">${escapeHtml(descText)}</div>
-            <div class="log-time">📅 ${escapeHtml(item.date || '')} · 작성자: ${escapeHtml(item.author || '가족')}</div>
+            <div class="log-time">📅 ${escapeHtml(item.date || '')} · 결제자: ${escapeHtml(item.author || '가족')}</div>
           </div>
           <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
             <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
