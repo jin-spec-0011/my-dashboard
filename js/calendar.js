@@ -5,6 +5,80 @@ App.calendar = {
   currentMonth: new Date().getMonth() + 1,
   currentDeviceView: 'web', // 'iphone' | 'ipad' | 'web'
 
+  /* 🇰🇷 대한민국 주요 공휴일 및 대체공휴일 데이터 (2024~2030) */
+  holidays: {
+    // 2024년
+    "2024-01-01": "신정",
+    "2024-02-09": "설연휴", "2024-02-10": "설날", "2024-02-11": "설연휴", "2024-02-12": "대체공휴일",
+    "2024-03-01": "삼일절",
+    "2024-04-10": "총선",
+    "2024-05-05": "어린이날", "2024-05-06": "대체공휴일",
+    "2024-05-15": "부처님오신날",
+    "2024-06-06": "현충일",
+    "2024-08-15": "광복절",
+    "2024-09-16": "추석연휴", "2024-09-17": "추석", "2024-09-18": "추석연휴",
+    "2024-10-01": "국군의날", "2024-10-03": "개천절", "2024-10-09": "한글날",
+    "2024-12-25": "성탄절",
+
+    // 2025년
+    "2025-01-01": "신정",
+    "2025-01-28": "설연휴", "2025-01-29": "설날", "2025-01-30": "설연휴",
+    "2025-03-01": "삼일절", "2025-03-03": "대체공휴일",
+    "2025-05-05": "어린이날", "2025-05-06": "대체공휴일",
+    "2025-06-06": "현충일",
+    "2025-08-15": "광복절",
+    "2025-10-03": "개천절",
+    "2025-10-05": "추석연휴", "2025-10-06": "추석", "2025-10-07": "추석연휴", "2025-10-08": "대체공휴일",
+    "2025-10-09": "한글날",
+    "2025-12-25": "성탄절",
+
+    // 2026년
+    "2026-01-01": "신정",
+    "2026-02-16": "설연휴", "2026-02-17": "설날", "2026-02-18": "설연휴",
+    "2026-03-01": "삼일절", "2026-03-02": "대체공휴일",
+    "2026-05-05": "어린이날",
+    "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일",
+    "2026-06-03": "지방선거",
+    "2026-06-06": "현충일",
+    "2026-08-15": "광복절", "2026-08-17": "대체공휴일",
+    "2026-09-24": "추석연휴", "2026-09-25": "추석", "2026-09-26": "추석연휴", "2026-09-28": "대체공휴일",
+    "2026-10-03": "개천절", "2026-10-05": "대체공휴일",
+    "2026-10-09": "한글날",
+    "2026-12-25": "성탄절",
+
+    // 2027년
+    "2027-01-01": "신정",
+    "2027-02-06": "설연휴", "2027-02-07": "설날", "2027-02-08": "설연휴", "2027-02-09": "대체공휴일",
+    "2027-03-01": "삼일절",
+    "2027-05-05": "어린이날",
+    "2027-05-13": "부처님오신날",
+    "2027-06-06": "현충일", "2027-06-07": "대체공휴일",
+    "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
+    "2027-09-14": "추석연휴", "2027-09-15": "추석", "2027-09-16": "추석연휴",
+    "2027-10-03": "개천절", "2027-10-04": "대체공휴일",
+    "2027-10-09": "한글날", "2027-10-11": "대체공휴일",
+    "2027-12-25": "성탄절"
+  },
+
+  /* 📅 공휴일 확인 함수 */
+  getHoliday(dateStr, month, day) {
+    if (this.holidays[dateStr]) return this.holidays[dateStr];
+
+    // 기본 양력 고정 공휴일 (미등록 연도 대비 fallback)
+    const mmdd = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const fixedHolidays = {
+      "01-01": "신정",
+      "03-01": "삼일절",
+      "05-05": "어린이날",
+      "06-06": "현충일",
+      "08-15": "광복절",
+      "10-03": "개천절",
+      "10-09": "한글날",
+      "12-25": "성탄절"
+    };
+    return fixedHolidays[mmdd] || "";
+  },
+
   init() {
     const now = new Date();
     this.currentYear = now.getFullYear();
@@ -13,7 +87,6 @@ App.calendar = {
     this.generate();
   },
 
-  /* 📱 아이폰 / 아이패드 / PC(웹) 뷰어 모드 전환 */
   setDeviceView(mode) {
     this.currentDeviceView = mode;
     const wrapper = document.getElementById('calendarViewportWrapper');
@@ -60,7 +133,6 @@ App.calendar = {
     if (mInp) mInp.value = this.currentMonth;
   },
 
-  /* 🎯 목표 입력 저장 및 빈 값 감지 */
   saveGoal(val) {
     const key = `calendar_goal_${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
     safeSet(key, val);
@@ -75,7 +147,6 @@ App.calendar = {
     }
   },
 
-  /* 📌 메모 입력 저장 및 빈 값 감지 */
   saveMemo(val) {
     const key = `calendar_memo_${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
     safeSet(key, val);
@@ -90,7 +161,6 @@ App.calendar = {
     }
   },
 
-  /* 🔄 일정 데이터로부터 해당 월의 일정 메모 자동 생성 */
   getFormattedScheduleMemos(monthKey) {
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
     const thisMonthSchedules = allSchedules
@@ -107,7 +177,6 @@ App.calendar = {
     }).join('\n');
   },
 
-  /* 🔄 사용자가 수동으로 일정 다시 동기화할 때 호출 */
   importSchedulesToMemo() {
     const monthKey = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
     const generatedMemo = this.getFormattedScheduleMemos(monthKey);
@@ -130,7 +199,6 @@ App.calendar = {
     }
   },
 
-  /* 🗓️ 7열 CSS Grid 정밀 균등 생성 */
   generate() {
     const yInp = document.getElementById('yearInput');
     const mInp = document.getElementById('monthInput');
@@ -146,7 +214,6 @@ App.calendar = {
       printTitleEl.innerText = `${year}년 ${month}월`;
     }
 
-    // 1. 목표 로드 및 빈 값 체크
     const goalVal = safeGet(`calendar_goal_${monthKey}`) || '';
     const goalInp = document.getElementById('calendarGoalInput');
     const goalBox = document.getElementById('calGoalBox');
@@ -154,7 +221,6 @@ App.calendar = {
     if (goalInp) goalInp.value = goalVal;
     if (goalBox) goalBox.classList.toggle('is-empty', !goalVal.trim());
 
-    // 2. 메모 로드: 저장된 수동 메모가 없으면 해당 월의 일정을 자동으로 가져옴
     let memoVal = safeGet(`calendar_memo_${monthKey}`);
     if (memoVal === null || memoVal === undefined || memoVal === '') {
       memoVal = this.getFormattedScheduleMemos(monthKey);
@@ -169,8 +235,7 @@ App.calendar = {
     const gridBody = document.getElementById('calendarGridBody');
     if (!gridBody) return;
 
-    // 3. 1일 요일 및 총 주차 계산
-    const firstDay = new Date(year, month - 1, 1).getDay(); // 0(일) ~ 6(토)
+    const firstDay = new Date(year, month - 1, 1).getDay();
     const lastDate = new Date(year, month, 0).getDate();
 
     const totalDaysNeeded = firstDay + lastDate;
@@ -186,7 +251,6 @@ App.calendar = {
     const totalCells = totalWeeks * 7;
     let currentDay = 1;
 
-    // 4. 7열 균등 셀 생성
     for (let i = 0; i < totalCells; i++) {
       const col = i % 7;
 
@@ -197,6 +261,10 @@ App.calendar = {
       } else {
         const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
         const isToday = (dateStr === todayStr);
+
+        // 🇰🇷 공휴일 확인
+        const holidayName = this.getHoliday(dateStr, month, currentDay);
+        const isHoliday = Boolean(holidayName);
 
         const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
 
@@ -214,11 +282,16 @@ App.calendar = {
           `;
         });
 
-        const numClass = col === 0 ? 'sun' : (col === 6 ? 'sat' : '');
+        // 일요일이거나 공휴일이면 빨간색 강조
+        const isRed = (col === 0 || isHoliday);
+        const numClass = isRed ? 'sun' : (col === 6 ? 'sat' : '');
 
         cellsHtml += `
           <div class="cal-grid-cell ${isToday ? 'cell-today' : ''}">
-            <div class="cell-date-num ${numClass}">${currentDay}</div>
+            <div class="cell-date-row">
+              <span class="cell-date-num ${numClass}">${currentDay}</span>
+              ${isHoliday ? `<span class="cell-holiday-tag">${escapeHtml(holidayName)}</span>` : ''}
+            </div>
             <div class="cell-events-wrap">${eventsHtml}</div>
           </div>
         `;
