@@ -110,11 +110,23 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
-  const syncFromFirebase = (data) => {
+  const syncFromFirebase = (data, notifyConfig) => {
     if (data) {
+      const oldLatestId = items.length > 0 ? Number(items[0].id) : 0;
       items = normalizeItems(data);
       items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       safeSet(key, JSON.stringify(items));
+
+      if (oldLatestId > 0 && items.length > 0 && Number(items[0].id) > oldLatestId && notifyConfig) {
+        const latest = items[0];
+        const isMine = (App.auth && App.auth.currentUser !== 'public') && 
+          ((App.auth.currentUser === 'jinse' && latest.author === '진세') || 
+           (App.auth.currentUser === 'jihye' && latest.author === '지혜'));
+
+        if (!isMine && App.push?.sendLocalNotification) {
+          App.push.sendLocalNotification(notifyConfig.title(latest), notifyConfig.body(latest));
+        }
+      }
     }
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
@@ -181,6 +193,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
+  /* 📢 전광판: 각 차량별 가장 최신 주차 위치만 단일 표기 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -189,6 +202,7 @@ window.App = Object.assign(window.App || {}, {
     refresh() {
       const lines = [];
 
+      // 1. 다가오는 가장 가까운 일정
       const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
       const now = new Date();
       const offset = now.getTimezoneOffset() * 60000;
@@ -201,24 +215,37 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
+      // 2. 주차: 각 차량의 '가장 최신 1개' 위치만 선별 표기
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         const pTexts = [];
+        const seenCars = new Set();
+
         parkingItems.forEach(p => {
           const carName = (p.car || '').trim();
-          let loc = p.text || '';
-          if (loc.includes(' - ')) {
-            const parts = loc.split(' - ');
-            loc = parts[parts.length - 1];
-            if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
-              loc = '야외 ' + loc;
+          const carKey = carName.toLowerCase();
+
+          // 차종별 최초 1회(가장 최신)만 포함
+          if (!seenCars.has(carKey)) {
+            seenCars.add(carKey);
+            let loc = p.text || '';
+            if (loc.includes(' - ')) {
+              const parts = loc.split(' - ');
+              loc = parts[parts.length - 1];
+              if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
+                loc = '야외 ' + loc;
+              }
             }
+            pTexts.push(`${carName} · ${loc.trim()}`);
           }
-          pTexts.push(`${carName} · ${loc.trim()}`);
         });
-        if (pTexts.length > 0) lines.push(pTexts.join(' │ '));
+
+        if (pTexts.length > 0) {
+          lines.push(`🚗 ${pTexts.join(' │ ')}`);
+        }
       }
 
+      // 3. 가계부 이달의 총 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
@@ -228,11 +255,12 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
       }
 
+      // 4. 장보기 남은 목록
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
         const preview = pending.slice(0, 3).map(t => t.text || t.title).join(', ');
-        lines.push(`장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
+        lines.push(`🛒 장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
       }
 
       if (lines.length === 0) {
@@ -324,7 +352,6 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    // 통합 스토어 초기화
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: () => this.memo?.render && this.memo.render() });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: () => this.memo?.render && this.memo.render() });
@@ -348,6 +375,7 @@ window.App = Object.assign(window.App || {}, {
     Object.values(this.stores).forEach(s => s.load());
 
     if (this.auth) this.auth.init();
+    if (this.push) this.push.init();
     if (this.schedule) this.schedule.init();
     if (this.calendar) this.calendar.init();
     if (this.ledger) this.ledger.init();
@@ -356,7 +384,7 @@ window.App = Object.assign(window.App || {}, {
     this.ticker.start();
     this.badge.refresh();
 
-    // Firebase 초기화
+    // Firebase 연동
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -381,12 +409,24 @@ window.App = Object.assign(window.App || {}, {
           badge.classList.add('cloud-active');
         }
 
-        this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val()));
-        this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val()));
+        this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
+          title: (p) => `🚗 [${p.car}] 주차 위치 등록`,
+          body: (p) => `${p.text} 에 주차되었습니다.`
+        }));
+
+        this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val(), {
+          title: () => `🛒 새로운 장보기 품목`,
+          body: (t) => `[${t.author || '가족'}] ${t.text || t.title}`
+        }));
+
         this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
         this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val()));
+        
         this.db.ref('family_schedules').on('value', snap => {
-          this.stores.schedules.syncFromFirebase(snap.val());
+          this.stores.schedules.syncFromFirebase(snap.val(), {
+            title: () => `🗓️ 새로운 가족 일정 등록`,
+            body: (s) => `[${s.author || '가족'}] ${s.title || s.text} (${s.date})`
+          });
           if (this.calendar) this.calendar.generate();
         });
 
@@ -436,14 +476,12 @@ window.App = Object.assign(window.App || {}, {
       console.warn("Firebase 연결 대기:", e);
     }
 
-    // 초기 렌더링
     if (this.parking) this.parking.render(this.stores.parking.getItems());
     if (this.schedule) this.schedule.render();
     if (this.memo) this.memo.render();
     if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
     if (this.trip) this.trip.renderList(this.stores.trips.getItems());
 
-    // 직행 분기
     const targetHash = window.location.hash.replace('#', '');
     const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
 
