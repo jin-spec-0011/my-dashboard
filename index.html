@@ -395,23 +395,50 @@
     </div>
   </section>
 
-  <!-- 6. 📌 고정 메모 전용 화면 -->
+ <!-- 6. 📌 고정 메모 전용 화면 -->
   <section id="screen-sticky" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
       <h2>📌 고정 메모</h2>
     </div>
 
+    <!-- 메모 작성 카드 -->
     <div class="card form-card">
       <div class="form-group">
         <label>새 고정메모 (계좌, 와이파이, 보관 메모)</label>
         <textarea id="stickyInput" class="memo-text-input" rows="3" placeholder="메모할 내용을 입력하세요..."></textarea>
       </div>
       <button type="button" class="btn-save" onclick="App.memo.addSticky()">📌 메모 저장</button>
+    </div>
+
+    <!-- 🔍 메모 검색 바 (날짜 & 내용 검색) -->
+    <div class="card sticky-search-card">
+      <div class="sticky-search-header">
+        <span class="sticky-search-title">🔍 메모 검색</span>
+        <button type="button" class="btn-search-reset" onclick="App.memo.resetStickySearch()">🔄 초기화</button>
+      </div>
+      <div class="sticky-search-inputs">
+        <div class="search-input-group">
+          <label for="stickySearchDate">📅 날짜</label>
+          <input type="date" id="stickySearchDate" class="memo-text-input" onchange="App.memo.filterStickies()">
+        </div>
+        <div class="search-input-group">
+          <label for="stickySearchKeyword">📝 내용</label>
+          <input type="text" id="stickySearchKeyword" class="memo-text-input" placeholder="검색어 입력..." oninput="App.memo.filterStickies()">
+        </div>
+      </div>
+      <div id="stickySearchResultInfo" class="sticky-search-count" style="display: none;"></div>
+    </div>
+
+    <!-- 메모 목록 카드 -->
+    <div class="card list-card" style="margin-top: 0;">
+      <div class="list-header">
+        <h3>📋 메모 목록 (클릭하여 수정)</h3>
+      </div>
       <div id="stickyList" class="sticky-grid-wrap"></div>
     </div>
   </section>
-
+  
   <!-- 7. 💰 간편 가계부 화면 -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
