@@ -117,6 +117,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
       items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       safeSet(key, JSON.stringify(items));
 
+      // 🔔 새로운 데이터 등록 시 상대방 스마트폰에 웹 푸시 알림 발송
       if (oldLatestId > 0 && items.length > 0 && Number(items[0].id) > oldLatestId && notifyConfig) {
         const latest = items[0];
         const isMine = (App.auth && App.auth.currentUser !== 'public') && 
@@ -193,7 +194,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 전광판: 각 차량별 가장 최신 주차 위치만 단일 표기 */
+  /* 📢 실시간 롤링 전광판 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -215,7 +216,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: 각 차량의 '가장 최신 1개' 위치만 선별 표기
+      // 2. 주차: 각 차량(x1, 엑센트)의 '가장 최신 1개' 위치만 선별 표기
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         const pTexts = [];
@@ -352,6 +353,7 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
+    // 통합 스토어 초기화
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: () => this.memo?.render && this.memo.render() });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: () => this.memo?.render && this.memo.render() });
@@ -384,7 +386,7 @@ window.App = Object.assign(window.App || {}, {
     this.ticker.start();
     this.badge.refresh();
 
-    // Firebase 연동
+    // Firebase 초기화 및 실시간 리스너 연결
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -409,6 +411,7 @@ window.App = Object.assign(window.App || {}, {
           badge.classList.add('cloud-active');
         }
 
+        // 실시간 동기화 및 푸시 알림 트리거
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
           title: (p) => `🚗 [${p.car}] 주차 위치 등록`,
           body: (p) => `${p.text} 에 주차되었습니다.`
