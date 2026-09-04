@@ -223,7 +223,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: X1(1줄)과 엑센트(2줄)를 한눈에 분리
+  // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A
       const parkingItems = (App.parking && typeof App.parking.getLogs === 'function') 
         ? App.parking.getLogs() 
         : (App.stores.parking ? App.stores.parking.getItems() : []);
@@ -241,26 +241,31 @@ window.App = Object.assign(window.App || {}, {
           }
         });
 
+        // 층수와 기둥번호를 B1-25A 형식으로 정밀 변환하는 함수
+        const formatParkingCode = (item) => {
+          const raw = (item.text || '').replace(/번/g, '');
+          const floorMatch = raw.match(/(B\d+|\d+F|\d+층|야외)/i);
+          const floor = floorMatch ? floorMatch[0].toUpperCase() : (item.floor || 'B1');
+          const slotMatch = raw.match(/(\d+)\s*-?\s*([A-Za-z])/);
+
+          if (slotMatch) {
+            return `${floor}-${slotMatch[1]}${slotMatch[2].toUpperCase()}`; // B1-25A
+          }
+          return `${floor}-${(item.slot || '').replace(/[^a-zA-Z0-9]/g, '')}`;
+        };
+
         const pTexts = [];
         if (x1Item) {
-          const loc = x1Item.slot 
-            ? `${x1Item.floor || 'B1'} - ${x1Item.slot}` 
-            : (x1Item.text || '').replace(/^X1\s*-\s*/i, '');
-          pTexts.push(`⚪ X1 - ${loc}`);
+          pTexts.push(`⚪ X1 - ${formatParkingCode(x1Item)}`);
         }
         if (accentItem) {
-          const loc = accentItem.slot 
-            ? `${accentItem.floor || 'B1'} - ${accentItem.slot}` 
-            : (accentItem.text || '').replace(/^엑센트\s*-\s*/i, '');
-          pTexts.push(`⚫ 엑센트 - ${loc}`);
+          pTexts.push(`⚫ 엑센트 - ${formatParkingCode(accentItem)}`);
         }
 
         if (pTexts.length > 0) {
-          // 2대를 각각 1줄씩 줄바꿈(<br>)하여 2줄로 표기
           lines.push(pTexts.join('<br>'));
         }
       }
-
       // 3. 가계부 이달의 총 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
