@@ -29,19 +29,38 @@ window.safeSet = function(key, val) {
   catch (e) { memoryStorage[key] = val; }
 };
 
-/* ── 🛡️ 무결점 데이터 스토어 팩토리 ── */
-function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
+/* 🚗 차량별 최대 2개 보장 정제 함수 */
+function sanitizeParking(items) {
+  if (!Array.isArray(items)) return [];
+  const x1 = [];
+  const accent = [];
+  const sorted = [...items].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
+  for (const it of sorted) {
+    const c = String(it.car || '').toLowerCase();
+    if (c.includes('x1')) {
+      if (x1.length < 2) x1.push(it);
+    } else {
+      if (accent.length < 2) accent.push(it);
+    }
+  }
+  return [...x1, ...accent];
+}
+
+/* ── 🛡️ 데이터 스토어 팩토리 ── */
+function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitizer }) {
   let items = [];
 
   const normalizeItems = (list) => {
     if (!list) return [];
     const arr = Array.isArray(list) ? list.filter(Boolean) : Object.values(list).filter(Boolean);
-    return arr.map(it => {
+    const cleaned = arr.map(it => {
       if (typeof it === 'object' && it !== null) {
         it.id = it.id || Date.now() + Math.floor(Math.random() * 1000);
       }
       return it;
     });
+    return sanitizer ? sanitizer(cleaned) : cleaned;
   };
 
   const load = () => {
@@ -62,10 +81,14 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     if (!Array.isArray(items)) items = [];
     items = items.filter(i => String(i.id) !== String(item.id));
     items.unshift(item);
-    if (maxItems) items = items.slice(0, maxItems);
+    if (sanitizer) {
+      items = sanitizer(items);
+    } else if (maxItems) {
+      items = items.slice(0, maxItems);
+    }
     safeSet(key, JSON.stringify(items));
     if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath + '/' + item.id).set(item);
+      App.db.ref(firebasePath).set(items);
     }
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
@@ -77,33 +100,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     items = items.filter(i => String(i.id) !== String(id));
     safeSet(key, JSON.stringify(items));
     if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath + '/' + id).remove();
-    }
-    if (onRender) onRender(items);
-    if (App.ticker) App.ticker.refresh();
-    if (App.badge) App.badge.refresh();
-  };
-
-  const update = (id, updates) => {
-    if (!Array.isArray(items)) items = [];
-    const target = items.find(i => String(i.id) === String(id));
-    if (target) {
-      Object.assign(target, updates);
-      safeSet(key, JSON.stringify(items));
-      if (App.isFirebaseActive && firebasePath) {
-        App.db.ref(firebasePath + '/' + id).update(updates);
-      }
-      if (onRender) onRender(items);
-      if (App.ticker) App.ticker.refresh();
-      if (App.badge) App.badge.refresh();
-    }
-  };
-
-  const clear = () => {
-    items = [];
-    safeSet(key, JSON.stringify([]));
-    if (App.isFirebaseActive && firebasePath) {
-      App.db.ref(firebasePath).remove();
+      App.db.ref(firebasePath).set(items);
     }
     if (onRender) onRender(items);
     if (App.ticker) App.ticker.refresh();
@@ -141,7 +138,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
-  return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, update, clear, syncFromFirebase };
+  return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, syncFromFirebase };
 }
 
 /* ── App 메인 코어 ── */
@@ -204,7 +201,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 전광판: ⚪ X1 우선 정렬 및 ⚫ 엑센트 포맷 고정 */
+  /* 📢 전광판: ⚪ X1 우선, ⚫ 엑센트 후속 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -226,7 +223,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: ⚪ X1 먼저, ⚫ 엑센트 나중에 표기
+      // 2. 주차: ⚪ X1 - B1 - 18-A │ ⚫ 엑센트 - B1 - 19-A
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         let x1Item = null;
@@ -260,7 +257,7 @@ window.App = Object.assign(window.App || {}, {
         }
       }
 
-      // 3. 가계부 이달의 총 지출
+      // 3. 가계부 총 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
@@ -270,7 +267,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
       }
 
-      // 4. 장보기 남은 목록
+      // 4. 장보기
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
@@ -368,7 +365,14 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
+    // 🚗 주차 스토어: sanitizeParking 필터로 무조건 차종별 2개만 강제 통제
+    this.stores.parking = createDataStore({ 
+      key: 'parking_logs', 
+      firebasePath: 'parking_logs', 
+      sanitizer: sanitizeParking,
+      onRender: (items) => this.parking?.render && this.parking.render(items) 
+    });
+
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo?.renderTodos && this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo?.renderStickies && this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip?.renderList && this.trip.renderList(items) });
@@ -400,7 +404,7 @@ window.App = Object.assign(window.App || {}, {
     this.ticker.start();
     this.badge.refresh();
 
-    // Firebase 연동
+    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -425,7 +429,7 @@ window.App = Object.assign(window.App || {}, {
           badge.classList.add('cloud-active');
         }
 
-        // 🚗 주차 알림 (⚪ X1 / ⚫ 엑센트 이모지 적용)
+        // 🚗 주차 알림 (⚪ X1 / ⚫ 엑센트 이모지)
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
           title: (p) => `🚗 [${(p.car||'').toLowerCase().includes('x1') ? '⚪ X1' : '⚫ 엑센트'}] 주차 위치 등록`,
           body: (p) => `${p.text} 에 주차되었습니다.`
