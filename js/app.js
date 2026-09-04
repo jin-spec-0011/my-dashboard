@@ -201,7 +201,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 전광판: ⚪ X1 우선, ⚫ 엑센트 후속 */
+ /* 📢 전광판: 내용별 2줄 줄바꿈 지원 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -223,8 +223,11 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: ⚪ X1 - B1 - 18-A │ ⚫ 엑센트 - B1 - 19-A
-      const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
+      // 2. 주차: X1(1줄)과 엑센트(2줄)를 한눈에 분리
+      const parkingItems = (App.parking && typeof App.parking.getLogs === 'function') 
+        ? App.parking.getLogs() 
+        : (App.stores.parking ? App.stores.parking.getItems() : []);
+
       if (parkingItems.length > 0) {
         let x1Item = null;
         let accentItem = null;
@@ -253,11 +256,12 @@ window.App = Object.assign(window.App || {}, {
         }
 
         if (pTexts.length > 0) {
-          lines.push(`🚗 주차 : ${pTexts.join(' │ ')}`);
+          // 2대를 각각 1줄씩 줄바꿈(<br>)하여 2줄로 표기
+          lines.push(pTexts.join('<br>'));
         }
       }
 
-      // 3. 가계부 총 지출
+      // 3. 가계부 이달의 총 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
@@ -267,7 +271,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
       }
 
-      // 4. 장보기
+      // 4. 장보기 남은 목록
       const todos = App.stores.todos ? App.stores.todos.getItems() : [];
       const pending = todos.filter(t => !t.completed);
       if (pending.length > 0) {
@@ -287,7 +291,7 @@ window.App = Object.assign(window.App || {}, {
       const el = document.getElementById('tickerVerticalText');
       if (!el || this.messages.length === 0) return;
       if (this.currentIndex >= this.messages.length) this.currentIndex = 0;
-      el.innerText = this.messages[this.currentIndex];
+      el.innerHTML = this.messages[this.currentIndex]; // innerHTML로 교체
     },
 
     next() {
@@ -299,7 +303,7 @@ window.App = Object.assign(window.App || {}, {
 
       setTimeout(() => {
         this.currentIndex = (this.currentIndex + 1) % this.messages.length;
-        el.innerText = this.messages[this.currentIndex];
+        el.innerHTML = this.messages[this.currentIndex]; // innerHTML로 교체
         el.classList.remove('slide-down-out');
         el.classList.add('slide-down-in');
 
