@@ -3,13 +3,12 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
-  /* 🚗 차종 정규화 헬퍼 */
+  /* 🚗 차종 및 이모지 판별 헬퍼 */
   getCarKey(car) {
     if (!car) return 'x1';
     const str = String(car).toLowerCase();
     if (str.includes('x1')) return 'x1';
-    if (str.includes('엑센트') || str.includes('accent')) return 'accent';
-    return 'x1';
+    return 'accent';
   },
 
   getCarEmoji(car) {
@@ -125,7 +124,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 데이터 유실 방지 표준 스토어 연동 & 차종별 2개 보관 */
+  /* 🚗 주차 저장: 차량별 최신 2개 강제 보관 알고리즘 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -153,7 +152,6 @@ App.parking = {
     const newLog = {
       id: Date.now(),
       car: carName,
-      carKey: carKey,
       author: author,
       floor: floorText,
       slot: slotCode,
@@ -167,29 +165,37 @@ App.parking = {
     };
 
     if (App.stores?.parking) {
-      // 1. 기존 동일 차종의 기록 중 최신 1개만 남기고 이전 초과분은 스토어에서 정식 제거
       const allItems = App.stores.parking.getItems();
+      
+      // 현재 저장하려는 차량의 기존 기록 중 최신 1개만 남김
       const sameCarItems = allItems.filter(i => this.getCarKey(i.car) === carKey);
+      const otherCarItems = allItems.filter(i => this.getCarKey(i.car) !== carKey);
 
-      if (sameCarItems.length >= 2) {
-        for (let idx = 1; idx < sameCarItems.length; idx++) {
-          App.stores.parking.remove(sameCarItems[idx].id);
-        }
+      const keptSameCar = sameCarItems.slice(0, 1); // 1개만 유지
+      const finalCleanList = [newLog, ...keptSameCar, ...otherCarItems.slice(0, 2)];
+
+      // Firebase 및 로컬 스토어 동시 갱신 (유실 방지 전체 덮어쓰기)
+      safeSet('parking_logs', JSON.stringify(finalCleanList));
+      if (App.isFirebaseActive && App.db) {
+        App.db.ref('parking_logs').set(finalCleanList);
       }
-
-      // 2. 표준 스토어 add 파이프라인으로 등록 (로컬스토리지 + 메모리 + Firebase 동시 반영)
-      App.stores.parking.add(newLog);
+      this.render(finalCleanList);
     }
 
     this.removePhoto();
-    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료!`);
+    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료! (최신 2개 유지)`);
     if (App.ticker) App.ticker.refresh();
   },
 
   delete(id) {
     if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
       if (App.stores?.parking) {
-        App.stores.parking.remove(id);
+        const allItems = App.stores.parking.getItems().filter(i => String(i.id) !== String(id));
+        safeSet('parking_logs', JSON.stringify(allItems));
+        if (App.isFirebaseActive && App.db) {
+          App.db.ref('parking_logs').set(allItems);
+        }
+        this.render(allItems);
       }
       App.ui.toast("🗑️ 주차 기록이 삭제되었습니다.");
       if (App.ticker) App.ticker.refresh();
@@ -199,7 +205,11 @@ App.parking = {
   clear() {
     if (confirm("전체 차량 주차 기록을 모두 초기화(삭제)하시겠습니까?")) {
       if (App.stores?.parking) {
-        App.stores.parking.clear();
+        safeSet('parking_logs', JSON.stringify([]));
+        if (App.isFirebaseActive && App.db) {
+          App.db.ref('parking_logs').set([]);
+        }
+        this.render([]);
       }
       App.ui.toast("🗑️ 전체 주차 기록이 초기화되었습니다.");
       if (App.ticker) App.ticker.refresh();
@@ -236,6 +246,7 @@ App.parking = {
       return;
     }
 
+    // 각 차종별 가장 최신 1개 아이템의 ID에 테두리 강조
     const latestIds = {};
     items.forEach(it => {
       const carKey = this.getCarKey(it.car);
