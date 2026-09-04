@@ -146,16 +146,16 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 차량별 최신 2개 보관 (새 기록 1개 + 기존 1개 = 2개 유지) */
+  /* 🚗 주차 저장: B1-25A 규격 적용 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
     const rowSelect = document.getElementById('rowSelect');
 
     const colVal = colSelect ? colSelect.value : 'A';
-    const rowVal = rowSelect ? rowSelect.value : '18';
+    const rowVal = rowSelect ? rowSelect.value : '25';
     const isOutdoor = (type === '야외');
-    const slotCode = `${rowVal}-${colVal}`;
+    const slotCode = `${rowVal}${colVal}`; // 👈 하이픈 없이 25A로 결합
 
     const carKey = this.getCarKey(car);
     const carName = this.getCarName(car);
@@ -166,7 +166,7 @@ App.parking = {
       : '가족';
 
     const floorText = isOutdoor ? '야외' : (floor || 'B1');
-    const locationText = `${carName} - ${floorText} - ${slotCode}`;
+    const locationText = `${carName} - ${floorText}-${slotCode}`; // 👈 X1 - B1-25A
 
     const now = new Date();
     const timeStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -186,29 +186,21 @@ App.parking = {
       photoBase64: photoBase64 || ''
     };
 
-    // 1. 기존 데이터 전체 로드
     const allLogs = this.getLogs();
-
-    // 2. 현재 저장할 차량의 이전 기록 중 최신 1개만 보존 (새것 포함 시 정확히 2개)
     const sameCarLogs = allLogs.filter(i => this.getCarKey(i.car) === carKey);
     const keptSameCar = sameCarLogs.slice(0, 1);
-
-    // 3. 상대 차량의 기록은 최신 2개까지 보존
     const otherCarLogs = allLogs.filter(i => this.getCarKey(i.car) !== carKey);
     const keptOtherCar = otherCarLogs.slice(0, 2);
 
-    // 4. 새 기록 + 현재차 최신1개 + 상대차 최신2개 = 각 차종별 정확히 2개 유지
     const finalCleanList = [newLog, ...keptSameCar, ...keptOtherCar];
 
-    // 저장 및 화면 즉시 렌더링
     this.saveLogs(finalCleanList);
     this.render(finalCleanList);
 
     this.removePhoto();
-    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료! (차량별 2개 유지)`);
+    App.ui.toast(`${carEmoji} [${carName}] ${floorText}-${slotCode} 저장 완료!`);
     if (App.ticker) App.ticker.refresh();
   },
-
   delete(id) {
     if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
       const allLogs = this.getLogs().filter(i => String(i.id) !== String(id));
