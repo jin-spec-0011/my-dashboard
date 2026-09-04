@@ -3,10 +3,10 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
-  /* 🚗 차종 및 이모지 판별 헬퍼 */
+  /* 🚗 차종 및 이모지 판별 */
   getCarKey(car) {
     if (!car) return 'x1';
-    const str = String(car).toLowerCase();
+    const str = String(car).toLowerCase().trim();
     if (str.includes('x1')) return 'x1';
     return 'accent';
   },
@@ -17,6 +17,28 @@ App.parking = {
 
   getCarName(car) {
     return this.getCarKey(car) === 'x1' ? 'X1' : '엑센트';
+  },
+
+  /* 💾 데이터 유실 방지: 저장소에서 직접 안전하게 읽기 */
+  getLogs() {
+    try {
+      const raw = safeGet('parking_logs');
+      const list = JSON.parse(raw || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  /* 💾 로컬 스토리지 + 스토어 캐시 + Firebase 동시 영구 보존 */
+  saveLogs(list) {
+    safeSet('parking_logs', JSON.stringify(list));
+    if (App.stores && App.stores.parking && typeof App.stores.parking.load === 'function') {
+      App.stores.parking.load();
+    }
+    if (App.isFirebaseActive && App.db) {
+      App.db.ref('parking_logs').set(list);
+    }
   },
 
   selectOption(type, value) {
@@ -124,7 +146,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 차량별 최신 2개 강제 보관 알고리즘 */
+  /* 🚗 주차 저장: 차량별 최신 2개 보관 (새 기록 1개 + 기존 1개 = 2개 유지) */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -164,39 +186,34 @@ App.parking = {
       photoBase64: photoBase64 || ''
     };
 
-    if (App.stores?.parking) {
-      const allItems = App.stores.parking.getItems();
-      
-      // 현재 저장하려는 차량의 기존 기록 중 최신 1개만 남김
-      const sameCarItems = allItems.filter(i => this.getCarKey(i.car) === carKey);
-      const otherCarItems = allItems.filter(i => this.getCarKey(i.car) !== carKey);
+    // 1. 기존 데이터 전체 로드
+    const allLogs = this.getLogs();
 
-      const keptSameCar = sameCarItems.slice(0, 1); // 1개만 유지
-      const finalCleanList = [newLog, ...keptSameCar, ...otherCarItems.slice(0, 2)];
+    // 2. 현재 저장할 차량의 이전 기록 중 최신 1개만 보존 (새것 포함 시 정확히 2개)
+    const sameCarLogs = allLogs.filter(i => this.getCarKey(i.car) === carKey);
+    const keptSameCar = sameCarLogs.slice(0, 1);
 
-      // Firebase 및 로컬 스토어 동시 갱신 (유실 방지 전체 덮어쓰기)
-      safeSet('parking_logs', JSON.stringify(finalCleanList));
-      if (App.isFirebaseActive && App.db) {
-        App.db.ref('parking_logs').set(finalCleanList);
-      }
-      this.render(finalCleanList);
-    }
+    // 3. 상대 차량의 기록은 최신 2개까지 보존
+    const otherCarLogs = allLogs.filter(i => this.getCarKey(i.car) !== carKey);
+    const keptOtherCar = otherCarLogs.slice(0, 2);
+
+    // 4. 새 기록 + 현재차 최신1개 + 상대차 최신2개 = 각 차종별 정확히 2개 유지
+    const finalCleanList = [newLog, ...keptSameCar, ...keptOtherCar];
+
+    // 저장 및 화면 즉시 렌더링
+    this.saveLogs(finalCleanList);
+    this.render(finalCleanList);
 
     this.removePhoto();
-    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료! (최신 2개 유지)`);
+    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료! (차량별 2개 유지)`);
     if (App.ticker) App.ticker.refresh();
   },
 
   delete(id) {
     if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
-      if (App.stores?.parking) {
-        const allItems = App.stores.parking.getItems().filter(i => String(i.id) !== String(id));
-        safeSet('parking_logs', JSON.stringify(allItems));
-        if (App.isFirebaseActive && App.db) {
-          App.db.ref('parking_logs').set(allItems);
-        }
-        this.render(allItems);
-      }
+      const allLogs = this.getLogs().filter(i => String(i.id) !== String(id));
+      this.saveLogs(allLogs);
+      this.render(allLogs);
       App.ui.toast("🗑️ 주차 기록이 삭제되었습니다.");
       if (App.ticker) App.ticker.refresh();
     }
@@ -204,13 +221,8 @@ App.parking = {
 
   clear() {
     if (confirm("전체 차량 주차 기록을 모두 초기화(삭제)하시겠습니까?")) {
-      if (App.stores?.parking) {
-        safeSet('parking_logs', JSON.stringify([]));
-        if (App.isFirebaseActive && App.db) {
-          App.db.ref('parking_logs').set([]);
-        }
-        this.render([]);
-      }
+      this.saveLogs([]);
+      this.render([]);
       App.ui.toast("🗑️ 전체 주차 기록이 초기화되었습니다.");
       if (App.ticker) App.ticker.refresh();
     }
@@ -228,17 +240,19 @@ App.parking = {
         b.classList.toggle('active', targetKey === 'accent');
       }
     });
-    this.render(App.stores?.parking ? App.stores.parking.getItems() : []);
+    this.render();
   },
 
-  render(items = []) {
+  render(items) {
     const listEl = document.getElementById('logList');
     if (!listEl) return;
 
-    let filtered = items;
+    const sourceItems = (Array.isArray(items) && items.length > 0) ? items : this.getLogs();
+
+    let filtered = sourceItems;
     if (this.currentFilter !== 'all') {
       const filterKey = this.getCarKey(this.currentFilter);
-      filtered = items.filter(i => this.getCarKey(i.car) === filterKey);
+      filtered = sourceItems.filter(i => this.getCarKey(i.car) === filterKey);
     }
 
     if (filtered.length === 0) {
@@ -246,9 +260,9 @@ App.parking = {
       return;
     }
 
-    // 각 차종별 가장 최신 1개 아이템의 ID에 테두리 강조
+    // 각 차종별 가장 최신 1개 아이템 식별
     const latestIds = {};
-    items.forEach(it => {
+    sourceItems.forEach(it => {
       const carKey = this.getCarKey(it.car);
       if (!latestIds[carKey]) {
         latestIds[carKey] = it.id;
