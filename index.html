@@ -34,7 +34,7 @@
     </div>
   </section>
 
-  <!-- 1. 🏠 포털 메인 홈 (아이폰 1줄 고정 헤더) -->
+  <!-- 1. 🏠 포털 메인 홈 -->
   <section id="screen-home" class="screen">
     <header class="home-header">
       <div class="header-left">
@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <!-- 메뉴 카드 그리드 (장보기와 고정메모 분리) -->
+    <!-- 메뉴 그리드 ('장보기' 명칭 적용) -->
     <div class="menu-grid">
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
@@ -75,7 +75,7 @@
             <span class="card-title">주차 위치 기록</span>
             <span class="menu-new-badge" id="badge-parking" style="display: none;">N</span>
           </div>
-          <span class="card-desc">⚪ x1 & 🩶 엑센트 위치</span>
+          <span class="card-desc">🤍🚗 X1 & 🩶🚗 엑센트 위치</span>
         </div>
       </div>
 
@@ -98,19 +98,18 @@
         </div>
       </div>
 
-      <!-- 6번 요구사항: 장보기 단독 메뉴 -->
+      <!-- 1번 요구사항: '장보기'로 단독 표기 -->
       <div class="menu-card" onclick="App.router.go('shopping')">
         <div class="card-icon-wrap bg-amber">🛒</div>
         <div class="card-text-wrap">
           <div class="card-title-row">
-            <span class="card-title">장보기 / 할 일</span>
+            <span class="card-title">장보기</span>
             <span class="menu-new-badge" id="badge-shopping" style="display: none;">N</span>
           </div>
           <span class="card-desc">구매 목록 & 가계부 자동연동</span>
         </div>
       </div>
 
-      <!-- 6번 요구사항: 고정 메모 단독 메뉴 -->
       <div class="menu-card" onclick="App.router.go('sticky')">
         <div class="card-icon-wrap bg-pink" style="background:#fef3c7;">📌</div>
         <div class="card-text-wrap">
@@ -118,7 +117,7 @@
             <span class="card-title">고정 메모</span>
             <span class="menu-new-badge" id="badge-sticky" style="display: none;">N</span>
           </div>
-          <span class="card-desc">계좌, 와이파이, 보관 메모</span>
+          <span class="card-desc">계좌, 와이파이, 완료 체크</span>
         </div>
       </div>
 
@@ -146,7 +145,7 @@
     </div>
   </section>
 
-  <!-- 2. 🚗 주차 위치 기록 화면 (무채색 차종 이모지 적용) -->
+  <!-- 2. 🚗 주차 위치 기록 화면 -->
   <section id="screen-parking" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -157,8 +156,8 @@
       <div class="form-group">
         <label>1. 차종 선택</label>
         <div class="toggle-group" id="carGroup">
-          <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'x1')">⚪ x1</button>
-          <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">🩶 엑센트</button>
+          <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'X1')">🤍🚗 X1</button>
+          <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">🩶🚗 엑센트</button>
         </div>
       </div>
 
@@ -250,8 +249,8 @@
 
       <div class="log-filter-bar">
         <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
-        <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('x1')">⚪ x1 전용</button>
-        <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">🩶 엑센트 전용</button>
+        <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('X1')">🤍🚗 X1</button>
+        <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">🩶🚗 엑센트</button>
       </div>
 
       <div id="logList" class="log-list"></div>
@@ -377,18 +376,18 @@
     </div>
   </section>
 
-  <!-- 5. 🛒 장보기 & 할 일 전용 화면 (분리 완료) -->
+  <!-- 5. 🛒 장보기 전용 화면 -->
   <section id="screen-shopping" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
-      <h2>🛒 장보기 / 할 일</h2>
+      <h2>🛒 장보기</h2>
     </div>
 
     <div class="card form-card">
       <div class="form-group">
-        <label>장보기 품목 / 할 일 추가</label>
+        <label>장보기 품목 추가</label>
         <div class="input-with-btn-row">
-          <input type="text" id="todoInput" class="memo-text-input" placeholder="살 물건 또는 할 일..." onkeydown="if(event.key==='Enter') App.memo.addTodo()">
+          <input type="text" id="todoInput" class="memo-text-input" placeholder="살 물건을 입력하세요..." onkeydown="if(event.key==='Enter') App.memo.addTodo()">
           <button type="button" class="btn-save btn-inline-action" onclick="App.memo.addTodo()">추가</button>
         </div>
       </div>
@@ -396,7 +395,7 @@
     </div>
   </section>
 
-  <!-- 6. 📌 고정 메모 전용 화면 (완료 체크 기능 탑재) -->
+  <!-- 6. 📌 고정 메모 전용 화면 -->
   <section id="screen-sticky" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
