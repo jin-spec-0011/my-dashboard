@@ -249,7 +249,7 @@ window.App = Object.assign(window.App || {}, {
         [x1Item, accentItem].filter(Boolean).forEach(p => {
           const isX1 = (p.car || '').toLowerCase().includes('x1');
           const carName = isX1 ? 'X1' : '엑센트';
-          const carEmoji = isX1 ? '🤍🚗' : '🩶🚗';
+          const carEmoji = isX1 ? '⚪' : '⚫';
 
           let locDetail = '';
           if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
