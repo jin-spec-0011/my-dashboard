@@ -110,6 +110,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
+  /* 3 & 4번 요구사항: 어느 화면에 있든 시스템 푸시 + 인앱 상단 팝업 동시 발송 */
   const syncFromFirebase = (data, notifyConfig) => {
     if (data) {
       const oldLatestId = items.length > 0 ? Number(items[0].id) : 0;
@@ -117,15 +118,24 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
       items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       safeSet(key, JSON.stringify(items));
 
-      // 🔔 새로운 데이터 등록 시 상대방 스마트폰에 웹 푸시 알림 발송
       if (oldLatestId > 0 && items.length > 0 && Number(items[0].id) > oldLatestId && notifyConfig) {
         const latest = items[0];
         const isMine = (App.auth && App.auth.currentUser !== 'public') && 
           ((App.auth.currentUser === 'jinse' && latest.author === '진세') || 
            (App.auth.currentUser === 'jihye' && latest.author === '지혜'));
 
-        if (!isMine && App.push?.sendLocalNotification) {
-          App.push.sendLocalNotification(notifyConfig.title(latest), notifyConfig.body(latest));
+        if (!isMine) {
+          const title = notifyConfig.title(latest);
+          const body = notifyConfig.body(latest);
+
+          // 1. 기기 상단 시스템 알림
+          if (App.push?.sendLocalNotification) {
+            App.push.sendLocalNotification(title, body);
+          }
+          // 2. 앱 내부 어느 화면에 체류 중이어도 화면 상단 팝업 토스트 즉시 발생
+          if (App.ui?.toast) {
+            App.ui.toast(`🔔 ${title}\n${body}`);
+          }
         }
       }
     }
@@ -144,7 +154,7 @@ window.App = Object.assign(window.App || {}, {
   
   state: {
     pendingRedirect: null,
-    parking: { car: 'x1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' }
+    parking: { car: 'X1', type: '지하 주차장', floor: 'B1', lat: 37.5665, lng: 126.9780, filter: 'all', photoBase64: '' }
   },
 
   stores: {},
@@ -155,7 +165,7 @@ window.App = Object.assign(window.App || {}, {
       if (!t) return;
       if (msg) t.innerText = msg;
       t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2000);
+      setTimeout(() => t.classList.remove('show'), 2600);
     }
   },
 
@@ -167,7 +177,7 @@ window.App = Object.assign(window.App || {}, {
         target.classList.add('active');
         window.scrollTo(0, 0);
 
-        if (['parking', 'memo', 'trip', 'ledger', 'schedule'].includes(screenName)) {
+        if (['parking', 'shopping', 'sticky', 'trip', 'ledger', 'schedule'].includes(screenName)) {
           safeSet('last_view_' + screenName, Date.now());
           if (App.badge) App.badge.refresh();
         }
@@ -181,8 +191,11 @@ window.App = Object.assign(window.App || {}, {
         if (screenName === 'calendar' && App.calendar?.generate) {
           App.calendar.generate();
         }
-        if (screenName === 'memo' && App.memo?.render) {
-          App.memo.render();
+        if (screenName === 'shopping' && App.memo?.renderTodos) {
+          App.memo.renderTodos(App.stores.todos ? App.stores.todos.getItems() : []);
+        }
+        if (screenName === 'sticky' && App.memo?.renderStickies) {
+          App.memo.renderStickies(App.stores.stickies ? App.stores.stickies.getItems() : []);
         }
         if (screenName === 'ledger' && App.ledger?.render) {
           App.ledger.render(App.stores.ledger ? App.stores.ledger.getItems() : []);
@@ -194,7 +207,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 실시간 롤링 전광판 */
+  /* 2번 요구사항: 전광판에 항상 X1이 먼저 오도록 정렬 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -203,7 +216,7 @@ window.App = Object.assign(window.App || {}, {
     refresh() {
       const lines = [];
 
-      // 1. 다가오는 가장 가까운 일정
+      // 1. 다가오는 일정
       const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
       const now = new Date();
       const offset = now.getTimezoneOffset() * 60000;
@@ -216,35 +229,38 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-  
-    // 2. 주차: (차량이모지)주차 : X1 - B1 - 18-A │ 엑센트 - B1 - 19-A
+      // 2. 주차: 항상 X1 먼저, 엑센트 나중에 표기
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
-        const pTexts = [];
-        const seenCars = new Set();
+        let x1Item = null;
+        let accentItem = null;
 
         parkingItems.forEach(p => {
-          const rawCar = (p.car || '').trim();
-          const isX1 = rawCar.toLowerCase().includes('x1');
-          const carKey = isX1 ? 'x1' : 'accent';
-
-          if (!seenCars.has(carKey)) {
-            seenCars.add(carKey);
-
-            const carName = isX1 ? 'X1' : '엑센트';
-            const carEmoji = isX1 ? '⚪' : '⚫';
-            let locDetail = '';
-            if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
-              const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
-              locDetail = `야외 - ${slot}`;
-            } else {
-              const floor = p.floor || 'B1';
-              const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
-              locDetail = `${floor} - ${slot}`;
-            }
-
-            pTexts.push(`${carEmoji} ${carName} - ${locDetail}`);
+          const rawCar = (p.car || '').toLowerCase();
+          if (rawCar.includes('x1') && !x1Item) {
+            x1Item = p;
+          } else if (!rawCar.includes('x1') && !accentItem) {
+            accentItem = p;
           }
+        });
+
+        const pTexts = [];
+        // X1 -> 엑센트 순서로 고정
+        [x1Item, accentItem].filter(Boolean).forEach(p => {
+          const isX1 = (p.car || '').toLowerCase().includes('x1');
+          const carName = isX1 ? 'X1' : '엑센트';
+          const carEmoji = isX1 ? '🤍🚗' : '🩶🚗';
+
+          let locDetail = '';
+          if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
+            const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
+            locDetail = `야외 - ${slot}`;
+          } else {
+            const floor = p.floor || 'B1';
+            const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
+            locDetail = `${floor} - ${slot}`;
+          }
+          pTexts.push(`${carEmoji} ${carName} - ${locDetail}`);
         });
 
         if (pTexts.length > 0) {
@@ -323,7 +339,8 @@ window.App = Object.assign(window.App || {}, {
       };
 
       checkBadge('last_view_parking', 'parking', 'badge-parking');
-      checkBadge('last_view_memo', 'todos', 'badge-memo');
+      checkBadge('last_view_shopping', 'todos', 'badge-shopping');
+      checkBadge('last_view_sticky', 'stickies', 'badge-sticky');
       checkBadge('last_view_trip', 'trips', 'badge-trip');
       checkBadge('last_view_ledger', 'ledger', 'badge-ledger');
       checkBadge('last_view_schedule', 'schedules', 'badge-schedule');
@@ -361,8 +378,8 @@ window.App = Object.assign(window.App || {}, {
 
     // 통합 스토어 초기화
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
-    this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: () => this.memo?.render && this.memo.render() });
-    this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: () => this.memo?.render && this.memo.render() });
+    this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo?.renderTodos && this.memo.renderTodos(items) });
+    this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo?.renderStickies && this.memo.renderStickies(items) });
     this.stores.trips = createDataStore({ key: 'family_trips', firebasePath: 'family_trips', maxItems: 100, onRender: (items) => this.trip?.renderList && this.trip.renderList(items) });
     this.stores.ledger = createDataStore({ key: 'family_ledger', firebasePath: 'family_ledger', maxItems: 500, onRender: (items) => this.ledger?.render && this.ledger.render(items) });
     this.stores.schedules = createDataStore({ key: 'family_schedules', firebasePath: 'family_schedules', maxItems: 500, onRender: () => { 
@@ -392,7 +409,7 @@ window.App = Object.assign(window.App || {}, {
     this.ticker.start();
     this.badge.refresh();
 
-    // Firebase 초기화 및 실시간 리스너 연결
+    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -413,30 +430,51 @@ window.App = Object.assign(window.App || {}, {
 
         const badge = document.getElementById('cloudStatusBadge');
         if (badge) {
-          badge.innerText = '☁️ 가족 실시간 동기화 중';
+          badge.innerText = '☁️ 동기화 중';
           badge.classList.add('cloud-active');
         }
 
-        // 실시간 동기화 및 푸시 알림 트리거
+        /* 3번 요구사항: 모든 페이지(주차, 장보기, 고정메모, 일정, 가계부, 여행) 실시간 알림 등록 */
+        // 1. 🚗 주차 위치 알림
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
-          title: (p) => `🚗 [${p.car}] 주차 위치 등록`,
+          title: (p) => `🚗 [${(p.car||'').toLowerCase().includes('x1') ? '🤍🚗 X1' : '🩶🚗 엑센트'}] 주차 위치 등록`,
           body: (p) => `${p.text} 에 주차되었습니다.`
         }));
 
+        // 2. 🛒 장보기 알림
         this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val(), {
           title: () => `🛒 새로운 장보기 품목`,
           body: (t) => `[${t.author || '가족'}] ${t.text || t.title}`
         }));
 
-        this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val()));
-        this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val()));
+        // 3. 📌 고정 메모 알림 (추가)
+        this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val(), {
+          title: () => `📌 새로운 고정 메모 등록`,
+          body: (m) => `${m.text || '새로운 메모가 등록되었습니다.'}`
+        }));
+
+        // 4. 💰 간편 가계부 지출 알림 (추가)
+        this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val(), {
+          title: () => `💰 새로운 가계부 지출 내역`,
+          body: (l) => `[${l.author || '가족'}] ${l.desc || '지출'}: ${Number(l.amount||0).toLocaleString()}원`
+        }));
         
+        // 5. 🗓️ 가족 일정 알림
         this.db.ref('family_schedules').on('value', snap => {
           this.stores.schedules.syncFromFirebase(snap.val(), {
             title: () => `🗓️ 새로운 가족 일정 등록`,
             body: (s) => `[${s.author || '가족'}] ${s.title || s.text} (${s.date})`
           });
           if (this.calendar) this.calendar.generate();
+        });
+
+        // 6. ✈️ 가족 여행 지도 알림 (추가)
+        this.db.ref('family_trips').on('value', snap => {
+          this.stores.trips.syncFromFirebase(snap.val(), {
+            title: () => `✈️ 새로운 가족 여행지 등록`,
+            body: (tr) => `[${tr.author || '가족'}] ${tr.place || tr.title || '새 여행지'} (${tr.date || ''})`
+          });
+          if (this.trip) this.trip.renderList(this.stores.trips.getItems());
         });
 
         this.db.ref('auth_pins').on('value', snap => {
@@ -452,11 +490,6 @@ window.App = Object.assign(window.App || {}, {
           Object.keys(data).forEach(k => safeSet(`budget_${k}`, String(data[k])));
           if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
           this.ticker.refresh();
-        });
-
-        this.db.ref('family_trips').on('value', snap => {
-          this.stores.trips.syncFromFirebase(snap.val());
-          if (this.trip) this.trip.renderList(this.stores.trips.getItems());
         });
 
         this.db.ref('calendar_data').on('value', snap => {
@@ -492,7 +525,7 @@ window.App = Object.assign(window.App || {}, {
     if (this.trip) this.trip.renderList(this.stores.trips.getItems());
 
     const targetHash = window.location.hash.replace('#', '');
-    const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
+    const validScreens = ['parking', 'shopping', 'sticky', 'trip', 'ledger', 'schedule', 'calendar'];
 
     if (safeGet('gogo_auth_pass') === 'true') {
       if (validScreens.includes(targetHash)) {
