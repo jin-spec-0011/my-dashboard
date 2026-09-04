@@ -8,7 +8,8 @@ App.parking = {
 
     if (type === 'car') {
       document.querySelectorAll('#carGroup .btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.trim() === value);
+        const text = btn.innerText.trim();
+        btn.classList.toggle('active', text.includes(value));
       });
     } else if (type === 'type') {
       document.querySelectorAll('#typeGroup .btn-toggle').forEach(btn => {
@@ -106,7 +107,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 각 차종별 최대 2개만 엄격하게 보관 */
+  /* 🚗 주차 저장: 차량별 최신 2개 보관 & 작성자 연동 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -115,7 +116,11 @@ App.parking = {
     const colVal = colSelect ? colSelect.value : 'A';
     const rowVal = rowSelect ? rowSelect.value : '18';
     const isOutdoor = (type === '야외');
-    const slotCode = `${rowVal}${colVal}`;
+    const slotCode = `${rowVal}번${colVal}`;
+
+    const author = (App.auth && App.auth.currentUser !== 'public')
+      ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
+      : '가족';
 
     let locationText = isOutdoor
       ? `${car} - 야외 - ${slotCode}`
@@ -127,6 +132,8 @@ App.parking = {
     const newLog = {
       id: Date.now(),
       car: car,
+      author: author,
+      floor: isOutdoor ? '야외' : floor,
       type: type,
       text: locationText,
       time: timeStr,
@@ -138,34 +145,22 @@ App.parking = {
 
     if (App.stores?.parking) {
       const allItems = App.stores.parking.getItems();
-      
-      // 현재 차종의 기존 기록 중 최신 1개만 남김 (새 기록 추가 시 총 2개)
       const sameCarItems = allItems.filter(i => (i.car || '').toLowerCase() === car.toLowerCase());
       const otherCarItems = allItems.filter(i => (i.car || '').toLowerCase() !== car.toLowerCase());
       
       const keptSameCar = sameCarItems.slice(0, 1);
       const combinedList = [newLog, ...keptSameCar, ...otherCarItems];
 
-      // 모든 차종에 대해 각각 최대 2개만 유지되도록 보장
-      const finalCleanList = [];
-      const countMap = {};
-      combinedList.forEach(item => {
-        const cKey = (item.car || '').toLowerCase();
-        countMap[cKey] = (countMap[cKey] || 0) + 1;
-        if (countMap[cKey] <= 2) {
-          finalCleanList.push(item);
-        }
-      });
-
-      safeSet('parking_logs', JSON.stringify(finalCleanList));
+      safeSet('parking_logs', JSON.stringify(combinedList));
       if (App.isFirebaseActive && App.db) {
-        App.db.ref('parking_logs').set(finalCleanList);
+        App.db.ref('parking_logs').set(combinedList);
       }
-      this.render(finalCleanList);
+      this.render(combinedList);
     }
 
     this.removePhoto();
-    App.ui.toast(`🚗 [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료! (차종별 2개 유지)`);
+    const carIcon = car === 'x1' ? '⚪' : '🩶';
+    App.ui.toast(`${carIcon} [${car}] ${isOutdoor ? '야외' : floor} ${slotCode} 저장 완료!`);
     if (App.ticker) App.ticker.refresh();
   },
 
@@ -211,7 +206,6 @@ App.parking = {
       return;
     }
 
-    // 각 차종별 가장 최신 1개 아이템의 ID를 식별하여 테두리 강조
     const latestIds = {};
     items.forEach(it => {
       const carKey = (it.car || '').toLowerCase();
@@ -222,6 +216,7 @@ App.parking = {
 
     listEl.innerHTML = filtered.map(item => {
       const isCarLatest = (latestIds[(item.car || '').toLowerCase()] === item.id);
+      const carIcon = (item.car === 'x1') ? '⚪' : '🩶';
 
       let mapLinks = '';
       if (item.isOutdoor && item.lat && item.lng) {
@@ -229,10 +224,10 @@ App.parking = {
         const nmap = `nmap://action/path?dlat=${item.lat}&dlng=${item.lng}&dname=주차위치&appname=gogo`;
         const gmap = `https://www.google.com/maps?q=${item.lat},${item.lng}`;
         mapLinks = `
-          <div class="map-links-group">
-            <a href="${kmap}" class="log-map-link">카카오맵</a>
-            <a href="${nmap}" class="log-map-link">네이버지도</a>
-            <a href="${gmap}" target="_blank" class="log-map-link">구글지도</a>
+          <div class="map-links-group" style="display:flex; gap:6px; margin-top:4px;">
+            <a href="${kmap}" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">카카오맵</a>
+            <a href="${nmap}" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">네이버지도</a>
+            <a href="${gmap}" target="_blank" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">구글지도</a>
           </div>
         `;
       }
@@ -246,10 +241,10 @@ App.parking = {
         <div class="log-item ${isCarLatest ? 'parking-latest-card' : ''}">
           <div class="log-content">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span class="log-text">${escapeHtml(item.text)}</span>
+              <span class="log-text">${carIcon} ${escapeHtml(item.text)}</span>
               ${isCarLatest ? '<span class="parking-latest-badge">⭐ 최신 주차</span>' : ''}
             </div>
-            <div class="log-time">🕒 ${escapeHtml(item.time)}</div>
+            <div class="log-time">🕒 ${escapeHtml(item.time)} · 등록: ${escapeHtml(item.author || '가족')}</div>
             ${mapLinks}
           </div>
           ${photoHtml}
