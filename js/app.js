@@ -29,7 +29,7 @@ window.safeSet = function(key, val) {
   catch (e) { memoryStorage[key] = val; }
 };
 
-/* ── 🛡️ 데이터 스토어 팩토리 ── */
+/* ── 🛡️ 무결점 데이터 스토어 팩토리 ── */
 function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
   let items = [];
 
@@ -110,7 +110,6 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
     if (App.badge) App.badge.refresh();
   };
 
-  /* 3 & 4번 요구사항: 어느 화면에 있든 시스템 푸시 + 인앱 상단 팝업 동시 발송 */
   const syncFromFirebase = (data, notifyConfig) => {
     if (data) {
       const oldLatestId = items.length > 0 ? Number(items[0].id) : 0;
@@ -128,11 +127,9 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender }) {
           const title = notifyConfig.title(latest);
           const body = notifyConfig.body(latest);
 
-          // 1. 기기 상단 시스템 알림
           if (App.push?.sendLocalNotification) {
             App.push.sendLocalNotification(title, body);
           }
-          // 2. 앱 내부 어느 화면에 체류 중이어도 화면 상단 팝업 토스트 즉시 발생
           if (App.ui?.toast) {
             App.ui.toast(`🔔 ${title}\n${body}`);
           }
@@ -207,7 +204,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 2번 요구사항: 전광판에 항상 X1이 먼저 오도록 정렬 */
+  /* 📢 전광판: ⚪ X1 우선 정렬 및 ⚫ 엑센트 포맷 고정 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -229,7 +226,7 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: 항상 X1 먼저, 엑센트 나중에 표기
+      // 2. 주차: ⚪ X1 먼저, ⚫ 엑센트 나중에 표기
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         let x1Item = null;
@@ -239,29 +236,24 @@ window.App = Object.assign(window.App || {}, {
           const rawCar = (p.car || '').toLowerCase();
           if (rawCar.includes('x1') && !x1Item) {
             x1Item = p;
-          } else if (!rawCar.includes('x1') && !accentItem) {
+          } else if ((rawCar.includes('엑센트') || rawCar.includes('accent')) && !accentItem) {
             accentItem = p;
           }
         });
 
         const pTexts = [];
-        // X1 -> 엑센트 순서로 고정
-        [x1Item, accentItem].filter(Boolean).forEach(p => {
-          const isX1 = (p.car || '').toLowerCase().includes('x1');
-          const carName = isX1 ? 'X1' : '엑센트';
-          const carEmoji = isX1 ? '⚪' : '⚫';
-
-          let locDetail = '';
-          if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
-            const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
-            locDetail = `야외 - ${slot}`;
-          } else {
-            const floor = p.floor || 'B1';
-            const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
-            locDetail = `${floor} - ${slot}`;
-          }
-          pTexts.push(`${carEmoji} ${carName} - ${locDetail}`);
-        });
+        if (x1Item) {
+          const loc = x1Item.slot 
+            ? `${x1Item.floor || 'B1'} - ${x1Item.slot}` 
+            : (x1Item.text || '').replace(/^X1\s*-\s*/i, '');
+          pTexts.push(`⚪ X1 - ${loc}`);
+        }
+        if (accentItem) {
+          const loc = accentItem.slot 
+            ? `${accentItem.floor || 'B1'} - ${accentItem.slot}` 
+            : (accentItem.text || '').replace(/^엑센트\s*-\s*/i, '');
+          pTexts.push(`⚫ 엑센트 - ${loc}`);
+        }
 
         if (pTexts.length > 0) {
           lines.push(`🚗 주차 : ${pTexts.join(' │ ')}`);
@@ -376,7 +368,6 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    // 통합 스토어 초기화
     this.stores.parking = createDataStore({ key: 'parking_logs', firebasePath: 'parking_logs', maxItems: 10, onRender: (items) => this.parking?.render && this.parking.render(items) });
     this.stores.todos = createDataStore({ key: 'family_todos', firebasePath: 'family_todos', maxItems: 100, onRender: (items) => this.memo?.renderTodos && this.memo.renderTodos(items) });
     this.stores.stickies = createDataStore({ key: 'family_stickies', firebasePath: 'family_stickies', maxItems: 50, onRender: (items) => this.memo?.renderStickies && this.memo.renderStickies(items) });
@@ -409,7 +400,7 @@ window.App = Object.assign(window.App || {}, {
     this.ticker.start();
     this.badge.refresh();
 
-    // Firebase 설정
+    // Firebase 연동
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -434,32 +425,27 @@ window.App = Object.assign(window.App || {}, {
           badge.classList.add('cloud-active');
         }
 
-        /* 3번 요구사항: 모든 페이지(주차, 장보기, 고정메모, 일정, 가계부, 여행) 실시간 알림 등록 */
-        // 1. 🚗 주차 위치 알림
+        // 🚗 주차 알림 (⚪ X1 / ⚫ 엑센트 이모지 적용)
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
-          title: (p) => `🚗 [${(p.car||'').toLowerCase().includes('x1') ? '🤍🚗 X1' : '🩶🚗 엑센트'}] 주차 위치 등록`,
+          title: (p) => `🚗 [${(p.car||'').toLowerCase().includes('x1') ? '⚪ X1' : '⚫ 엑센트'}] 주차 위치 등록`,
           body: (p) => `${p.text} 에 주차되었습니다.`
         }));
 
-        // 2. 🛒 장보기 알림
         this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val(), {
           title: () => `🛒 새로운 장보기 품목`,
           body: (t) => `[${t.author || '가족'}] ${t.text || t.title}`
         }));
 
-        // 3. 📌 고정 메모 알림 (추가)
         this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val(), {
           title: () => `📌 새로운 고정 메모 등록`,
           body: (m) => `${m.text || '새로운 메모가 등록되었습니다.'}`
         }));
 
-        // 4. 💰 간편 가계부 지출 알림 (추가)
         this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val(), {
           title: () => `💰 새로운 가계부 지출 내역`,
           body: (l) => `[${l.author || '가족'}] ${l.desc || '지출'}: ${Number(l.amount||0).toLocaleString()}원`
         }));
         
-        // 5. 🗓️ 가족 일정 알림
         this.db.ref('family_schedules').on('value', snap => {
           this.stores.schedules.syncFromFirebase(snap.val(), {
             title: () => `🗓️ 새로운 가족 일정 등록`,
@@ -468,7 +454,6 @@ window.App = Object.assign(window.App || {}, {
           if (this.calendar) this.calendar.generate();
         });
 
-        // 6. ✈️ 가족 여행 지도 알림 (추가)
         this.db.ref('family_trips').on('value', snap => {
           this.stores.trips.syncFromFirebase(snap.val(), {
             title: () => `✈️ 새로운 가족 여행지 등록`,
