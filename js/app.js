@@ -232,7 +232,7 @@ window.App = Object.assign(window.App || {}, {
             seenCars.add(carKey);
 
             const carName = isX1 ? 'X1' : '엑센트';
-
+            const carEmoji = isX1 ? '⚪' : '⚫';
             let locDetail = '';
             if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
               const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
