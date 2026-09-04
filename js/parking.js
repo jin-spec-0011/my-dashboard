@@ -3,13 +3,31 @@ window.App = window.App || {};
 App.parking = {
   currentFilter: 'all',
 
+  /* 🚗 차종 정규화 헬퍼 */
+  getCarKey(car) {
+    if (!car) return 'x1';
+    const str = String(car).toLowerCase();
+    if (str.includes('x1')) return 'x1';
+    if (str.includes('엑센트') || str.includes('accent')) return 'accent';
+    return 'x1';
+  },
+
+  getCarEmoji(car) {
+    return this.getCarKey(car) === 'x1' ? '⚪' : '⚫';
+  },
+
+  getCarName(car) {
+    return this.getCarKey(car) === 'x1' ? 'X1' : '엑센트';
+  },
+
   selectOption(type, value) {
     App.state.parking[type] = value;
 
     if (type === 'car') {
+      const targetKey = this.getCarKey(value);
       document.querySelectorAll('#carGroup .btn-toggle').forEach(btn => {
-        const text = btn.innerText.trim();
-        btn.classList.toggle('active', text.includes(value));
+        const btnKey = this.getCarKey(btn.innerText);
+        btn.classList.toggle('active', btnKey === targetKey);
       });
     } else if (type === 'type') {
       document.querySelectorAll('#typeGroup .btn-toggle').forEach(btn => {
@@ -107,34 +125,7 @@ App.parking = {
     if (btnRemove) btnRemove.style.display = 'none';
   },
 
-  /* 🚗 주차 저장: 차량별 최신 2개 보관 & 작성자 연동 */
-  save() /* 차종 선택 시 무채색 차량 이모지 반영 */
-  selectOption(type, value) {
-    App.state.parking[type] = value;
-
-    if (type === 'car') {
-      document.querySelectorAll('#carGroup .btn-toggle').forEach(btn => {
-        const text = btn.innerText.trim();
-        btn.classList.toggle('active', text.includes(value));
-      });
-    } else if (type === 'type') {
-      document.querySelectorAll('#typeGroup .btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.trim() === value);
-      });
-      const isOutdoor = (value === '야외');
-      const floorCont = document.getElementById('floorContainer');
-      const mapSec = document.getElementById('outdoorMapSection');
-      if (floorCont) floorCont.style.display = isOutdoor ? 'none' : 'flex';
-      if (mapSec) mapSec.style.display = isOutdoor ? 'flex' : 'none';
-      if (isOutdoor) this.getCurrentLocation();
-    } else if (type === 'floor') {
-      document.querySelectorAll('#floorGroup .btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.trim() === value);
-      });
-    }
-  },
-
-  /* 주차 위치 저장: X1 - B1 - 18-A 규격으로 저장 */
+  /* 🚗 주차 저장: 데이터 유실 방지 표준 스토어 연동 & 차종별 2개 보관 */
   save() {
     const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
     const colSelect = document.getElementById('colSelect');
@@ -144,25 +135,27 @@ App.parking = {
     const rowVal = rowSelect ? rowSelect.value : '18';
     const isOutdoor = (type === '야외');
     const slotCode = `${rowVal}-${colVal}`;
-    const cleanCar = car.replace(/[^a-zA-Z0-9가-힣]/g, '').trim(); // X1 또는 엑센트
+
+    const carKey = this.getCarKey(car);
+    const carName = this.getCarName(car);
+    const carEmoji = this.getCarEmoji(car);
 
     const author = (App.auth && App.auth.currentUser !== 'public')
       ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
       : '가족';
 
-    // 저장 형식: X1 - B1 - 18-A / 엑센트 - 야외 - 19-A
-    const locationText = isOutdoor
-      ? `${cleanCar} - 야외 - ${slotCode}`
-      : `${cleanCar} - ${floor} - ${slotCode}`;
+    const floorText = isOutdoor ? '야외' : (floor || 'B1');
+    const locationText = `${carName} - ${floorText} - ${slotCode}`;
 
     const now = new Date();
     const timeStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const newLog = {
       id: Date.now(),
-      car: cleanCar,
+      car: carName,
+      carKey: carKey,
       author: author,
-      floor: isOutdoor ? '야외' : floor,
+      floor: floorText,
       slot: slotCode,
       type: type,
       text: locationText,
@@ -174,25 +167,24 @@ App.parking = {
     };
 
     if (App.stores?.parking) {
+      // 1. 기존 동일 차종의 기록 중 최신 1개만 남기고 이전 초과분은 스토어에서 정식 제거
       const allItems = App.stores.parking.getItems();
-      const sameCarItems = allItems.filter(i => (i.car || '').toLowerCase() === cleanCar.toLowerCase());
-      const otherCarItems = allItems.filter(i => (i.car || '').toLowerCase() !== cleanCar.toLowerCase());
-      
-      // 최신 1개만 남기고 새 기록 추가 (총 2개 유지)
-      const combinedList = [newLog, ...sameCarItems.slice(0, 1), ...otherCarItems];
+      const sameCarItems = allItems.filter(i => this.getCarKey(i.car) === carKey);
 
-      safeSet('parking_logs', JSON.stringify(combinedList));
-      if (App.isFirebaseActive && App.db) {
-        App.db.ref('parking_logs').set(combinedList);
+      if (sameCarItems.length >= 2) {
+        for (let idx = 1; idx < sameCarItems.length; idx++) {
+          App.stores.parking.remove(sameCarItems[idx].id);
+        }
       }
-      this.render(combinedList);
+
+      // 2. 표준 스토어 add 파이프라인으로 등록 (로컬스토리지 + 메모리 + Firebase 동시 반영)
+      App.stores.parking.add(newLog);
     }
 
     this.removePhoto();
-    const carIcon = cleanCar.toLowerCase().includes('x1') ? '🤍🚗' : '🩶🚗';
-    App.ui.toast(`${carIcon} [${cleanCar}] ${locationText} 저장 완료!`);
+    App.ui.toast(`${carEmoji} [${carName}] ${floorText} - ${slotCode} 저장 완료!`);
     if (App.ticker) App.ticker.refresh();
-  }
+  },
 
   delete(id) {
     if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
@@ -216,8 +208,15 @@ App.parking = {
 
   setFilter(filter) {
     this.currentFilter = filter;
+    const targetKey = filter === 'all' ? 'all' : this.getCarKey(filter);
     document.querySelectorAll('.log-filter-bar .filter-btn').forEach(b => {
-      b.classList.toggle('active', b.id === `filter-${filter}`);
+      if (b.id === 'filter-all') {
+        b.classList.toggle('active', targetKey === 'all');
+      } else if (b.id === 'filter-x1') {
+        b.classList.toggle('active', targetKey === 'x1');
+      } else if (b.id === 'filter-accent') {
+        b.classList.toggle('active', targetKey === 'accent');
+      }
     });
     this.render(App.stores?.parking ? App.stores.parking.getItems() : []);
   },
@@ -228,7 +227,8 @@ App.parking = {
 
     let filtered = items;
     if (this.currentFilter !== 'all') {
-      filtered = items.filter(i => (i.car || '').toLowerCase().includes(this.currentFilter.toLowerCase()));
+      const filterKey = this.getCarKey(this.currentFilter);
+      filtered = items.filter(i => this.getCarKey(i.car) === filterKey);
     }
 
     if (filtered.length === 0) {
@@ -238,15 +238,16 @@ App.parking = {
 
     const latestIds = {};
     items.forEach(it => {
-      const carKey = (it.car || '').toLowerCase();
+      const carKey = this.getCarKey(it.car);
       if (!latestIds[carKey]) {
         latestIds[carKey] = it.id;
       }
     });
 
     listEl.innerHTML = filtered.map(item => {
-      const isCarLatest = (latestIds[(item.car || '').toLowerCase()] === item.id);
-      const carIcon = (item.car === 'x1') ? '⚪' : '🩶';
+      const carKey = this.getCarKey(item.car);
+      const isCarLatest = (latestIds[carKey] === item.id);
+      const carEmoji = this.getCarEmoji(item.car);
 
       let mapLinks = '';
       if (item.isOutdoor && item.lat && item.lng) {
@@ -271,7 +272,7 @@ App.parking = {
         <div class="log-item ${isCarLatest ? 'parking-latest-card' : ''}">
           <div class="log-content">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span class="log-text">${carIcon} ${escapeHtml(item.text)}</span>
+              <span class="log-text">${carEmoji} ${escapeHtml(item.text)}</span>
               ${isCarLatest ? '<span class="parking-latest-badge">⭐ 최신 주차</span>' : ''}
             </div>
             <div class="log-time">🕒 ${escapeHtml(item.time)} · 등록: ${escapeHtml(item.author || '가족')}</div>
