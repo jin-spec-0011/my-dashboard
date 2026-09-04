@@ -639,6 +639,27 @@
     </div>
   </div>
 
+  <!-- 14. 📌 고정 메모 수정 팝업 모달 -->
+  <div id="sticky-edit-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 400px; text-align: left;">
+      <button type="button" class="modal-close-icon-btn" onclick="App.memo.closeEditModal()" title="닫기">✕</button>
+      <div class="modal-header" style="text-align: center; margin-bottom: 10px;">
+        <h3 style="font-size: 17px; font-weight: 800; color: #0f172a;">📌 고정 메모 수정</h3>
+        <p style="font-size: 11.5px; color: #64748b; margin-top: 3px;" id="stickyEditMetaInfo">-</p>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px; display: block;">메모 내용</label>
+          <textarea id="stickyEditTextarea" class="memo-text-input" rows="6" style="height: auto; padding: 10px; line-height: 1.5;" placeholder="메모 내용을 입력하세요..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 14px; display: flex; flex-direction: column; gap: 6px;">
+        <button type="button" class="btn-modal-save" style="background: #2563eb;" onclick="App.memo.saveEditSticky()">💾 수정 저장</button>
+        <button type="button" class="btn-modal-cancel" onclick="App.memo.closeEditModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <!-- JS 모듈 로드 -->
