@@ -155,10 +155,10 @@
     <div class="card form-card">
       <div class="form-group">
         <label>1. 차종 선택</label>
-        <div class="toggle-group" id="carGroup">
-          <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'X1')">🤍🚗 X1</button>
-          <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">🩶🚗 엑센트</button>
-        </div>
+       <div class="toggle-group" id="carGroup">
+  <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'X1')">⚪ X1</button>
+  <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">⚫ 엑센트</button>
+</div>
       </div>
 
       <div class="form-group">
@@ -247,11 +247,11 @@
         <button type="button" class="btn-clear" onclick="App.parking.clear()">전체삭제</button>
       </div>
 
-      <div class="log-filter-bar">
-        <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
-        <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('X1')">🤍🚗 X1</button>
-        <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">🩶🚗 엑센트</button>
-      </div>
+    <div class="log-filter-bar">
+  <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
+  <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('X1')">⚪ X1</button>
+  <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">⚫ 엑센트</button>
+</div>
 
       <div id="logList" class="log-list"></div>
     </div>
