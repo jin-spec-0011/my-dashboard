@@ -1,24 +1,10 @@
 window.App = window.App || {};
 
 App.memo = {
-  currentTab: 'todo',
   pendingTodoItem: null,
   selectedLedgerAuthor: '진세',
 
-  switchTab(tab) {
-    this.currentTab = tab;
-    const todoBtn = document.getElementById('tab-todo');
-    const stickyBtn = document.getElementById('tab-sticky');
-    const todoSec = document.getElementById('memoTodoSection');
-    const stickySec = document.getElementById('memoStickySection');
-
-    if (todoBtn) todoBtn.classList.toggle('active', tab === 'todo');
-    if (stickyBtn) stickyBtn.classList.toggle('active', tab === 'sticky');
-    if (todoSec) todoSec.style.display = tab === 'todo' ? 'block' : 'none';
-    if (stickySec) stickySec.style.display = tab === 'sticky' ? 'block' : 'none';
-    this.render();
-  },
-
+  /* 🛒 장보기 추가 */
   addTodo() {
     const input = document.getElementById('todoInput');
     const text = input ? input.value.trim() : '';
@@ -121,7 +107,7 @@ App.memo = {
     const author = this.selectedLedgerAuthor || '가족';
 
     if (!amount || isNaN(amount) || amount <= 0) {
-      return alert("올바른 결제 금액을 숫자로 입력해주세요.\n(금액 없이 체크만 하려면 아래 '금액 기록 없이 체크' 버튼을 누르세요.)");
+      return alert("올바른 결제 금액을 입력해주세요.");
     }
 
     const newEntry = {
@@ -162,7 +148,6 @@ App.memo = {
     if (App.ticker) App.ticker.refresh();
   },
 
-  /* 0번 요구사항: 장보기 삭제 시 팝업 확인 */
   deleteTodo(id) {
     if (confirm("해당 장보기 항목을 삭제하시겠습니까?")) {
       if (App.stores?.todos) {
@@ -196,6 +181,7 @@ App.memo = {
     }).join('');
   },
 
+  /* 📌 고정 메모 추가 */
   addSticky() {
     const input = document.getElementById('stickyInput');
     const text = input ? input.value.trim() : '';
@@ -204,6 +190,7 @@ App.memo = {
     const newSticky = {
       id: Date.now(),
       text: text,
+      completed: false,
       date: new Date().toISOString().split('T')[0]
     };
 
@@ -214,7 +201,17 @@ App.memo = {
     App.ui.toast("📌 고정 메모가 저장되었습니다.");
   },
 
-  /* 0번 요구사항: 메모 삭제 시 팝업 확인 */
+  /* 5번 요구사항: 고정 메모 완료 체크 토글 */
+  toggleSticky(id) {
+    const items = App.stores?.stickies ? App.stores.stickies.getItems() : [];
+    const target = items.find(i => String(i.id) === String(id));
+    if (!target) return;
+
+    const nextState = !target.completed;
+    App.stores.stickies.update(id, { completed: nextState });
+    App.ui.toast(nextState ? "☑️ 메모가 완료 처리되었습니다." : "⬜ 메모가 진행 상태로 변경되었습니다.");
+  },
+
   deleteSticky(id) {
     if (confirm("해당 고정 메모를 삭제하시겠습니까?")) {
       if (App.stores?.stickies) {
@@ -235,11 +232,15 @@ App.memo = {
 
     listEl.innerHTML = items.map(item => {
       const memoText = item.text || item.memo || '';
+      const isDone = Boolean(item.completed);
       return `
-        <div class="log-item" style="background:#fef9c3; border-color:#fde047;">
-          <div class="log-content">
-            <div class="log-text" style="white-space:pre-wrap;">${escapeHtml(memoText)}</div>
-            <div class="log-time">🕒 ${escapeHtml(item.date || '')}</div>
+        <div class="sticky-note-card ${isDone ? 'completed' : ''}">
+          <button type="button" class="sticky-check-btn" onclick="App.memo.toggleSticky('${item.id}')" title="완료 체크">
+            ${isDone ? '☑️' : '⬜'}
+          </button>
+          <div style="flex: 1; min-width: 0;">
+            <div class="sticky-text">${escapeHtml(memoText)}</div>
+            <div class="log-time" style="margin-top: 4px;">🕒 ${escapeHtml(item.date || '')}</div>
           </div>
           <button type="button" class="delete-item-btn" onclick="App.memo.deleteSticky('${item.id}')">✕</button>
         </div>
