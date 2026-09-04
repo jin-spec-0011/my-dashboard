@@ -216,33 +216,40 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: 각 차량(x1, 엑센트)의 '가장 최신 1개' 위치만 선별 표기
+  
+    // 2. 주차: (차량이모지)주차 : X1 - B1 - 18-A │ 엑센트 - B1 - 19-A
       const parkingItems = App.stores.parking ? App.stores.parking.getItems() : [];
       if (parkingItems.length > 0) {
         const pTexts = [];
         const seenCars = new Set();
 
         parkingItems.forEach(p => {
-          const carName = (p.car || '').trim();
-          const carKey = carName.toLowerCase();
+          const rawCar = (p.car || '').trim();
+          const isX1 = rawCar.toLowerCase().includes('x1');
+          const carKey = isX1 ? 'x1' : 'accent';
 
-          // 차종별 최초 1회(가장 최신)만 포함
           if (!seenCars.has(carKey)) {
             seenCars.add(carKey);
-            let loc = p.text || '';
-            if (loc.includes(' - ')) {
-              const parts = loc.split(' - ');
-              loc = parts[parts.length - 1];
-              if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
-                loc = '야외 ' + loc;
-              }
+
+            const carName = isX1 ? 'X1' : '엑센트';
+            const carEmoji = isX1 ? '🤍🚗' : '🩶🚗';
+
+            let locDetail = '';
+            if (p.isOutdoor || (p.text && p.text.includes('야외'))) {
+              const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
+              locDetail = `야외 - ${slot}`;
+            } else {
+              const floor = p.floor || 'B1';
+              const slot = p.slot || (p.text ? p.text.split(' - ').pop() : '');
+              locDetail = `${floor} - ${slot}`;
             }
-            pTexts.push(`${carName} · ${loc.trim()}`);
+
+            pTexts.push(`${carEmoji} ${carName} - ${locDetail}`);
           }
         });
 
         if (pTexts.length > 0) {
-          lines.push(`🚗 ${pTexts.join(' │ ')}`);
+          lines.push(`🚗 주차 : ${pTexts.join(' │ ')}`);
         }
       }
 
