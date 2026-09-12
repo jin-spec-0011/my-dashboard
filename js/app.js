@@ -201,7 +201,7 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
- /* 📢 전광판: 내용별 2줄 줄바꿈 지원 */
+  /* 📢 전광판: 내용별 2줄 줄바꿈 지원 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -223,35 +223,54 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-  // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A
-      const parkingItems = (App.parking && typeof App.parking.getLogs === 'function') 
+      // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A (정밀 수정 완료)
+      const rawParking = (App.parking && typeof App.parking.getLogs === 'function') 
         ? App.parking.getLogs() 
         : (App.stores.parking ? App.stores.parking.getItems() : []);
+
+      // 최신 등록순(ID 내림차순)으로 강제 정렬하여 항상 최신 기록 선택
+      const parkingItems = [...rawParking].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
 
       if (parkingItems.length > 0) {
         let x1Item = null;
         let accentItem = null;
 
-        parkingItems.forEach(p => {
+        for (const p of parkingItems) {
           const rawCar = (p.car || '').toLowerCase();
           if (rawCar.includes('x1') && !x1Item) {
             x1Item = p;
           } else if ((rawCar.includes('엑센트') || rawCar.includes('accent')) && !accentItem) {
             accentItem = p;
           }
-        });
+          if (x1Item && accentItem) break;
+        }
 
-        // 층수와 기둥번호를 B1-25A 형식으로 정밀 변환하는 함수
+        // B1-25A 규격 포맷 생성 함수 (기존 데이터 직접 참조 및 레거시 대응)
         const formatParkingCode = (item) => {
-          const raw = (item.text || '').replace(/번/g, '');
-          const floorMatch = raw.match(/(B\d+|\d+F|\d+층|야외)/i);
+          if (!item) return '';
+
+          // 1) 이미 floor와 slot이 분리되어 저장된 경우 직접 조합 (X1 간섭 원천 차단)
+          if (item.floor && item.slot) {
+            const f = item.floor.toUpperCase();
+            const s = item.slot.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            return `${f}-${s}`;
+          }
+
+          // 2) text만 있는 구버전 데이터 대비: 차종(X1/엑센트) 이름을 먼저 제거 후 추출
+          const textWithoutCar = (item.text || '')
+            .replace(/^(⚪|⚫)?\s*(X1|엑센트|accent)\s*[-:]?\s*/i, '')
+            .replace(/번/g, '');
+
+          const floorMatch = textWithoutCar.match(/(B\d+|\d+F|\d+층|야외)/i);
           const floor = floorMatch ? floorMatch[0].toUpperCase() : (item.floor || 'B1');
-          const slotMatch = raw.match(/(\d+)\s*-?\s*([A-Za-z])/);
+
+          const remain = textWithoutCar.replace(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*/i, '');
+          const slotMatch = remain.match(/(\d+)\s*-?\s*([A-Za-z])/);
 
           if (slotMatch) {
-            return `${floor}-${slotMatch[1]}${slotMatch[2].toUpperCase()}`; // B1-25A
+            return `${floor}-${slotMatch[1]}${slotMatch[2].toUpperCase()}`;
           }
-          return `${floor}-${(item.slot || '').replace(/[^a-zA-Z0-9]/g, '')}`;
+          return `${floor}-${(item.slot || remain || '').replace(/[^a-zA-Z0-9]/g, '')}`;
         };
 
         const pTexts = [];
@@ -266,6 +285,7 @@ window.App = Object.assign(window.App || {}, {
           lines.push(pTexts.join('<br>'));
         }
       }
+
       // 3. 가계부 이달의 총 지출
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
@@ -296,7 +316,7 @@ window.App = Object.assign(window.App || {}, {
       const el = document.getElementById('tickerVerticalText');
       if (!el || this.messages.length === 0) return;
       if (this.currentIndex >= this.messages.length) this.currentIndex = 0;
-      el.innerHTML = this.messages[this.currentIndex]; // innerHTML로 교체
+      el.innerHTML = this.messages[this.currentIndex];
     },
 
     next() {
@@ -308,7 +328,7 @@ window.App = Object.assign(window.App || {}, {
 
       setTimeout(() => {
         this.currentIndex = (this.currentIndex + 1) % this.messages.length;
-        el.innerHTML = this.messages[this.currentIndex]; // innerHTML로 교체
+        el.innerHTML = this.messages[this.currentIndex];
         el.classList.remove('slide-down-out');
         el.classList.add('slide-down-in');
 
