@@ -6,7 +6,7 @@
   <title>GOGO 스마트 매니저</title>
   
   <link rel="manifest" href="manifest.json">
-  <!-- 최신 웹 표준 메타 태그 (경고 해결) 및 iOS 호환 태그 -->
+  <!-- PWA 표준 및 iOS Safari 메타 태그 -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -45,7 +45,6 @@
       </div>
       <div class="header-right">
         <button type="button" class="btn-push-toggle" id="btnPushToggle" onclick="App.push.requestPermission()">🔔 알림</button>
-        <!-- 터치 시 즉시 강제 재동기화 지원 배지 -->
         <span class="cloud-badge" id="cloudStatusBadge" onclick="App.forceSyncAll()" style="cursor: pointer;" title="탭하여 실시간 강제 동기화">☁️ 동기화</span>
         <button type="button" class="btn-icon-lock" onclick="App.auth.lock()" title="화면 잠금">🔒</button>
       </div>
@@ -69,7 +68,7 @@
       </div>
     </div>
 
-    <!-- 대시보드 메뉴 그리드 -->
+    <!-- 메뉴 그리드 ('장보기' 명칭 적용) -->
     <div class="menu-grid">
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
@@ -339,7 +338,6 @@
 
     <div id="calendarViewportWrapper" class="calendar-viewport-wrapper view-web">
       <div class="print-calendar-sheet" id="printCalendarSheet">
-        
         <div class="cal-sheet-header">
           <div class="cal-sheet-title-row">
             <h1 class="cal-sheet-title" id="calPrintTitle">2026년 9월</h1>
@@ -373,7 +371,6 @@
             <textarea id="calendarMemoInput" class="memo-textarea" rows="3" placeholder="이달의 일정 및 공유 메모를 기록하세요..." oninput="App.calendar.saveMemo(this.value)"></textarea>
           </div>
         </div>
-
       </div>
     </div>
   </section>
@@ -413,7 +410,7 @@
       <button type="button" class="btn-save" onclick="App.memo.addSticky()">📌 메모 저장</button>
     </div>
 
-    <!-- 🔍 메모 실시간 검색 바 (날짜 & 내용) -->
+    <!-- 🔍 메모 검색 바 (날짜 & 내용 검색) -->
     <div class="card sticky-search-card">
       <div class="sticky-search-header">
         <span class="sticky-search-title">🔍 메모 검색</span>
@@ -664,15 +661,15 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 모듈 로드 (?v=2.3 캐시 버스팅 파라미터로 아이폰 PWA 캐시 강제 갱신) -->
-  <script src="js/app.js?v=2.3"></script>
-  <script src="js/auth.js?v=2.3"></script>
-  <script src="js/push.js?v=2.3"></script>
-  <script src="js/parking.js?v=2.3"></script>
-  <script src="js/schedule.js?v=2.3"></script>
-  <script src="js/calendar.js?v=2.3"></script>
-  <script src="js/memo.js?v=2.3"></script>
-  <script src="js/ledger.js?v=2.3"></script>
-  <script src="js/trip.js?v=2.3"></script>
+  <!-- JS 모듈 로드 (버전 태그를 통해 PWA 캐시 강제 갱신) -->
+  <script src="js/app.js?v=3.0"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/push.js"></script>
+  <script src="js/parking.js"></script>
+  <script src="js/schedule.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/memo.js"></script>
+  <script src="js/ledger.js"></script>
+  <script src="js/trip.js"></script>
 </body>
 </html>
