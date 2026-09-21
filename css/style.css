@@ -19,6 +19,13 @@ padding: 0;
 -webkit-tap-highlight-color: transparent;
 }
 
+/* STREAMING_CHUNK:Styling layout with iOS safe areas and dynamic viewport... */
+html {
+width: 100%;
+overflow-x: hidden;
+-webkit-text-size-adjust: 100%;
+}
+
 body {
 font-family: var(--font-family);
 background-color: var(--bg-color);
@@ -26,8 +33,14 @@ color: var(--text-main);
 display: flex;
 justify-content: center;
 min-height: 100vh;
-padding: 14px 10px 40px;
+min-height: 100dvh; /* iOS Safari 동적 주소창/홈바 높이 자동 대응 /
+/ iOS Safe Area (노치, 다이내믹 아일랜드, 하단 홈 인디케이터 바) 여백 완전 대응 */
+padding-top: max(12px, env(safe-area-inset-top, 12px));
+padding-bottom: max(60px, calc(env(safe-area-inset-bottom, 20px) + 36px));
+padding-left: max(10px, env(safe-area-inset-left, 10px));
+padding-right: max(10px, env(safe-area-inset-right, 10px));
 width: 100%;
+overflow-x: hidden;
 }
 
 .screen {
@@ -38,6 +51,7 @@ flex-direction: column;
 align-items: center;
 gap: 14px;
 margin: 0 auto;
+box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
@@ -56,7 +70,8 @@ width: 100%;
 display: flex;
 }
 
-/* ── 🔒 잠금 화면 ── */
+/* STREAMING_CHUNK:Styling lock screen and security card... /
+/ ── 🔒 잠금 화면 ── */
 #screen-lock {
 justify-content: center;
 min-height: 80vh;
@@ -113,7 +128,8 @@ cursor: pointer;
 box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-/* ── 🏠 홈 화면 헤더 (아이폰 Safari 1줄 고정) ── */
+/* STREAMING_CHUNK:Styling header navigation and profile switch bar... /
+/ ── 🏠 홈 화면 헤더 ── */
 .home-header {
 width: 100%;
 display: flex;
@@ -182,7 +198,6 @@ border-radius: 8px;
 background: #e2e8f0;
 color: #475569;
 white-space: nowrap;
-user-select: none;
 }
 
 .cloud-badge.cloud-active {
@@ -204,7 +219,7 @@ font-size: 13.5px;
 flex-shrink: 0;
 }
 
-/* ── 👤 프로필 전환 바 ── */
+/* ── 👤 프로필 바 ── */
 .profile-switch-bar {
 width: 100%;
 background: #ffffff;
@@ -248,27 +263,32 @@ transform: scale(1.02);
 .btn-prof-jinse.active { background: #2563eb; color: #ffffff; border-color: #1d4ed8; }
 .btn-prof-jihye.active { background: #db2777; color: #ffffff; border-color: #be185d; }
 
-/* ── 🌟 [대안 1] 메뉴 카드 '라이브 서머리' UI ── */
+/* STREAMING_CHUNK:Styling 2-column menu grid and live summary widget cards... /
+/ ── 🌟 [대안 1] 메뉴 카드 '라이브 서머리' UI ── /
 .menu-grid {
 width: 100%;
 display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 12px;
+/ minmax(0, 1fr)를 지정하여 내부 텍스트가 길어도 화면 밖으로 카드가 삐져나가지 않도록 방지 */
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 10px;
+box-sizing: border-box;
 }
 
 .menu-card {
 background: #ffffff;
 border: 1px solid var(--border-color);
 border-radius: 18px;
-padding: 15px 14px 14px;
+padding: 14px 12px 12px;
 display: flex;
 flex-direction: column;
-gap: 10px;
+gap: 8px;
 cursor: pointer;
 box-shadow: 0 2px 6px rgba(0,0,0,0.03);
 transition: all 0.2s ease;
 min-height: 116px; /* 모든 카드의 균일한 높이 유지 */
 justify-content: space-between;
+min-width: 0;
+box-sizing: border-box;
 }
 
 .menu-card:active {
@@ -277,13 +297,13 @@ background: #f8fafc;
 }
 
 .card-icon-wrap {
-width: 44px;
-height: 44px;
+width: 42px;
+height: 42px;
 border-radius: 12px;
 display: flex;
 align-items: center;
 justify-content: center;
-font-size: 22px;
+font-size: 21px;
 }
 
 .bg-blue { background: #eff6ff; }
@@ -309,7 +329,7 @@ gap: 4px;
 }
 
 .card-title {
-font-size: 14.5px;
+font-size: clamp(13px, 3.8vw, 14.5px);
 font-weight: 800;
 color: #0f172a;
 letter-spacing: -0.3px;
@@ -328,19 +348,20 @@ border-radius: 10px;
 }
 
 .card-desc {
-font-size: 11.5px;
+font-size: clamp(10.5px, 3vw, 11.5px);
 color: var(--text-sub);
 line-height: 1.35;
 word-break: keep-all;
 }
 
-/* 🌟 라이브 서머리 박스 전용 스타일 (iOS 위젯 감성) */
+/* ── 🌟 라이브 서머리 박스 전용 스타일 (iOS 위젯 감성) ── */
 .live-summary-box {
 display: flex;
 flex-direction: column;
 gap: 2px;
-font-size: 11.5px;
+font-size: clamp(10.5px, 2.9vw, 11.5px);
 line-height: 1.3;
+min-width: 0;
 }
 
 .summary-loading {
@@ -348,16 +369,15 @@ color: #94a3b8;
 font-size: 11px;
 }
 
-/* 1) 🚗 주차 라이브 서머리 */
+/* STREAMING_CHUNK:Styling live summary status badges and text truncations... /
+/ 1) 🚗 주차 라이브 서머리 (좁은 화면에서도 텍스트가 잘리지 않도록 줄바꿈 허용) */
 .live-parking-row {
 display: flex;
 align-items: center;
-flex-wrap: nowrap;
-gap: 3px;
-font-size: 12px;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
+flex-wrap: wrap;
+gap: 2px 4px;
+font-size: clamp(11px, 3.1vw, 12px);
+line-height: 1.3;
 }
 .live-parking-slot-x1 {
 font-weight: 800;
@@ -387,17 +407,19 @@ margin-right: 3px;
 .live-schedule-text {
 font-weight: 700;
 color: #1e293b;
-font-size: 11.5px;
+font-size: clamp(10.5px, 3vw, 11.5px);
 display: -webkit-box;
 -webkit-line-clamp: 2;
 -webkit-box-orient: vertical;
 overflow: hidden;
+word-break: break-all;
 }
 
 /* 3) 🛒 장보기 라이브 서머리 */
 .live-shopping-pending {
 font-weight: 700;
 color: #b45309;
+word-break: break-all;
 }
 .live-shopping-count-badge {
 color: #ef4444;
@@ -410,24 +432,24 @@ font-weight: 700;
 
 /* 4) 💰 가계부 라이브 서머리 */
 .live-ledger-spend {
-font-size: 12px;
+font-size: clamp(11px, 3.2vw, 12px);
 font-weight: 800;
 color: #dc2626;
 }
 .live-ledger-remain {
-font-size: 10.5px;
+font-size: clamp(9.5px, 2.7vw, 10.5px);
 font-weight: 700;
 color: #16a34a;
 }
 .live-ledger-over {
-font-size: 10.5px;
+font-size: clamp(9.5px, 2.7vw, 10.5px);
 font-weight: 700;
 color: #ef4444;
 }
 
 /* 5) 📌 고정메모 / ✈️ 여행 */
 .live-sticky-text, .live-trip-text {
-font-size: 11.5px;
+font-size: clamp(10.5px, 3vw, 11.5px);
 font-weight: 600;
 color: #334155;
 white-space: nowrap;
@@ -435,7 +457,8 @@ overflow: hidden;
 text-overflow: ellipsis;
 }
 
-/* ── 공통 UI ── */
+/* STREAMING_CHUNK:Styling common form elements, inputs, and toggle buttons... /
+/ ── 공통 UI ── */
 .header-nav {
 width: 100%;
 display: flex;
@@ -464,6 +487,7 @@ border: 1px solid var(--border-color);
 border-radius: 16px;
 padding: 16px;
 box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+box-sizing: border-box;
 }
 
 .form-card { display: flex; flex-direction: column; gap: 14px; }
@@ -492,6 +516,7 @@ width: 100%;
 min-width: 0;
 height: 44px;
 align-items: center;
+box-sizing: border-box;
 }
 
 .btn-toggle {
@@ -595,7 +620,8 @@ align-items: center !important;
 justify-content: center !important;
 }
 
-/* ── 🚗 주차 테두리 강조 ── */
+/* STREAMING_CHUNK:Styling parking photo upload, logs, and latest-entry highlight... /
+/ ── 🚗 주차 테두리 강조 ── */
 .parking-latest-card {
 border: 2px solid var(--primary-color) !important;
 background: #eff6ff !important;
@@ -666,6 +692,7 @@ justify-content: space-between;
 align-items: center;
 gap: 8px;
 width: 100%;
+box-sizing: border-box;
 }
 
 .log-content { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -674,7 +701,76 @@ width: 100%;
 .delete-item-btn { background: none; border: none; font-size: 15px; color: #94a3b8; cursor: pointer; padding: 4px 8px; }
 .parking-log-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
 
-/* ── 📌 고정 메모 검색 & 카드 ── */
+/* STREAMING_CHUNK:Styling sticky note cards, search filters, and edit modal trigger... /
+/ ── 📌 고정 메모 UI & 검색 ── */
+.sticky-grid-wrap {
+display: flex;
+flex-direction: column;
+gap: 8px;
+margin-top: 10px;
+width: 100%;
+}
+
+.sticky-note-card {
+background: #fef9c3;
+border: 1.5px solid #fde047;
+border-radius: 12px;
+padding: 12px 14px;
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+gap: 10px;
+transition: all 0.2s ease;
+cursor: pointer;
+user-select: none;
+box-sizing: border-box;
+}
+
+.sticky-note-card:active {
+transform: scale(0.99);
+}
+
+.sticky-note-card.completed {
+background: #f1f5f9;
+border-color: #cbd5e1;
+opacity: 0.65;
+}
+
+.sticky-note-card.completed .sticky-text {
+text-decoration: line-through;
+color: #94a3b8;
+}
+
+.sticky-check-btn {
+background: none;
+border: none;
+font-size: 18px;
+cursor: pointer;
+padding: 0 4px 0 0;
+line-height: 1;
+}
+
+.sticky-text {
+font-size: 13.5px;
+font-weight: 700;
+color: #0f172a;
+white-space: pre-wrap;
+word-break: break-all;
+line-height: 1.4;
+}
+
+.sticky-meta-row {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 11px;
+color: #64748b;
+margin-top: 4px;
+border-top: 1px dashed rgba(0,0,0,0.08);
+padding-top: 4px;
+}
+
+/* 🔍 고정 메모 검색 UI */
 .sticky-search-card {
 display: flex;
 flex-direction: column;
@@ -742,73 +838,8 @@ border-radius: 6px;
 text-align: center;
 }
 
-.sticky-grid-wrap {
-display: flex;
-flex-direction: column;
-gap: 8px;
-margin-top: 10px;
-width: 100%;
-}
-
-.sticky-note-card {
-background: #fef9c3;
-border: 1.5px solid #fde047;
-border-radius: 12px;
-padding: 12px 14px;
-display: flex;
-justify-content: space-between;
-align-items: flex-start;
-gap: 10px;
-transition: all 0.2s ease;
-cursor: pointer;
-user-select: none;
-}
-
-.sticky-note-card:active {
-transform: scale(0.99);
-}
-
-.sticky-note-card.completed {
-background: #f1f5f9;
-border-color: #cbd5e1;
-opacity: 0.65;
-}
-
-.sticky-note-card.completed .sticky-text {
-text-decoration: line-through;
-color: #94a3b8;
-}
-
-.sticky-check-btn {
-background: none;
-border: none;
-font-size: 18px;
-cursor: pointer;
-padding: 0 4px 0 0;
-line-height: 1;
-}
-
-.sticky-text {
-font-size: 13.5px;
-font-weight: 700;
-color: #0f172a;
-white-space: pre-wrap;
-word-break: break-all;
-line-height: 1.4;
-}
-
-.sticky-meta-row {
-display: flex;
-justify-content: space-between;
-align-items: center;
-font-size: 11px;
-color: #64748b;
-margin-top: 4px;
-border-top: 1px dashed rgba(0,0,0,0.08);
-padding-top: 4px;
-}
-
-/* ── 🗓️ 일정 수정 모드 배너 ── */
+/* STREAMING_CHUNK:Styling schedule edit banner and ledger monthly meter... /
+/ ── 🗓️ 일정 수정 모드 배너 ── */
 .edit-mode-banner {
 width: 100%;
 background: #ecfdf5;
@@ -821,6 +852,7 @@ align-items: center;
 font-size: 13px;
 font-weight: 800;
 color: #065f46;
+box-sizing: border-box;
 }
 
 .btn-cancel-edit {
@@ -855,6 +887,7 @@ border: 1px solid var(--border-color);
 padding: 8px 12px;
 border-radius: 14px;
 gap: 8px;
+box-sizing: border-box;
 }
 
 .ledger-month-nav { display: flex; align-items: center; gap: 4px; }
@@ -950,7 +983,8 @@ text-align: center;
 .text-green { color: #16a34a !important; }
 .text-red { color: #dc2626 !important; }
 
-/* ── 📅 캘린더 ── */
+/* STREAMING_CHUNK:Styling calendar viewers, device toggles, and grid cells... /
+/ ── 📅 캘린더 ── */
 .device-switch-bar {
 width: 100%;
 max-width: 900px;
@@ -962,6 +996,7 @@ display: flex;
 align-items: center;
 justify-content: space-between;
 gap: 10px;
+box-sizing: border-box;
 }
 
 .device-switch-label { font-size: 12.5px; font-weight: 800; color: #334155; }
@@ -994,6 +1029,7 @@ justify-content: space-between;
 align-items: center;
 flex-wrap: wrap;
 gap: 10px;
+box-sizing: border-box;
 }
 
 .cal-nav-group { display: flex; align-items: center; gap: 6px; }
@@ -1065,6 +1101,7 @@ display: flex;
 flex-direction: column;
 gap: 10px;
 box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+box-sizing: border-box;
 }
 
 .cal-sheet-header { display: flex; flex-direction: column; gap: 8px; }
@@ -1100,7 +1137,7 @@ color: #0f172a;
 outline: none;
 }
 
-/* 🗓️ 캘린더 그리드 */
+/* ── 🗓️ 화면 뷰어용 그리드 ── */
 .cal-sheet-grid-container {
 width: 100%;
 display: flex;
@@ -1253,7 +1290,8 @@ font-family: inherit;
 line-height: 1.4;
 }
 
-/* ══════════════════════════════════════════════════
+/* STREAMING_CHUNK:Configuring A4 print rules and media queries... /
+/ ══════════════════════════════════════════════════
 🖨️ A4 1장 무손실 인쇄 전용 CSS
 ══════════════════════════════════════════════════ */
 @media print {
@@ -1464,7 +1502,8 @@ background: #ffffff !important;
 .memo-textarea { color: #000000 !important; font-size: 9pt !important; white-space: pre-wrap !important; line-height: 1.3 !important; }
 }
 
-/* ── 모달 & 토스트 ── */
+/* STREAMING_CHUNK:Styling popups, modal overlay with safe areas, and toast notifications... /
+/ ── 팝업 & 토스트 ── */
 .modal-overlay {
 position: fixed;
 inset: 0;
@@ -1475,12 +1514,16 @@ align-items: center;
 justify-content: center;
 z-index: 9999;
 padding: 16px;
+padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 .modal-card {
 position: relative;
 width: 100%;
 max-width: 340px;
+max-height: 85dvh; /* 작은 아이폰에서 모달 위아래 잘림 방지 */
+overflow-y: auto;
+-webkit-overflow-scrolling: touch;
 background: #ffffff;
 border-radius: 20px;
 padding: 24px 20px;
@@ -1525,7 +1568,7 @@ cursor: pointer;
 
 .toast {
 position: fixed;
-bottom: 24px;
+bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px));
 left: 50%;
 transform: translateX(-50%) translateY(100px);
 background: rgba(15, 23, 42, 0.9);
