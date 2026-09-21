@@ -244,16 +244,16 @@ window.App = Object.assign(window.App || {}, {
         const formatParkingCode = (item) => {
           if (!item) return '';
 
-          // 1) floor와 slot이 객체 필드로 저장된 경우 (최우선 판독)
+          // 1) DB에 저장된 floor와 slot 필드를 최우선 결합 (X1 글자 간섭 원천 차단)
           if (item.floor && item.slot) {
             const f = String(item.floor).trim().toUpperCase();
-            const s = String(item.slot).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-            if (f && s && !f.includes('지하') && s.length >= 2) {
+            const s = String(item.slot).trim().toUpperCase();
+            if (f && s && !f.includes('지하')) {
               return `${f}-${s}`;
             }
           }
 
-          // 2) text 문자열 정밀 정제 (차종명/기호 선제거 후 층-기둥 매칭)
+          // 2) text 문자열 정제 (차종명, 기호 선제거 후 층-기둥 매칭)
           let clean = String(item.text || '')
             .replace(/[⚪⚫⭐🚗]/g, '')
             .replace(/X1|엑센트|accent/gi, '')
