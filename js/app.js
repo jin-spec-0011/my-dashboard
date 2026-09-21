@@ -29,7 +29,6 @@ window.safeSet = function(key, val) {
   catch (e) { memoryStorage[key] = val; }
 };
 
-/* 🚗 차량별 최대 2개 보장 정제 함수 */
 function sanitizeParking(items) {
   if (!Array.isArray(items)) return [];
   const x1 = [];
@@ -47,7 +46,6 @@ function sanitizeParking(items) {
   return [...x1, ...accent];
 }
 
-/* ── 🛡️ 데이터 스토어 팩토리 ── */
 function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitizer }) {
   let items = [];
 
@@ -141,7 +139,6 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
   return { getItems: () => (Array.isArray(items) ? items : []), load, add, remove, syncFromFirebase };
 }
 
-/* ── App 메인 코어 ── */
 window.App = Object.assign(window.App || {}, {
   db: null,
   isFirebaseActive: false,
@@ -201,7 +198,6 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  /* 📢 전광판: 내용별 2줄 줄바꿈 지원 */
   ticker: {
     messages: [],
     currentIndex: 0,
@@ -223,12 +219,11 @@ window.App = Object.assign(window.App || {}, {
         lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
       }
 
-      // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A (정밀 수정 완료)
+      // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A
       const rawParking = (App.parking && typeof App.parking.getLogs === 'function') 
         ? App.parking.getLogs() 
         : (App.stores.parking ? App.stores.parking.getItems() : []);
 
-      // 최신 등록순(ID 내림차순)으로 강제 정렬하여 항상 최신 기록 선택
       const parkingItems = [...rawParking].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
 
       if (parkingItems.length > 0) {
@@ -245,41 +240,46 @@ window.App = Object.assign(window.App || {}, {
           if (x1Item && accentItem) break;
         }
 
-        // B1-25A 규격 포맷 생성 함수 (기존 데이터 직접 참조 및 레거시 대응)
         const formatParkingCode = (item) => {
           if (!item) return '';
 
-          // 1) 이미 floor와 slot이 분리되어 저장된 경우 직접 조합 (X1 간섭 원천 차단)
           if (item.floor && item.slot) {
-            const f = item.floor.toUpperCase();
-            const s = item.slot.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-            return `${f}-${s}`;
+            const f = String(item.floor).trim().toUpperCase();
+            const s = String(item.slot).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            if (f && s && s.length >= 2) {
+              return `${f}-${s}`;
+            }
           }
 
-          // 2) text만 있는 구버전 데이터 대비: 차종(X1/엑센트) 이름을 먼저 제거 후 추출
-          const textWithoutCar = (item.text || '')
-            .replace(/^(⚪|⚫)?\s*(X1|엑센트|accent)\s*[-:]?\s*/i, '')
-            .replace(/번/g, '');
+          let clean = (item.text || '')
+            .replace(/[⚪⚫⭐🚗]/g, '')
+            .replace(/X1|엑센트|accent/gi, '')
+            .replace(/지하\s*주차장/g, '')
+            .replace(/번/g, '')
+            .trim();
 
-          const floorMatch = textWithoutCar.match(/(B\d+|\d+F|\d+층|야외)/i);
+          const directMatch = clean.match(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*(\d+[A-Za-z])/i);
+          if (directMatch) {
+            return `${directMatch[1].toUpperCase()}-${directMatch[2].toUpperCase()}`;
+          }
+
+          const floorMatch = clean.match(/(B\d+|\d+F|\d+층|야외)/i);
           const floor = floorMatch ? floorMatch[0].toUpperCase() : (item.floor || 'B1');
 
-          const remain = textWithoutCar.replace(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*/i, '');
-          const slotMatch = remain.match(/(\d+)\s*-?\s*([A-Za-z])/);
+          const remain = clean.replace(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*/i, '');
+          const slotMatch = remain.match(/(\d+)\s*[-:]?\s*([A-Za-z])/);
 
           if (slotMatch) {
             return `${floor}-${slotMatch[1]}${slotMatch[2].toUpperCase()}`;
           }
-          return `${floor}-${(item.slot || remain || '').replace(/[^a-zA-Z0-9]/g, '')}`;
+
+          const fallbackSlot = (item.slot || remain || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+          return fallbackSlot ? `${floor}-${fallbackSlot}` : `${floor}-미지정`;
         };
 
         const pTexts = [];
-        if (x1Item) {
-          pTexts.push(`⚪ X1 - ${formatParkingCode(x1Item)}`);
-        }
-        if (accentItem) {
-          pTexts.push(`⚫ 엑센트 - ${formatParkingCode(accentItem)}`);
-        }
+        if (x1Item) pTexts.push(`⚪ X1 - ${formatParkingCode(x1Item)}`);
+        if (accentItem) pTexts.push(`⚫ 엑센트 - ${formatParkingCode(accentItem)}`);
 
         if (pTexts.length > 0) {
           lines.push(pTexts.join('<br>'));
@@ -387,6 +387,40 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
+  attachLifecycleHandlers() {
+    const handleAppWake = () => {
+      console.log('[PWA Wake] Reconnecting Firebase and synchronizing stores...');
+      if (this.isFirebaseActive && typeof firebase !== 'undefined' && firebase.database) {
+        try {
+          firebase.database().goOnline();
+        } catch (e) {
+          console.warn('Firebase goOnline failed:', e);
+        }
+      }
+
+      // 로컬 및 메모리 스토어 즉시 재동기화
+      if (this.stores) {
+        Object.values(this.stores).forEach(s => typeof s.load === 'function' && s.load());
+      }
+      if (this.ticker) this.ticker.refresh();
+      if (this.badge) this.badge.refresh();
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        handleAppWake();
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      handleAppWake();
+    });
+
+    window.addEventListener('online', () => {
+      handleAppWake();
+    });
+  },
+
   init() {
     const now = new Date();
     const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -394,7 +428,7 @@ window.App = Object.assign(window.App || {}, {
     const dateEl = document.getElementById('homeTodayDate');
     if (dateEl) dateEl.innerText = dateStr;
 
-    // 🚗 주차 스토어: sanitizeParking 필터로 무조건 차종별 2개만 강제 통제
+    // 🚗 주차 스토어 (차량별 최신 2개 강제 보장)
     this.stores.parking = createDataStore({ 
       key: 'parking_logs', 
       firebasePath: 'parking_logs', 
@@ -432,8 +466,9 @@ window.App = Object.assign(window.App || {}, {
 
     this.ticker.start();
     this.badge.refresh();
+    this.attachLifecycleHandlers();
 
-    // Firebase 설정
+    // Firebase 연동
     const firebaseConfig = {
       apiKey: "AIzaSyBGYhPPlYfPnnEnqa--Sl_OYDw8VmX1fus",
       authDomain: "gogo-manager-f0a68.firebaseapp.com",
@@ -458,7 +493,7 @@ window.App = Object.assign(window.App || {}, {
           badge.classList.add('cloud-active');
         }
 
-        // 🚗 주차 알림 (⚪ X1 / ⚫ 엑센트 이모지)
+        // 주차 동기화
         this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
           title: (p) => `🚗 [${(p.car||'').toLowerCase().includes('x1') ? '⚪ X1' : '⚫ 엑센트'}] 주차 위치 등록`,
           body: (p) => `${p.text} 에 주차되었습니다.`
