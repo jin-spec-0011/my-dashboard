@@ -15,8 +15,76 @@
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
   <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
 
-  <!-- CSS 캐시 강제 갱신 (v=5.0) -->
-  <link rel="stylesheet" href="css/style.css?v=5.0">
+  <!-- 💡 캐시 및 CSS 지연 로딩 방지: 홈 화면 2열 그리드 & 카드 인라인 강제 고정 스타일 -->
+  <style>
+    /* ── 📱 홈 대시보드 2열 카드 레이아웃 완벽 보장 ── */
+    .menu-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .menu-card {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      text-align: left !important;
+      width: 100% !important;
+      min-height: 116px !important;
+      background: #ffffff !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 16px !important;
+      padding: 13px 12px !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+      box-sizing: border-box !important;
+      cursor: pointer !important;
+      justify-content: space-between !important;
+      min-width: 0 !important;
+    }
+
+    .card-icon-wrap {
+      width: 40px !important;
+      height: 40px !important;
+      border-radius: 12px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 20px !important;
+      flex-shrink: 0 !important;
+      margin-bottom: 6px !important;
+    }
+
+    .card-text-wrap {
+      width: 100% !important;
+      min-width: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 2px !important;
+    }
+
+    .card-title {
+      font-size: 14px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      display: block !important;
+    }
+
+    .live-summary-box {
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+      color: #64748b !important;
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+  </style>
+
+  <!-- CSS 캐시 강제 갱신 (v=6.0) -->
+  <link rel="stylesheet" href="css/style.css?v=6.0">
   
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -37,7 +105,7 @@
     </div>
   </section>
 
-  <!-- 1. 🏠 포털 메인 홈 (롤링 전광판 제거 & 라이브 서머리 대시보드 탑재) -->
+  <!-- 1. 🏠 포털 메인 홈 (헤더 잘림 방지 & 라이브 서머리 2열 카드) -->
   <section id="screen-home" class="screen">
     <header class="home-header">
       <div class="header-left">
@@ -62,9 +130,9 @@
       </div>
     </div>
 
-    <!-- 메뉴 카드 그리드 (실시간 라이브 데이터 직접 표시) -->
+    <!-- 메뉴 카드 2열 그리드 -->
     <div class="menu-grid">
-      <!-- 1. 주차 위치 기록 카드 (라이브 서머리) -->
+      <!-- 1. 주차 위치 기록 카드 -->
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
         <div class="card-text-wrap">
@@ -78,7 +146,7 @@
         </div>
       </div>
 
-      <!-- 2. 가족 일정 관리 카드 (라이브 서머리) -->
+      <!-- 2. 가족 일정 관리 카드 -->
       <div class="menu-card" onclick="App.router.go('schedule')">
         <div class="card-icon-wrap bg-indigo">🗓️</div>
         <div class="card-text-wrap">
@@ -103,7 +171,7 @@
         </div>
       </div>
 
-      <!-- 4. 장보기 카드 (라이브 서머리) -->
+      <!-- 4. 장보기 카드 -->
       <div class="menu-card" onclick="App.router.go('shopping')">
         <div class="card-icon-wrap bg-amber">🛒</div>
         <div class="card-text-wrap">
@@ -117,7 +185,7 @@
         </div>
       </div>
 
-      <!-- 5. 고정 메모 카드 (라이브 서머리) -->
+      <!-- 5. 고정 메모 카드 -->
       <div class="menu-card" onclick="App.router.go('sticky')">
         <div class="card-icon-wrap bg-pink" style="background:#fef3c7;">📌</div>
         <div class="card-text-wrap">
@@ -131,7 +199,7 @@
         </div>
       </div>
 
-      <!-- 6. 간편 가계부 카드 (라이브 서머리) -->
+      <!-- 6. 간편 가계부 카드 -->
       <div class="menu-card" onclick="App.router.go('ledger')">
         <div class="card-icon-wrap bg-emerald">💰</div>
         <div class="card-text-wrap">
@@ -145,7 +213,7 @@
         </div>
       </div>
 
-      <!-- 7. 가족 여행 지도 카드 (라이브 서머리) -->
+      <!-- 7. 가족 여행 지도 카드 -->
       <div class="menu-card" onclick="App.router.go('trip')">
         <div class="card-icon-wrap bg-pink">✈️</div>
         <div class="card-text-wrap">
@@ -425,7 +493,7 @@
       <button type="button" class="btn-save" onclick="App.memo.addSticky()">📌 메모 저장</button>
     </div>
 
-    <!-- 🔍 메모 검색 바 (날짜 & 내용 검색) -->
+    <!-- 🔍 메모 검색 바 -->
     <div class="card sticky-search-card">
       <div class="sticky-search-header">
         <span class="sticky-search-title">🔍 메모 검색</span>
@@ -676,8 +744,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 모듈 로드 (v=5.0 캐시 강제 갱신) -->
-  <script src="js/app.js?v=5.0"></script>
+  <!-- JS 모듈 로드 (v=6.0 캐시 강제 갱신) -->
+  <script src="js/app.js?v=6.0"></script>
   <script src="js/auth.js"></script>
   <script src="js/push.js"></script>
   <script src="js/parking.js"></script>
