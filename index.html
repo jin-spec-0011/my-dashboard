@@ -6,6 +6,8 @@
   <title>GOGO 스마트 매니저</title>
   
   <link rel="manifest" href="manifest.json">
+  <!-- 최신 웹 표준 메타 태그 (경고 해결) 및 iOS 호환 태그 -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GOGO매니저">
@@ -43,7 +45,8 @@
       </div>
       <div class="header-right">
         <button type="button" class="btn-push-toggle" id="btnPushToggle" onclick="App.push.requestPermission()">🔔 알림</button>
-        <span class="cloud-badge" id="cloudStatusBadge">☁️ 동기화</span>
+        <!-- 터치 시 즉시 강제 재동기화 지원 배지 -->
+        <span class="cloud-badge" id="cloudStatusBadge" onclick="App.forceSyncAll()" style="cursor: pointer;" title="탭하여 실시간 강제 동기화">☁️ 동기화</span>
         <button type="button" class="btn-icon-lock" onclick="App.auth.lock()" title="화면 잠금">🔒</button>
       </div>
     </header>
@@ -66,7 +69,7 @@
       </div>
     </div>
 
-    <!-- 메뉴 그리드 ('장보기' 명칭 적용) -->
+    <!-- 대시보드 메뉴 그리드 -->
     <div class="menu-grid">
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
@@ -98,7 +101,6 @@
         </div>
       </div>
 
-      <!-- 1번 요구사항: '장보기'로 단독 표기 -->
       <div class="menu-card" onclick="App.router.go('shopping')">
         <div class="card-icon-wrap bg-amber">🛒</div>
         <div class="card-text-wrap">
@@ -155,10 +157,10 @@
     <div class="card form-card">
       <div class="form-group">
         <label>1. 차종 선택</label>
-       <div class="toggle-group" id="carGroup">
-  <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'X1')">⚪ X1</button>
-  <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">⚫ 엑센트</button>
-</div>
+        <div class="toggle-group" id="carGroup">
+          <button type="button" class="btn-toggle active" onclick="App.parking.selectOption('car', 'X1')">⚪ X1</button>
+          <button type="button" class="btn-toggle" onclick="App.parking.selectOption('car', '엑센트')">⚫ 엑센트</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -247,11 +249,11 @@
         <button type="button" class="btn-clear" onclick="App.parking.clear()">전체삭제</button>
       </div>
 
-    <div class="log-filter-bar">
-  <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
-  <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('X1')">⚪ X1</button>
-  <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">⚫ 엑센트</button>
-</div>
+      <div class="log-filter-bar">
+        <button type="button" class="filter-btn active" id="filter-all" onclick="App.parking.setFilter('all')">전체 보기</button>
+        <button type="button" class="filter-btn" id="filter-x1" onclick="App.parking.setFilter('X1')">⚪ X1</button>
+        <button type="button" class="filter-btn" id="filter-accent" onclick="App.parking.setFilter('엑센트')">⚫ 엑센트</button>
+      </div>
 
       <div id="logList" class="log-list"></div>
     </div>
@@ -395,7 +397,7 @@
     </div>
   </section>
 
- <!-- 6. 📌 고정 메모 전용 화면 -->
+  <!-- 6. 📌 고정 메모 전용 화면 -->
   <section id="screen-sticky" class="screen">
     <div class="header-nav">
       <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
@@ -411,7 +413,7 @@
       <button type="button" class="btn-save" onclick="App.memo.addSticky()">📌 메모 저장</button>
     </div>
 
-    <!-- 🔍 메모 검색 바 (날짜 & 내용 검색) -->
+    <!-- 🔍 메모 실시간 검색 바 (날짜 & 내용) -->
     <div class="card sticky-search-card">
       <div class="sticky-search-header">
         <span class="sticky-search-title">🔍 메모 검색</span>
@@ -438,7 +440,7 @@
       <div id="stickyList" class="sticky-grid-wrap"></div>
     </div>
   </section>
-  
+
   <!-- 7. 💰 간편 가계부 화면 -->
   <section id="screen-ledger" class="screen">
     <div class="header-nav">
@@ -662,15 +664,15 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 모듈 로드 -->
-  <script src="js/app.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/push.js"></script>
-  <script src="js/parking.js"></script>
-  <script src="js/schedule.js"></script>
-  <script src="js/calendar.js"></script>
-  <script src="js/memo.js"></script>
-  <script src="js/ledger.js"></script>
-  <script src="js/trip.js"></script>
+  <!-- JS 모듈 로드 (?v=2.3 캐시 버스팅 파라미터로 아이폰 PWA 캐시 강제 갱신) -->
+  <script src="js/app.js?v=2.3"></script>
+  <script src="js/auth.js?v=2.3"></script>
+  <script src="js/push.js?v=2.3"></script>
+  <script src="js/parking.js?v=2.3"></script>
+  <script src="js/schedule.js?v=2.3"></script>
+  <script src="js/calendar.js?v=2.3"></script>
+  <script src="js/memo.js?v=2.3"></script>
+  <script src="js/ledger.js?v=2.3"></script>
+  <script src="js/trip.js?v=2.3"></script>
 </body>
 </html>
