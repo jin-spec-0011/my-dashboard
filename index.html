@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
   <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=4.0">
   
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -36,7 +36,7 @@
     </div>
   </section>
 
-  <!-- 1. 🏠 포털 메인 홈 -->
+  <!-- 1. 🏠 포털 메인 홈 (롤링 전광판 제거 & 라이브 서머리 대시보드 탑재) -->
   <section id="screen-home" class="screen">
     <header class="home-header">
       <div class="header-left">
@@ -50,13 +50,6 @@
       </div>
     </header>
 
-    <div class="ticker-board-wrap" onclick="App.ticker.next()">
-      <div class="ticker-badge">📢 알림</div>
-      <div class="ticker-text-area">
-        <span id="tickerVerticalText">데이터 로딩 중...</span>
-      </div>
-    </div>
-
     <div class="profile-switch-bar">
       <div class="profile-info-wrap">
         <span class="profile-current-badge" id="currentProfileBadge">👥 가족 공용 모드</span>
@@ -68,8 +61,9 @@
       </div>
     </div>
 
-    <!-- 메뉴 그리드 ('장보기' 명칭 적용) -->
+    <!-- 메뉴 카드 그리드 (실시간 라이브 데이터 직접 표시) -->
     <div class="menu-grid">
+      <!-- 1. 주차 위치 기록 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('parking')">
         <div class="card-icon-wrap bg-blue">🚗</div>
         <div class="card-text-wrap">
@@ -77,10 +71,13 @@
             <span class="card-title">주차 위치 기록</span>
             <span class="menu-new-badge" id="badge-parking" style="display: none;">N</span>
           </div>
-          <span class="card-desc">차량별 주차 위치</span>
+          <div class="card-desc live-summary-box" id="summary-parking">
+            <span class="summary-loading">주차 현황 확인 중...</span>
+          </div>
         </div>
       </div>
 
+      <!-- 2. 가족 일정 관리 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('schedule')">
         <div class="card-icon-wrap bg-indigo">🗓️</div>
         <div class="card-text-wrap">
@@ -88,18 +85,24 @@
             <span class="card-title">가족 일정 관리</span>
             <span class="menu-new-badge" id="badge-schedule" style="display: none;">N</span>
           </div>
-          <span class="card-desc">공유 일정 & 개인 비공개</span>
+          <div class="card-desc live-summary-box" id="summary-schedule">
+            <span class="summary-loading">일정 확인 중...</span>
+          </div>
         </div>
       </div>
 
+      <!-- 3. 만년 캘린더 카드 -->
       <div class="menu-card" onclick="App.router.go('calendar')">
         <div class="card-icon-wrap bg-purple">📅</div>
         <div class="card-text-wrap">
-          <span class="card-title">만년 캘린더</span>
-          <span class="card-desc">공휴일, A4 인쇄 & PDF</span>
+          <div class="card-title-row">
+            <span class="card-title">만년 캘린더</span>
+          </div>
+          <span class="card-desc" id="summary-calendar">공휴일, A4 인쇄 & PDF</span>
         </div>
       </div>
 
+      <!-- 4. 장보기 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('shopping')">
         <div class="card-icon-wrap bg-amber">🛒</div>
         <div class="card-text-wrap">
@@ -107,10 +110,13 @@
             <span class="card-title">장보기</span>
             <span class="menu-new-badge" id="badge-shopping" style="display: none;">N</span>
           </div>
-          <span class="card-desc">구매 목록 & 가계부 자동연동</span>
+          <div class="card-desc live-summary-box" id="summary-shopping">
+            <span class="summary-loading">목록 확인 중...</span>
+          </div>
         </div>
       </div>
 
+      <!-- 5. 고정 메모 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('sticky')">
         <div class="card-icon-wrap bg-pink" style="background:#fef3c7;">📌</div>
         <div class="card-text-wrap">
@@ -118,10 +124,13 @@
             <span class="card-title">고정 메모</span>
             <span class="menu-new-badge" id="badge-sticky" style="display: none;">N</span>
           </div>
-          <span class="card-desc">계좌, 와이파이, 완료 체크</span>
+          <div class="card-desc live-summary-box" id="summary-sticky">
+            <span class="summary-loading">메모 확인 중...</span>
+          </div>
         </div>
       </div>
 
+      <!-- 6. 간편 가계부 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('ledger')">
         <div class="card-icon-wrap bg-emerald">💰</div>
         <div class="card-text-wrap">
@@ -129,10 +138,13 @@
             <span class="card-title">간편 가계부</span>
             <span class="menu-new-badge" id="badge-ledger" style="display: none;">N</span>
           </div>
-          <span class="card-desc">월별 예산 & 엑셀 저장</span>
+          <div class="card-desc live-summary-box" id="summary-ledger">
+            <span class="summary-loading">지출 확인 중...</span>
+          </div>
         </div>
       </div>
 
+      <!-- 7. 가족 여행 지도 카드 (라이브 서머리) -->
       <div class="menu-card" onclick="App.router.go('trip')">
         <div class="card-icon-wrap bg-pink">✈️</div>
         <div class="card-text-wrap">
@@ -140,7 +152,9 @@
             <span class="card-title">가족 여행 지도</span>
             <span class="menu-new-badge" id="badge-trip" style="display: none;">N</span>
           </div>
-          <span class="card-desc">추억 기록 & 여행지 목록</span>
+          <div class="card-desc live-summary-box" id="summary-trip">
+            <span class="summary-loading">여행 기록 확인 중...</span>
+          </div>
         </div>
       </div>
     </div>
@@ -661,8 +675,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 모듈 로드 (버전 태그를 통해 PWA 캐시 강제 갱신) -->
-  <script src="js/app.js?v=3.0"></script>
+  <!-- JS 모듈 로드 (v=4.0 캐시 강제 갱신) -->
+  <script src="js/app.js?v=4.0"></script>
   <script src="js/auth.js"></script>
   <script src="js/push.js"></script>
   <script src="js/parking.js"></script>
