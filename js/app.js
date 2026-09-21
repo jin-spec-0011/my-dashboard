@@ -72,7 +72,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
 
     items.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
     if (onRender) onRender(items);
-    if (App.ticker) App.ticker.refresh();
+    if (App.summary) App.summary.refresh();
     if (App.badge) App.badge.refresh();
   };
 
@@ -90,7 +90,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
       App.db.ref(firebasePath).set(items);
     }
     if (onRender) onRender(items);
-    if (App.ticker) App.ticker.refresh();
+    if (App.summary) App.summary.refresh();
     if (App.badge) App.badge.refresh();
   };
 
@@ -102,7 +102,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
       App.db.ref(firebasePath).set(items);
     }
     if (onRender) onRender(items);
-    if (App.ticker) App.ticker.refresh();
+    if (App.summary) App.summary.refresh();
     if (App.badge) App.badge.refresh();
   };
 
@@ -133,7 +133,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
       }
     }
     if (onRender) onRender(items);
-    if (App.ticker) App.ticker.refresh();
+    if (App.summary) App.summary.refresh();
     if (App.badge) App.badge.refresh();
   };
 
@@ -199,154 +199,194 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
-  ticker: {
-    messages: [],
-    currentIndex: 0,
-    timer: null,
-
+  /* 🌟 [대안 1] 메뉴 카드 '라이브 서머리' 렌더링 엔진 */
+  summary: {
     refresh() {
-      const lines = [];
+      this.renderParking();
+      this.renderSchedule();
+      this.renderShopping();
+      this.renderLedger();
+      this.renderSticky();
+      this.renderTrip();
+    },
 
-      // 1. 다가오는 일정
-      const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
-      const now = new Date();
-      const offset = now.getTimezoneOffset() * 60000;
-      const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
-      const upcoming = allSchedules.filter(s => s && s.date >= todayStr).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    // 1. 🚗 주차 위치 요약 (⚪ B2-30A │ ⚫ B3-19A)
+    renderParking() {
+      const el = document.getElementById('summary-parking');
+      if (!el) return;
 
-      if (upcoming.length > 0) {
-        const nextEvt = upcoming[0];
-        const prefix = nextEvt.isPrivate ? '🔒' : `[${nextEvt.author || '가족'}]`;
-        lines.push(`🗓️ ${prefix} ${nextEvt.title || nextEvt.text} (${(nextEvt.date || '').substring(5)})`);
-      }
-
-      // 2. 주차: ⚪ X1 - B1-25A │ ⚫ 엑센트 - B1-19A (X1 간섭 100% 원천 차단)
       const rawParking = (App.parking && typeof App.parking.getLogs === 'function') 
         ? App.parking.getLogs() 
         : (App.stores.parking ? App.stores.parking.getItems() : []);
 
       const parkingItems = [...rawParking].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
 
-      if (parkingItems.length > 0) {
-        let x1Item = null;
-        let accentItem = null;
-
-        for (const p of parkingItems) {
-          const rawCar = String(p.car || p.text || '').toLowerCase();
-          if (rawCar.includes('x1') && !x1Item) {
-            x1Item = p;
-          } else if ((rawCar.includes('엑센트') || rawCar.includes('accent')) && !accentItem) {
-            accentItem = p;
-          }
-          if (x1Item && accentItem) break;
-        }
-
-        const formatParkingCode = (item) => {
-          if (!item) return '';
-
-          // 1) DB에 저장된 floor와 slot 필드를 최우선 결합 (X1 글자 간섭 원천 차단)
-          if (item.floor && item.slot) {
-            const f = String(item.floor).trim().toUpperCase();
-            const s = String(item.slot).trim().toUpperCase();
-            if (f && s && !f.includes('지하')) {
-              return `${f}-${s}`;
-            }
-          }
-
-          // 2) text 문자열 정제 (차종명, 기호 선제거 후 층-기둥 매칭)
-          let clean = String(item.text || '')
-            .replace(/[⚪⚫⭐🚗]/g, '')
-            .replace(/X1|엑센트|accent/gi, '')
-            .replace(/지하\s*주차장/g, '')
-            .replace(/번/g, '')
-            .trim();
-
-          const directMatch = clean.match(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*(\d+[A-Za-z])/i);
-          if (directMatch) {
-            return `${directMatch[1].toUpperCase()}-${directMatch[2].toUpperCase()}`;
-          }
-
-          const floorMatch = clean.match(/(B\d+|\d+F|\d+층|야외)/i);
-          const floor = floorMatch ? floorMatch[0].toUpperCase() : (item.floor || 'B1');
-
-          const remain = clean.replace(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*/i, '');
-          const slotMatch = remain.match(/(\d+)\s*[-:]?\s*([A-Za-z])/);
-
-          if (slotMatch) {
-            return `${floor}-${slotMatch[1]}${slotMatch[2].toUpperCase()}`;
-          }
-
-          const fallbackSlot = String(item.slot || remain || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-          return fallbackSlot ? `${floor}-${fallbackSlot}` : `${floor}-미지정`;
-        };
-
-        const pTexts = [];
-        if (x1Item) pTexts.push(`⚪ X1 - ${formatParkingCode(x1Item)}`);
-        if (accentItem) pTexts.push(`⚫ 엑센트 - ${formatParkingCode(accentItem)}`);
-
-        if (pTexts.length > 0) {
-          lines.push(pTexts.join('<br>'));
-        }
+      if (parkingItems.length === 0) {
+        el.innerHTML = '<span class="summary-loading">등록된 주차 없음</span>';
+        return;
       }
 
-      // 3. 가계부 총 지출
+      let x1Item = null;
+      let accentItem = null;
+
+      for (const p of parkingItems) {
+        const rawCar = String(p.car || p.text || '').toLowerCase();
+        if (rawCar.includes('x1') && !x1Item) {
+          x1Item = p;
+        } else if ((rawCar.includes('엑센트') || rawCar.includes('accent')) && !accentItem) {
+          accentItem = p;
+        }
+        if (x1Item && accentItem) break;
+      }
+
+      const formatCode = (item) => {
+        if (!item) return '미등록';
+        if (item.floor && item.slot) {
+          const f = String(item.floor).trim().toUpperCase();
+          const s = String(item.slot).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+          if (f && s && s.length >= 2) return `${f}-${s}`;
+        }
+        let clean = String(item.text || '')
+          .replace(/[⚪⚫⭐🚗]/g, '')
+          .replace(/X1|엑센트|accent/gi, '')
+          .replace(/지하\s*주차장/g, '')
+          .replace(/번/g, '')
+          .trim();
+        const directMatch = clean.match(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*(\d+[A-Za-z])/i);
+        if (directMatch) return `${directMatch[1].toUpperCase()}-${directMatch[2].toUpperCase()}`;
+        return clean || '미등록';
+      };
+
+      const x1Code = formatCode(x1Item);
+      const accentCode = formatCode(accentItem);
+
+      el.innerHTML = `
+        <div class="live-parking-row">
+          <span>⚪ <strong class="live-parking-slot-x1">${escapeHtml(x1Code)}</strong></span>
+          <span class="live-parking-divider">│</span>
+          <span>⚫ <strong class="live-parking-slot-accent">${escapeHtml(accentCode)}</strong></span>
+        </div>
+      `;
+    },
+
+    // 2. 🗓️ 다가오는 일정 요약 (D-Day 및 최근 일정)
+    renderSchedule() {
+      const el = document.getElementById('summary-schedule');
+      if (!el) return;
+
+      const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+      const upcoming = allSchedules.filter(s => s && s.date >= todayStr).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+      if (upcoming.length === 0) {
+        el.innerHTML = '<span class="summary-loading">예정된 일정 없음 ✨</span>';
+        return;
+      }
+
+      const nextEvt = upcoming[0];
+      const d1 = new Date(todayStr).getTime();
+      const d2 = new Date(nextEvt.date).getTime();
+      const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+      const ddayText = diff === 0 ? 'D-Day' : `D-${diff}`;
+      const badgeClass = diff <= 1 ? 'dday' : 'soon';
+      const authorText = nextEvt.isPrivate ? '🔒' : `[${nextEvt.author || '가족'}]`;
+      const titleText = nextEvt.title || nextEvt.text || '일정';
+
+      el.innerHTML = `
+        <div class="live-schedule-text">
+          <span class="live-schedule-badge ${badgeClass}">${ddayText}</span>
+          ${escapeHtml(authorText)} ${escapeHtml(titleText)}
+        </div>
+      `;
+    },
+
+    // 3. 🛒 장보기 잔여 품목 요약
+    renderShopping() {
+      const el = document.getElementById('summary-shopping');
+      if (!el) return;
+
+      const todos = App.stores.todos ? App.stores.todos.getItems() : [];
+      const pending = todos.filter(t => !t.completed);
+
+      if (pending.length === 0) {
+        el.innerHTML = '<span class="live-shopping-done">모두 완료됨! 😊</span>';
+      } else {
+        const first = pending[0].text || pending[0].title || '품목';
+        const moreCount = pending.length - 1;
+        const extraText = moreCount > 0 ? ` 외 ${moreCount}개` : '';
+        el.innerHTML = `
+          <div class="live-shopping-pending">
+            ${escapeHtml(first)}${extraText} (<span class="live-shopping-count-badge">${pending.length}개 남음</span>)
+          </div>
+        `;
+      }
+    },
+
+    // 4. 💰 가계부 당월 지출 및 잔여 예산 요약
+    renderLedger() {
+      const el = document.getElementById('summary-ledger');
+      if (!el) return;
+
+      const now = new Date();
       const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const ledgerItems = App.stores.ledger ? App.stores.ledger.getItems() : [];
       const thisMonthLedger = ledgerItems.filter(i => (i.month || i.date?.substring(0, 7)) === currentMonthKey);
       const totalMonthSpend = thisMonthLedger.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
 
-      if (totalMonthSpend > 0) {
-        lines.push(`💰 ${now.getMonth() + 1}월 총 지출: ${totalMonthSpend.toLocaleString()}원`);
-      }
+      const budgetAmount = Number(safeGet(`budget_${currentMonthKey}`) || 0);
 
-      // 4. 장보기 잔여 품목
-      const todos = App.stores.todos ? App.stores.todos.getItems() : [];
-      const pending = todos.filter(t => !t.completed);
-      if (pending.length > 0) {
-        const preview = pending.slice(0, 3).map(t => t.text || t.title).join(', ');
-        lines.push(`🛒 장보기 : ${preview}${pending.length > 3 ? ' 외' : ''} (${pending.length}개 남음)`);
+      if (budgetAmount > 0) {
+        const remain = budgetAmount - totalMonthSpend;
+        const remainClass = remain >= 0 ? 'live-ledger-remain' : 'live-ledger-over';
+        const remainText = remain >= 0 ? `잔여 ${remain.toLocaleString()}원` : `초과 +${Math.abs(remain).toLocaleString()}원`;
+        el.innerHTML = `
+          <div><span class="live-ledger-spend">${totalMonthSpend.toLocaleString()}원</span> <span class="${remainClass}">(${remainText})</span></div>
+        `;
+      } else {
+        el.innerHTML = `
+          <div><span class="live-ledger-spend">${now.getMonth() + 1}월 ${totalMonthSpend.toLocaleString()}원</span> 지출</div>
+        `;
       }
-
-      if (lines.length === 0) {
-        lines.push('진세 & 지혜 스마트 포털에 오신 것을 환영합니다 ✨');
-      }
-
-      this.messages = lines;
-      this.showCurrent();
     },
 
-    showCurrent() {
-      const el = document.getElementById('tickerVerticalText');
-      if (!el || this.messages.length === 0) return;
-      if (this.currentIndex >= this.messages.length) this.currentIndex = 0;
-      el.innerHTML = this.messages[this.currentIndex];
-    },
-
-    next() {
-      if (this.messages.length <= 1) return;
-      const el = document.getElementById('tickerVerticalText');
+    // 5. 📌 고정 메모 최신 1건 요약
+    renderSticky() {
+      const el = document.getElementById('summary-sticky');
       if (!el) return;
 
-      el.classList.add('slide-down-out');
-
-      setTimeout(() => {
-        this.currentIndex = (this.currentIndex + 1) % this.messages.length;
-        el.innerHTML = this.messages[this.currentIndex];
-        el.classList.remove('slide-down-out');
-        el.classList.add('slide-down-in');
-
-        void el.offsetHeight;
-        el.classList.remove('slide-down-in');
-      }, 450);
+      const stickies = App.stores.stickies ? App.stores.stickies.getItems() : [];
+      if (stickies.length === 0) {
+        el.innerHTML = '<span class="summary-loading">계좌, 와이파이, 완료 체크</span>';
+        return;
+      }
+      const first = stickies[0].text || '';
+      el.innerHTML = `<span class="live-sticky-text">${escapeHtml(first)}</span>`;
     },
 
-    start() {
-      this.refresh();
-      if (this.timer) clearInterval(this.timer);
-      this.timer = setInterval(() => {
-        this.next();
-      }, 3500);
+    // 6. ✈️ 가족 여행 지도 최근 여행지 요약
+    renderTrip() {
+      const el = document.getElementById('summary-trip');
+      if (!el) return;
+
+      const trips = App.stores.trips ? App.stores.trips.getItems() : [];
+      if (trips.length === 0) {
+        el.innerHTML = '<span class="summary-loading">추억 기록 & 여행지 목록</span>';
+        return;
+      }
+      const first = trips[0];
+      const place = first.place || first.title || '여행지';
+      const date = (first.date || '').substring(5);
+      el.innerHTML = `<span class="live-trip-text">📍 ${escapeHtml(place)} ${date ? '(' + escapeHtml(date) + ')' : ''}</span>`;
     }
+  },
+
+  // 호환성 브릿지 (다른 모듈에서 App.ticker.refresh() 호출 시 에러 방지)
+  ticker: {
+    refresh() { if (App.summary) App.summary.refresh(); },
+    start() { if (App.summary) App.summary.refresh(); },
+    next() {}
   },
 
   badge: {
@@ -379,6 +419,7 @@ window.App = Object.assign(window.App || {}, {
         this.stores.privateJinse.syncFromFirebase(snap.val());
         if (this.schedule) this.schedule.render();
         if (this.calendar) this.calendar.generate();
+        if (this.summary) this.summary.refresh();
       });
     } else if (user === 'jihye') {
       this.db.ref('private_schedules/jihye').off();
@@ -386,6 +427,7 @@ window.App = Object.assign(window.App || {}, {
         this.stores.privateJihye.syncFromFirebase(snap.val());
         if (this.schedule) this.schedule.render();
         if (this.calendar) this.calendar.generate();
+        if (this.summary) this.summary.refresh();
       });
     }
   },
@@ -423,6 +465,8 @@ window.App = Object.assign(window.App || {}, {
           console.warn(`[ForceSync] ${ep.path} fetch failed:`, err);
         }
       }));
+
+      if (this.summary) this.summary.refresh();
 
       if (!silent && App.ui?.toast) {
         App.ui.toast("☁️ 실시간 최신 동기화 완료!");
@@ -509,7 +553,7 @@ window.App = Object.assign(window.App || {}, {
     if (this.ledger) this.ledger.init();
     if (this.trip) this.trip.init();
 
-    this.ticker.start();
+    if (this.summary) this.summary.refresh();
     this.badge.refresh();
     this.attachLifecycleHandlers();
 
@@ -547,25 +591,37 @@ window.App = Object.assign(window.App || {}, {
         });
 
         // 실시간 리스너 바인딩
-        this.db.ref('parking_logs').on('value', snap => this.stores.parking.syncFromFirebase(snap.val(), {
-          title: (p) => `🚗 [${String(p.car||p.text||'').toLowerCase().includes('x1') ? '⚪ X1' : '⚫ 엑센트'}] 주차 위치 등록`,
-          body: (p) => `${p.text} 에 주차되었습니다.`
-        }));
+        this.db.ref('parking_logs').on('value', snap => {
+          this.stores.parking.syncFromFirebase(snap.val(), {
+            title: (p) => `🚗 [${String(p.car||p.text||'').toLowerCase().includes('x1') ? '⚪ X1' : '⚫ 엑센트'}] 주차 위치 등록`,
+            body: (p) => `${p.text} 에 주차되었습니다.`
+          });
+          if (this.summary) this.summary.refresh();
+        });
 
-        this.db.ref('family_todos').on('value', snap => this.stores.todos.syncFromFirebase(snap.val(), {
-          title: () => `🛒 새로운 장보기 품목`,
-          body: (t) => `[${t.author || '가족'}] ${t.text || t.title}`
-        }));
+        this.db.ref('family_todos').on('value', snap => {
+          this.stores.todos.syncFromFirebase(snap.val(), {
+            title: () => `🛒 새로운 장보기 품목`,
+            body: (t) => `[${t.author || '가족'}] ${t.text || t.title}`
+          });
+          if (this.summary) this.summary.refresh();
+        });
 
-        this.db.ref('family_stickies').on('value', snap => this.stores.stickies.syncFromFirebase(snap.val(), {
-          title: () => `📌 새로운 고정 메모 등록`,
-          body: (m) => `${m.text || '새로운 메모가 등록되었습니다.'}`
-        }));
+        this.db.ref('family_stickies').on('value', snap => {
+          this.stores.stickies.syncFromFirebase(snap.val(), {
+            title: () => `📌 새로운 고정 메모 등록`,
+            body: (m) => `${m.text || '새로운 메모가 등록되었습니다.'}`
+          });
+          if (this.summary) this.summary.refresh();
+        });
 
-        this.db.ref('family_ledger').on('value', snap => this.stores.ledger.syncFromFirebase(snap.val(), {
-          title: () => `💰 새로운 가계부 지출 내역`,
-          body: (l) => `[${l.author || '가족'}] ${l.desc || '지출'}: ${Number(l.amount||0).toLocaleString()}원`
-        }));
+        this.db.ref('family_ledger').on('value', snap => {
+          this.stores.ledger.syncFromFirebase(snap.val(), {
+            title: () => `💰 새로운 가계부 지출 내역`,
+            body: (l) => `[${l.author || '가족'}] ${l.desc || '지출'}: ${Number(l.amount||0).toLocaleString()}원`
+          });
+          if (this.summary) this.summary.refresh();
+        });
         
         this.db.ref('family_schedules').on('value', snap => {
           this.stores.schedules.syncFromFirebase(snap.val(), {
@@ -573,6 +629,7 @@ window.App = Object.assign(window.App || {}, {
             body: (s) => `[${s.author || '가족'}] ${s.title || s.text} (${s.date})`
           });
           if (this.calendar) this.calendar.generate();
+          if (this.summary) this.summary.refresh();
         });
 
         this.db.ref('family_trips').on('value', snap => {
@@ -581,6 +638,7 @@ window.App = Object.assign(window.App || {}, {
             body: (tr) => `[${tr.author || '가족'}] ${tr.place || tr.title || '새 여행지'} (${tr.date || ''})`
           });
           if (this.trip) this.trip.renderList(this.stores.trips.getItems());
+          if (this.summary) this.summary.refresh();
         });
 
         this.db.ref('auth_pins').on('value', snap => {
@@ -595,7 +653,7 @@ window.App = Object.assign(window.App || {}, {
           const data = snap.val() || {};
           Object.keys(data).forEach(k => safeSet(`budget_${k}`, String(data[k])));
           if (this.ledger) this.ledger.render(this.stores.ledger.getItems());
-          this.ticker.refresh();
+          if (this.summary) this.summary.refresh();
         });
 
         this.db.ref('calendar_data').on('value', snap => {
@@ -617,7 +675,7 @@ window.App = Object.assign(window.App || {}, {
           if (!isTyping && hasChange && this.calendar) {
             this.calendar.generate();
           }
-          App.ticker.refresh();
+          if (this.summary) this.summary.refresh();
         });
       }
     } catch (e) {
