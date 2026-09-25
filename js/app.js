@@ -252,7 +252,7 @@ window.App = Object.assign(window.App || {}, {
           .replace(/지하\s*주차장/g, '')
           .replace(/번/g, '')
           .trim();
-        const directMatch = clean.match(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*(\d+[A-Za-z])/i);
+        const directMatch = clean.match(/(B\d+|\d+F|\d+층|야외)\s*[-:]?\s*([A-Za-z]?\d+[A-Za-z]?)/i);
         if (directMatch) return `${directMatch[1].toUpperCase()}-${directMatch[2].toUpperCase()}`;
         return clean || '미등록';
       };
