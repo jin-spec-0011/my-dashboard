@@ -1175,42 +1175,33 @@ font-family: inherit;
 line-height: 1.35;
 }
 /* ══════════════════════════════════════════════════
-   🖨️ A4 인쇄 전용 CSS (아이폰 쏠림 방지 완비)
+   🖨️ A4 인쇄 전용 CSS (사방 4포인트 완전 균등 센터링)
    ══════════════════════════════════════════════════ */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0 !important; /* 브라우저 기본 여백 0 제거 */
+    margin: 0 !important; /* 브라우저 및 iOS 기본 마진 완전 제거 */
   }
 
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 💡 1. 상위 래퍼의 잔여 모바일 패딩/마진 완전 초기화 및 정중앙 정렬 */
   html, body {
     width: 210mm !important;
-    min-width: 210mm !important;
-    max-width: 210mm !important;
     height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;     /* 상하 수직 정중앙 정렬 */
+    justify-content: center !important; /* 좌우 수평 정중앙 정렬 */
   }
 
-  /* 💡 캘린더 시트를 A4 전체 크기(210x297mm) 및 마진 0mm로 확장 */
-  .print-calendar-sheet {
-    width: 210mm !important;
-    min-width: 210mm !important;
-    max-width: 210mm !important;
-    height: 297mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
-    margin: 0 !important;          /* 👈 상하좌우 마진 0mm */
-    padding: 3mm 4mm !important;   /* 내용물이 잘리지 않게 최소 내부 여백만 유지 */
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    box-sizing: border-box !important;
-    page-break-inside: avoid !important;
-    page-break-after: avoid !important;
-  }
   .no-print,
   #screen-lock,
   #screen-home,
@@ -1225,61 +1216,51 @@ line-height: 1.35;
     display: none !important;
   }
 
-  #screen-calendar {
-    display: block !important;
+  #screen-calendar,
+  .calendar-viewport-wrapper {
     width: 210mm !important;
-    max-width: 210mm !important;
     height: 297mm !important;
+    max-width: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
-  /* 아이폰 뷰포트 max-width(390px) 강제 해제 */
-  .calendar-viewport-wrapper,
-  .calendar-viewport-wrapper.view-iphone,
-  .calendar-viewport-wrapper.view-ipad,
-  .calendar-viewport-wrapper.view-web {
-    display: block !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 297mm !important;
+  /* 💡 2. 사방 균등 여백 시트 (기준: 사방 1.0cm 동일 여백) */
+  .print-calendar-sheet {
+    /* 1.0cm 여백 적용 시 (190mm x 277mm) / 0.5cm 여백을 원하시면 200mm x 287mm 로 변경 */
+    width: 190mm !important;
+    min-width: 190mm !important;
+    max-width: 190mm !important;
+    height: 277mm !important;
+    min-height: 277mm !important;
+    max-height: 277mm !important;
     margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* A4 용지 기준: 가로 200mm, 상하 287mm (상하좌우 5mm 균등 여백) */
- .print-calendar-sheet {
-    width: 200mm !important;
-    min-width: 200mm !important;
-    max-width: 200mm !important;
-    height: 287mm !important;
-    min-height: 287mm !important;
-    max-height: 287mm !important;
-    margin: 5mm auto !important;
-    padding: 4mm 5mm !important;
-    box-shadow: none !important;
-    border: none !important;          /* 👈 기존 '2px solid #000000'을 'none'으로 변경 */
+    padding: 2mm 3mm !important; /* 시트 내부 최소 콘텐츠 여백 */
+    border: none !important;
     outline: none !important;
+    box-shadow: none !important;
     border-radius: 0 !important;
-    box-sizing: border-box !important;
     page-break-inside: avoid !important;
     page-break-after: avoid !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    gap: 2mm !important;
+    gap: 1.5mm !important;
   }
 
-  .cal-sheet-header { flex-shrink: 0 !important; gap: 1.5mm !important; }
+  .cal-sheet-header { flex-shrink: 0 !important; gap: 1mm !important; }
   .cal-sheet-title-row { border-bottom: 2px solid #000000 !important; padding-bottom: 1mm !important; }
   .cal-sheet-title { font-size: 19pt !important; color: #000000 !important; }
   .cal-sheet-sub { color: #000000 !important; font-size: 8.5pt !important; }
+  
   .cal-sheet-goal-box.is-empty { display: none !important; }
   .cal-sheet-goal-box {
-    border: 1.5px solid #000000 !important;
-    padding: 1.5mm 2.5mm !important;
-    background: #ffffff !important;
+    border: none !important;
+    padding: 1mm 0 !important;
+    background: transparent !important;
   }
   .goal-tag { color: #000000 !important; font-size: 8pt !important; }
   .goal-input { color: #000000 !important; font-size: 9.5pt !important; }
@@ -1291,29 +1272,25 @@ line-height: 1.35;
     height: 100% !important;
     border: 2px solid #000000 !important;
     border-radius: 0 !important;
-    box-sizing: border-box !important;
     background: transparent !important;
   }
 
   .cal-sheet-grid-header {
-    height: 6.5mm !important;
+    height: 6mm !important;
     flex-shrink: 0 !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
     width: 100% !important;
-    box-sizing: border-box !important;
     background: #f1f5f9 !important;
   }
-
   .cal-sheet-grid-header > div {
     border-right: 1px solid #000000 !important;
-    font-size: 9pt !important;
+    font-size: 8.5pt !important;
     font-weight: 800 !important;
     color: #000000 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-sizing: border-box !important;
     height: 100% !important;
   }
   .cal-sheet-grid-header > div:last-child { border-right: none !important; }
@@ -1322,12 +1299,11 @@ line-height: 1.35;
 
   .cal-sheet-grid-body {
     flex: 1 1 auto !important;
-    height: calc(100% - 6.5mm) !important;
+    height: calc(100% - 6mm) !important;
     display: grid !important;
     grid-template-columns: repeat(7, 1fr) !important;
     width: 100% !important;
     border-top: 2px solid #000000 !important;
-    box-sizing: border-box !important;
     background: transparent !important;
   }
   .cal-sheet-grid-body.cal-rows-5 { grid-template-rows: repeat(5, 1fr) !important; }
@@ -1342,7 +1318,6 @@ line-height: 1.35;
     flex-direction: column !important;
     min-height: 0 !important;
     height: 100% !important;
-    box-sizing: border-box !important;
   }
   .cal-grid-cell:nth-child(7n) { border-right: none !important; }
   .cal-sheet-grid-body.cal-rows-5 .cal-grid-cell:nth-child(n+29),
@@ -1359,7 +1334,7 @@ line-height: 1.35;
     gap: 0.2mm !important;
   }
   .cell-date-num {
-    font-size: 26pt !important;
+    font-size: 24pt !important;
     font-weight: 900 !important;
     line-height: 0.9 !important;
     padding-left: 0.5mm !important;
@@ -1372,9 +1347,9 @@ line-height: 1.35;
     padding-left: 0.8mm !important;
     word-break: keep-all !important;
   }
-  .cell-events-wrap { max-height: calc(100% - 15mm) !important; gap: 0.6mm !important; }
+  .cell-events-wrap { max-height: calc(100% - 13mm) !important; gap: 0.5mm !important; }
   .td-event-badge {
-    font-size: 7.5pt !important;
+    font-size: 7pt !important;
     background: #e2e8f0 !important;
     color: #000000 !important;
     border: 0.5px solid #000000 !important;
@@ -1386,10 +1361,10 @@ line-height: 1.35;
   .cal-sheet-footer.is-empty { display: none !important; }
   .cal-sheet-footer { flex-shrink: 0 !important; }
   .cal-sheet-memo-box {
-    border: 1.5px solid #000000 !important;
-    padding: 1.5mm 2.5mm !important;
-    background: #ffffff !important;
+    border: none !important;
+    padding: 1mm 0 !important;
+    background: transparent !important;
   }
   .memo-tag { color: #000000 !important; font-size: 8pt !important; }
-  .memo-textarea { color: #000000 !important; font-size: 9pt !important; white-space: pre-wrap !important; line-height: 1.3 !important; }
+  .memo-textarea { color: #000000 !important; font-size: 8.5pt !important; white-space: pre-wrap !important; line-height: 1.25 !important; }
 }
