@@ -1237,7 +1237,7 @@ line-height: 1.35;
   }
 
   /* A4 용지 기준: 가로 200mm, 상하 287mm (상하좌우 5mm 균등 여백) */
-  .print-calendar-sheet {
+ .print-calendar-sheet {
     width: 200mm !important;
     min-width: 200mm !important;
     max-width: 200mm !important;
@@ -1247,7 +1247,8 @@ line-height: 1.35;
     margin: 5mm auto !important;
     padding: 4mm 5mm !important;
     box-shadow: none !important;
-    border: 2px solid #000000 !important;
+    border: none !important;          /* 👈 기존 '2px solid #000000'을 'none'으로 변경 */
+    outline: none !important;
     border-radius: 0 !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
