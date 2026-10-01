@@ -46,29 +46,48 @@ App.calendar = {
     this.generate();
   },
 
-  /* 3번 요구사항: 캘린더 A4 PDF 파일 직접 내보내기 */
+  /* 캘린더 A4 PDF 파일 직접 내보내기 (모바일 쏠림 방지 최적화) */
   exportPDF() {
     const element = document.getElementById('printCalendarSheet');
     if (!element) return;
 
     App.ui.toast("📄 PDF 생성 중입니다. 잠시만 기다려주세요...");
 
+    // 💡 캡처 시 모바일 390px 찌그러짐 방지: A4 표준 픽셀 폭(794px) 임시 적용
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    element.style.width = '794px';
+    element.style.maxWidth = '794px';
+
     const opt = {
-      margin: [4, 4, 4, 4],
+      margin: [5, 5, 5, 5],
       filename: `GOGO캘린더_${this.currentYear}년_${this.currentMonth}월.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        letterRendering: true,
+        windowWidth: 794
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const restoreStyles = () => {
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
     };
 
     if (window.html2pdf) {
       html2pdf().set(opt).from(element).save().then(() => {
+        restoreStyles();
         App.ui.toast("✅ PDF 다운로드가 완료되었습니다!");
       }).catch(err => {
+        restoreStyles();
         console.warn("html2pdf 오류, 인쇄 창으로 전환:", err);
         window.print();
       });
     } else {
+      restoreStyles();
       window.print();
     }
   },
