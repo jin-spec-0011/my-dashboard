@@ -1180,12 +1180,7 @@ line-height: 1.35;
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0 !important; /* iOS 마진 간섭 제거 */
-  }
-
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    margin: 0 !important; /* 브라우저 기본 여백 0 제거 */
   }
 
   html, body {
@@ -1196,9 +1191,26 @@ line-height: 1.35;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
-    overflow: visible !important;
   }
 
+  /* 💡 캘린더 시트를 A4 전체 크기(210x297mm) 및 마진 0mm로 확장 */
+  .print-calendar-sheet {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;          /* 👈 상하좌우 마진 0mm */
+    padding: 3mm 4mm !important;   /* 내용물이 잘리지 않게 최소 내부 여백만 유지 */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
   .no-print,
   #screen-lock,
   #screen-home,
