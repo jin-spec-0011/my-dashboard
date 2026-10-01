@@ -1361,7 +1361,7 @@ line-height: 1.35;
   .cal-sheet-footer.is-empty { display: none !important; }
   .cal-sheet-footer { flex-shrink: 0 !important; }
   .cal-sheet-memo-box {
-    border: none !important;
+    border: 0.5px solid #000000 !important;
     padding: 1mm 0 !important;
     background: transparent !important;
   }
