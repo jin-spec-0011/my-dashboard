@@ -1175,270 +1175,208 @@ font-family: inherit;
 line-height: 1.35;
 }
 /* ══════════════════════════════════════════════════
-🖨️ A4 인쇄 전용 CSS
-══════════════════════════════════════════════════ */
+   🖨️ A4 인쇄 전용 CSS (아이폰 쏠림 방지 완비)
+   ══════════════════════════════════════════════════ */
 @media print {
-@page {
-size: A4 portrait;
-margin: 6mm 6mm 6mm 6mm !important;
-}
- {
-overflow: visible !important;
-scrollbar-width: none !important;
--webkit-print-color-adjust: exact !important;
-print-color-adjust: exact !important;
-}
-*::-webkit-scrollbar { display: none !important; }
-html, body {
-width: 100% !important;
-height: 100% !important;
-margin: 0 !important;
-padding: 0 !important;
-background: #ffffff !important;
-overflow: hidden !important;
-}
-.no-print,
-#screen-lock,
-#screen-home,
-#screen-parking,
-#screen-schedule,
-#screen-shopping,
-#screen-sticky,
-#screen-ledger,
-#screen-trip,
-.modal-overlay,
-.toast {
-display: none !important;
-}
-#screen-calendar {
-display: flex !important;
-width: 100% !important;
-height: 100% !important;
-max-width: 100% !important;
-padding: 0 !important;
-margin: 0 !important;
-}
-.calendar-viewport-wrapper {
-max-width: 100% !important;
-width: 100% !important;
-height: 100% !important;
-}
-.print-calendar-sheet {
-width: 100% !important;
-height: 270mm !important;
-max-height: 270mm !important;
-box-shadow: none !important;
-border: 2px solid #000000 !important;
-border-radius: 0 !important;
-padding: 3mm 4mm !important;
-box-sizing: border-box !important;
-page-break-inside: avoid !important;
-page-break-after: avoid !important;
-display: flex !important;
-flex-direction: column !important;
-justify-content: space-between !important;
-gap: 2mm !important;
-}
-.cal-sheet-header { flex-shrink: 0 !important; gap: 1.5mm !important; }
-.cal-sheet-title-row { border-bottom: 2px solid #000000 !important; padding-bottom: 1mm !important; }
-.cal-sheet-title { font-size: 19pt !important; color: #000000 !important; }
-.cal-sheet-sub { color: #000000 !important; font-size: 8.5pt !important; }
-.cal-sheet-goal-box.is-empty { display: none !important; }
-.cal-sheet-goal-box {
-border: 1.5px solid #000000 !important;
-padding: 1.5mm 2.5mm !important;
-background: #ffffff !important;
-}
-.goal-tag { color: #000000 !important; font-size: 8pt !important; }
-.goal-input { color: #000000 !important; font-size: 9.5pt !important; }
-.cal-sheet-grid-container {
-flex: 1 1 auto !important;
-display: flex !important;
-flex-direction: column !important;
-height: 100% !important;
-border: 2px solid #000000 !important;
-border-radius: 0 !important;
-box-sizing: border-box !important;
-background: transparent !important;
-}
-.cal-sheet-grid-header {
-height: 6.5mm !important;
-flex-shrink: 0 !important;
-display: grid !important;
-grid-template-columns: repeat(7, 1fr) !important;
-width: 100% !important;
-box-sizing: border-box !important;
-background: #f1f5f9 !important;
-position: relative !important;
-z-index: 1 !important;
-}
-.cal-sheet-grid-header > div {
-border-right: 1px solid #000000 !important;
-font-size: 9pt !important;
-font-weight: 800 !important;
-color: #000000 !important;
-display: flex !important;
-align-items: center !important;
-justify-content: center !important;
-box-sizing: border-box !important;
-height: 100% !important;
-}
-.cal-sheet-grid-header > div:last-child { border-right: none !important; }
-.cal-sheet-grid-header .th-sun { background-color: #fee2e2 !important; color: #dc2626 !important; }
-.cal-sheet-grid-header .th-sat { background-color: #dbeafe !important; color: #2563eb !important; }
-.cal-sheet-grid-body {
-flex: 1 1 auto !important;
-height: calc(100% - 6.5mm) !important;
-display: grid !important;
-grid-template-columns: repeat(7, 1fr) !important;
-width: 100% !important;
-border-top: 2px solid #000000 !important;
-box-sizing: border-box !important;
-background: transparent !important;
-position: relative !important;
-z-index: 5 !important;
-}
-.cal-sheet-grid-body.cal-rows-5 { grid-template-rows: repeat(5, 1fr) !important; }
-.cal-sheet-grid-body.cal-rows-6 { grid-template-rows: repeat(6, 1fr) !important; }
-.cal-grid-cell {
-background-color: #ffffff !important;
-border-right: 1px solid #000000 !important;
-border-bottom: 1px solid #000000 !important;
-padding: 1mm 1.5mm !important;
-display: flex !important;
-flex-direction: column !important;
-min-height: 0 !important;
-height: 100% !important;
-box-sizing: border-box !important;
-}
-.cal-grid-cell:nth-child(7n) { border-right: none !important; }
-.cal-sheet-grid-body.cal-rows-5 .cal-grid-cell:nth-child(n+29),
-.cal-sheet-grid-body.cal-rows-6 .cal-grid-cell:nth-child(n+36) { border-bottom: none !important; }
-.cal-grid-cell.cell-today { background-color: #ffffff !important; }
-.cell-date-row {
-display: flex !important;
-flex-direction: column !important;
-align-items: flex-start !important;
-justify-content: flex-start !important;
-width: 100% !important;
-margin-bottom: 0.5mm !important;
-gap: 0.2mm !important;
-}
-.cell-date-num {
-font-size: 38px !important;
-font-weight: 900 !important;
-line-height: 0.85 !important;
-padding-left: 0.5mm !important;
-}
-.cell-holiday-tag {
-font-size: 7.5pt !important;
-font-weight: 800 !important;
-color: #dc2626 !important;
-line-height: 1 !important;
-text-align: left !important;
-padding-left: 0.8mm !important;
-word-break: keep-all !important;
-max-width: 100% !important;
-}
-.cell-events-wrap { max-height: calc(100% - 15mm) !important; gap: 0.6mm !important; }
-.td-event-badge {
-font-size: 7.5pt !important;
-background: #e2e8f0 !important;
-color: #000000 !important;
-border: 0.5px solid #000000 !important;
-padding: 0.2mm 1mm !important;
-border-radius: 2px !important;
-line-height: 1.1 !important;
-}
-.cal-sheet-footer.is-empty { display: none !important; }
-.cal-sheet-footer { flex-shrink: 0 !important; }
-.cal-sheet-memo-box {
-border: 1.5px solid #000000 !important;
-padding: 1.5mm 2.5mm !important;
-background: #ffffff !important;
-}
-.memo-tag { color: #000000 !important; font-size: 8pt !important; }
-.memo-textarea { color: #000000 !important; font-size: 9pt !important; white-space: pre-wrap !important; line-height: 1.3 !important; }
-}
-/* ── 팝업 & 토스트 ── */
-.modal-overlay {
-position: fixed;
-inset: 0;
-background: rgba(15, 23, 42, 0.65);
-backdrop-filter: blur(4px);
-display: flex;
-align-items: center;
-justify-content: center;
-z-index: 9999;
-padding: 14px;
-padding-bottom: max(14px, env(safe-area-inset-bottom));
-box-sizing: border-box;
-}
-.modal-card {
-position: relative;
-width: 100% !important;
-max-width: calc(100vw - 28px) !important;
-max-height: 85dvh;
-overflow-y: auto;
--webkit-overflow-scrolling: touch;
-background: #ffffff;
-border-radius: 18px;
-padding: 20px 16px;
-text-align: center;
-box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-box-sizing: border-box !important;
-}
-.modal-close-icon-btn {
-position: absolute;
-top: 12px;
-right: 12px;
-background: none;
-border: none;
-font-size: 16px;
-color: #94a3b8;
-cursor: pointer;
-}
-.btn-modal-save {
-width: 100%;
-height: 42px;
-background: var(--primary-color);
-color: #ffffff;
-border: none;
-border-radius: 9px;
-font-size: 13.5px;
-font-weight: 700;
-cursor: pointer;
-margin-bottom: 5px;
-}
-.btn-modal-cancel {
-width: 100%;
-height: 36px;
-background: transparent;
-color: var(--text-sub);
-border: none;
-font-size: 12.5px;
-font-weight: 600;
-cursor: pointer;
-}
-.toast {
-position: fixed;
-bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
-left: 50%;
-transform: translateX(-50%) translateY(100px);
-background: rgba(15, 23, 42, 0.9);
-color: #ffffff;
-padding: 9px 16px;
-border-radius: 25px;
-font-size: 12.5px;
-font-weight: 700;
-box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-opacity: 0;
-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-z-index: 10000;
-pointer-events: none;
-white-space: nowrap;
-}
-.toast.show {
-transform: translateX(-50%) translateY(0);
-opacity: 1;
+  @page {
+    size: A4 portrait;
+    margin: 0 !important; /* iOS 마진 간섭 제거 */
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .no-print,
+  #screen-lock,
+  #screen-home,
+  #screen-parking,
+  #screen-schedule,
+  #screen-shopping,
+  #screen-sticky,
+  #screen-ledger,
+  #screen-trip,
+  .modal-overlay,
+  .toast {
+    display: none !important;
+  }
+
+  #screen-calendar {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 아이폰 뷰포트 max-width(390px) 강제 해제 */
+  .calendar-viewport-wrapper,
+  .calendar-viewport-wrapper.view-iphone,
+  .calendar-viewport-wrapper.view-ipad,
+  .calendar-viewport-wrapper.view-web {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* A4 용지 기준: 가로 200mm, 상하 287mm (상하좌우 5mm 균등 여백) */
+  .print-calendar-sheet {
+    width: 200mm !important;
+    min-width: 200mm !important;
+    max-width: 200mm !important;
+    height: 287mm !important;
+    min-height: 287mm !important;
+    max-height: 287mm !important;
+    margin: 5mm auto !important;
+    padding: 4mm 5mm !important;
+    box-shadow: none !important;
+    border: 2px solid #000000 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 2mm !important;
+  }
+
+  .cal-sheet-header { flex-shrink: 0 !important; gap: 1.5mm !important; }
+  .cal-sheet-title-row { border-bottom: 2px solid #000000 !important; padding-bottom: 1mm !important; }
+  .cal-sheet-title { font-size: 19pt !important; color: #000000 !important; }
+  .cal-sheet-sub { color: #000000 !important; font-size: 8.5pt !important; }
+  .cal-sheet-goal-box.is-empty { display: none !important; }
+  .cal-sheet-goal-box {
+    border: 1.5px solid #000000 !important;
+    padding: 1.5mm 2.5mm !important;
+    background: #ffffff !important;
+  }
+  .goal-tag { color: #000000 !important; font-size: 8pt !important; }
+  .goal-input { color: #000000 !important; font-size: 9.5pt !important; }
+
+  .cal-sheet-grid-container {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    border: 2px solid #000000 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+  }
+
+  .cal-sheet-grid-header {
+    height: 6.5mm !important;
+    flex-shrink: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #f1f5f9 !important;
+  }
+
+  .cal-sheet-grid-header > div {
+    border-right: 1px solid #000000 !important;
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    height: 100% !important;
+  }
+  .cal-sheet-grid-header > div:last-child { border-right: none !important; }
+  .cal-sheet-grid-header .th-sun { background-color: #fee2e2 !important; color: #dc2626 !important; }
+  .cal-sheet-grid-header .th-sat { background-color: #dbeafe !important; color: #2563eb !important; }
+
+  .cal-sheet-grid-body {
+    flex: 1 1 auto !important;
+    height: calc(100% - 6.5mm) !important;
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    width: 100% !important;
+    border-top: 2px solid #000000 !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+  }
+  .cal-sheet-grid-body.cal-rows-5 { grid-template-rows: repeat(5, 1fr) !important; }
+  .cal-sheet-grid-body.cal-rows-6 { grid-template-rows: repeat(6, 1fr) !important; }
+
+  .cal-grid-cell {
+    background-color: #ffffff !important;
+    border-right: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+    padding: 1mm 1.5mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .cal-grid-cell:nth-child(7n) { border-right: none !important; }
+  .cal-sheet-grid-body.cal-rows-5 .cal-grid-cell:nth-child(n+29),
+  .cal-sheet-grid-body.cal-rows-6 .cal-grid-cell:nth-child(n+36) { border-bottom: none !important; }
+  .cal-grid-cell.cell-today { background-color: #ffffff !important; }
+
+  .cell-date-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    margin-bottom: 0.5mm !important;
+    gap: 0.2mm !important;
+  }
+  .cell-date-num {
+    font-size: 26pt !important;
+    font-weight: 900 !important;
+    line-height: 0.9 !important;
+    padding-left: 0.5mm !important;
+  }
+  .cell-holiday-tag {
+    font-size: 7.5pt !important;
+    font-weight: 800 !important;
+    color: #dc2626 !important;
+    line-height: 1 !important;
+    padding-left: 0.8mm !important;
+    word-break: keep-all !important;
+  }
+  .cell-events-wrap { max-height: calc(100% - 15mm) !important; gap: 0.6mm !important; }
+  .td-event-badge {
+    font-size: 7.5pt !important;
+    background: #e2e8f0 !important;
+    color: #000000 !important;
+    border: 0.5px solid #000000 !important;
+    padding: 0.2mm 1mm !important;
+    border-radius: 2px !important;
+    line-height: 1.1 !important;
+  }
+
+  .cal-sheet-footer.is-empty { display: none !important; }
+  .cal-sheet-footer { flex-shrink: 0 !important; }
+  .cal-sheet-memo-box {
+    border: 1.5px solid #000000 !important;
+    padding: 1.5mm 2.5mm !important;
+    background: #ffffff !important;
+  }
+  .memo-tag { color: #000000 !important; font-size: 8pt !important; }
+  .memo-textarea { color: #000000 !important; font-size: 9pt !important; white-space: pre-wrap !important; line-height: 1.3 !important; }
 }
