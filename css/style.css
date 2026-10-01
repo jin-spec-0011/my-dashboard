@@ -1231,12 +1231,12 @@ line-height: 1.35;
   /* 💡 2. 사방 균등 여백 시트 (기준: 사방 1.0cm 동일 여백) */
   .print-calendar-sheet {
     /* 1.0cm 여백 적용 시 (190mm x 277mm) / 0.5cm 여백을 원하시면 200mm x 287mm 로 변경 */
-    width: 190mm !important;
-    min-width: 190mm !important;
-    max-width: 190mm !important;
-    height: 277mm !important;
-    min-height: 277mm !important;
-    max-height: 277mm !important;
+    width: 200mm !important;
+    min-width: 200mm !important;
+    max-width: 200mm !important;
+    height: 287mm !important;
+    min-height: 287mm !important;
+    max-height: 287mm !important;
     margin: 0 !important;
     padding: 2mm 3mm !important; /* 시트 내부 최소 콘텐츠 여백 */
     border: none !important;
