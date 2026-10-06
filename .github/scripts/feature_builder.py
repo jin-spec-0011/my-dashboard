@@ -21,7 +21,7 @@ if not os.path.exists(TARGET_FILE):
 with open(TARGET_FILE, "r", encoding="utf-8") as f:
     current_code = f.read()
 
-# 2. 시스템 프롬프트 조립 (따옴표 3개 대신 안전한 리스트 결합 방식 사용)
+# 2. 시스템 프롬프트 조립 (따옴표 충돌 없는 안전한 리스트 방식)
 prompt_parts = [
     "You are an elite Senior Frontend Architect specializing in Vanilla JavaScript, HTML5, CSS3, and Firebase.",
     "Modify and expand the provided code strictly based on the request.",
