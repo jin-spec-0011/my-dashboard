@@ -1,0 +1,60 @@
+name: Gemini Auto Fix and Deploy
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-fix:
+    if: contains(github.event.issue.title, '[수정]') || contains(github.event.issue.title, '[Fix]') || contains(github.event.issue.title, '[기능]') || contains(github.event.issue.title, '[Feat]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: 저장소 코드 불러오기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 세팅
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Gemini 코드 자동 작성 실행
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          TARGET_FILE: "index.html" # 메인 파일 이름이 다르면 변경 (예: app.html)
+        run: |
+          python .github/scripts/feature_builder.py
+
+      - name: 변경 내용 자동 커밋 및 푸시
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "변경 사항 없음"
+          else
+            git commit -m "Auto-update from #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+            git push origin main
+          fi
+
+      - name: 이슈 댓글 달고 닫기
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Gemini가 요청 사항을 반영하여 배포를 완료했습니다.'
+            });
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            });
