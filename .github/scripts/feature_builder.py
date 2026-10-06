@@ -10,18 +10,18 @@ ISSUE_BODY = os.environ.get("ISSUE_BODY", "")
 TARGET_FILE = os.environ.get("TARGET_FILE", "index.html")
 
 if not API_KEY:
-    print("[ERROR] GEMINI_API_KEY가 설정되지 않았습니다.")
+    print("[ERROR] GEMINI_API_KEY is not set.")
     sys.exit(1)
 
 # 1. 대상 원본 파일 읽기
 if not os.path.exists(TARGET_FILE):
-    print(f"[ERROR] 대상 파일({TARGET_FILE})을 찾을 수 없습니다.")
+    print(f"[ERROR] Target file ({TARGET_FILE}) not found.")
     sys.exit(1)
 
 with open(TARGET_FILE, "r", encoding="utf-8") as f:
     current_code = f.read()
 
-# 2. 시스템 프롬프트 조립 (따옴표 충돌 방지 구조)
+# 2. 시스템 프롬프트 조립 (따옴표 3개 대신 안전한 리스트 결합 방식 사용)
 prompt_parts = [
     "You are an elite Senior Frontend Architect specializing in Vanilla JavaScript, HTML5, CSS3, and Firebase.",
     "Modify and expand the provided code strictly based on the request.",
@@ -37,10 +37,10 @@ prompt_parts = [
     "",
     "[CRITICAL REQUIREMENTS]",
     "1. COMPLETE SINGLE FILE: Output the 100% complete HTML file from <!DOCTYPE html> to </html>.",
-    "2. NO TRUNCATION: Absolutely NO comments like '// ... existing code ...'. Keep every single working logic intact.",
-    "3. SECURE CONFIGS: Do NOT alter, mock, or replace existing Firebase configurations, API keys, or endpoints.",
-    "4. SAFE INTEGRATION: Add new CSS cleanly and register new JS event listeners without breaking existing ones.",
-    "5. PURE OUTPUT: Return ONLY the code inside a single ```html ... ``` block. No notes, no chat."
+    "2. NO TRUNCATION: Absolutely NO comments like '// ... existing code ...'. Keep all working logic intact.",
+    "3. SECURE CONFIGS: Do NOT alter or replace existing Firebase configurations, API keys, or endpoints.",
+    "4. SAFE INTEGRATION: Add new CSS cleanly and register new JS event listeners safely.",
+    "5. PURE OUTPUT: Return ONLY the code inside a single ```html ... ``` block. No notes, no markdown outside."
 ]
 prompt = "\n".join(prompt_parts)
 
@@ -65,10 +65,10 @@ try:
         response_body = json.loads(res.read().decode("utf-8"))
         generated_text = response_body["candidates"][0]["content"]["parts"][0]["text"]
 except Exception as e:
-    print(f"[API ERROR] Gemini API 호출 실패: {e}")
+    print(f"[API ERROR] Gemini API call failed: {e}")
     sys.exit(1)
 
-# 4. 정규식을 사용한 코드 블록 추출
+# 4. 정규식을 사용한 순수 코드 블록 추출
 pattern = r"```(?:html)?\s*([\s\S]*?)\s*```"
 match = re.search(pattern, generated_text)
 
@@ -79,15 +79,15 @@ else:
 
 # 5. 페일세이프 (파일 손상 방지)
 if len(cleaned_code) < len(current_code) * 0.65:
-    print("[ABORT] 생성된 코드가 너무 짧습니다. 덮어쓰기를 취소합니다.")
+    print("[ABORT] Generated code is suspiciously short. Overwrite aborted.")
     sys.exit(1)
 
 if TARGET_FILE.endswith(".html") and "</html>" not in cleaned_code:
-    print("[ABORT] </html> 태그가 누락되어 있습니다. 덮어쓰기를 취소합니다.")
+    print("[ABORT] </html> tag missing. Overwrite aborted.")
     sys.exit(1)
 
 # 6. 파일 덮어쓰기
 with open(TARGET_FILE, "w", encoding="utf-8") as f:
     f.write(cleaned_code)
 
-print(f"[SUCCESS] {TARGET_FILE} 파일이 안전하게 갱신되었습니다.")
+print(f"[SUCCESS] {TARGET_FILE} has been safely updated.")
