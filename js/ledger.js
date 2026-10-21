@@ -197,7 +197,6 @@ App.ledger = {
 
     const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
 
-    // 1. 고정비 실지출 합산
     let fixedTotal = 0;
     this.CONFIG.FIXED_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -208,7 +207,6 @@ App.ledger = {
       fixedTotal += spent;
     });
 
-    // 2. 생활비 실지출 합산
     let livingTotal = 0;
     this.CONFIG.LIVING_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -220,7 +218,6 @@ App.ledger = {
       livingTotal += spent;
     });
 
-    // 미분류 생활비 처리 (Fallback)
     const legacyLivingFallback = thisMonthItems.reduce((acc, cur) => {
       const text = cur.category || cur.desc || '';
       return (this.evalLivingStatus(text) === "O") ? acc + (Number(cur.amount) || 0) : acc;
@@ -230,7 +227,6 @@ App.ledger = {
     const fixedRemain = this.CONFIG.FIXED_BUDGET - fixedTotal;
     const livingRemain = this.CONFIG.LIVING_BUDGET - finalLivingSpend;
 
-    // 상단 2열 요약 카드 갱신
     const fixedActEl = document.getElementById('ledgerFixedActualDisplay');
     const fixedRemEl = document.getElementById('ledgerFixedRemainDisplay');
     const livingActEl = document.getElementById('ledgerLivingActualDisplay');
@@ -244,7 +240,6 @@ App.ledger = {
       livingRemEl.style.color = livingRemain >= 0 ? '#10b981' : '#ef4444';
     }
 
-    // 생활비 진행 바 및 요약 수치
     const monthLabelEl = document.getElementById('ledgerMonthLabel');
     const totalSpendEl = document.getElementById('ledgerTotalSpendDisplay');
     const livingSubDisplay = document.getElementById('ledgerLivingSubDisplay');
@@ -274,7 +269,6 @@ App.ledger = {
       progressBarEl.style.background = percent >= 100 ? '#ef4444' : (percent >= 80 ? '#f59e0b' : '#2563eb');
     }
 
-    // 지출 리스트 렌더링
     const listEl = document.getElementById('ledgerList');
     if (!listEl) return;
 
