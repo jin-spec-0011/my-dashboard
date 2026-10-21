@@ -1,6 +1,6 @@
 /**
  * GOGO 스마트 매니저 - 가계부 통합 관리 모듈 (js/ledger.js)
- * 마스터 규격서(고정비 355만 + 생활비 100만 관리) 완벽 구현
+ * 규격: 고정비(355만) + 생활비(100만) 마스터 규격서 완전 호환
  */
 
 window.App = window.App || {};
@@ -197,7 +197,7 @@ App.ledger = {
 
     const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
 
-    // 고정비 실지출 합산
+    // 1. 고정비 실지출
     let fixedTotal = 0;
     this.CONFIG.FIXED_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -208,7 +208,7 @@ App.ledger = {
       fixedTotal += spent;
     });
 
-    // 생활비 실지출 합산
+    // 2. 생활비 실지출
     let livingTotal = 0;
     this.CONFIG.LIVING_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -220,7 +220,7 @@ App.ledger = {
       livingTotal += spent;
     });
 
-    // 미분류 생활비 Fallback 집계
+    // 미분류 생활비 처리
     const legacyLivingFallback = thisMonthItems.reduce((acc, cur) => {
       const text = cur.category || cur.desc || '';
       return (this.evalLivingStatus(text) === "O") ? acc + (Number(cur.amount) || 0) : acc;
@@ -230,7 +230,7 @@ App.ledger = {
     const fixedRemain = this.CONFIG.FIXED_BUDGET - fixedTotal;
     const livingRemain = this.CONFIG.LIVING_BUDGET - finalLivingSpend;
 
-    // 상단 신규 대시보드 표시 갱신
+    // 상단 2열 요약 카드 갱신
     const fixedActEl = document.getElementById('ledgerFixedActualDisplay');
     const fixedRemEl = document.getElementById('ledgerFixedRemainDisplay');
     const livingActEl = document.getElementById('ledgerLivingActualDisplay');
@@ -244,9 +244,10 @@ App.ledger = {
       livingRemEl.style.color = livingRemain >= 0 ? '#10b981' : '#ef4444';
     }
 
-    // 레거시 요소 동기화
+    // 생활비 진행 바 및 요약 수치
     const monthLabelEl = document.getElementById('ledgerMonthLabel');
     const totalSpendEl = document.getElementById('ledgerTotalSpendDisplay');
+    const livingSubDisplay = document.getElementById('ledgerLivingSubDisplay');
     const budgetDisplayEl = document.getElementById('ledgerBudgetDisplay');
     const percentDisplayEl = document.getElementById('ledgerPercentDisplay');
     const remainDisplayEl = document.getElementById('ledgerRemainDisplay');
@@ -254,8 +255,9 @@ App.ledger = {
     const summaryTitleEl = document.getElementById('ledgerSummaryTitle');
 
     if (monthLabelEl) monthLabelEl.innerText = `${yearNum}년 ${monthNum}월 생활비 소진율`;
-    if (summaryTitleEl) summaryTitleEl.innerText = `📋 ${monthNum}월 지출 내역 (${thisMonthItems.length}건)`;
+    if (summaryTitleEl) summaryTitleEl.innerText = `📋 ${monthNum}월 지출 상세 내역 (${thisMonthItems.length}건)`;
     if (totalSpendEl) totalSpendEl.innerText = `${finalLivingSpend.toLocaleString()}원`;
+    if (livingSubDisplay) livingSubDisplay.innerText = `${finalLivingSpend.toLocaleString()}원`;
     if (budgetDisplayEl) budgetDisplayEl.innerText = `${this.CONFIG.LIVING_BUDGET.toLocaleString()}원`;
 
     const percent = Math.round((finalLivingSpend / this.CONFIG.LIVING_BUDGET) * 100);
@@ -288,20 +290,20 @@ App.ledger = {
       const badgeText = isLivingO ? '생활비' : '고정비';
 
       return `
-        <div class="log-item" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 8px; background: #ffffff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
+        <div class="log-item" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 6px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
           <div class="log-content">
-            <div class="log-text" style="font-size: 13px; font-weight: 600; color: #1e293b;">
-              <span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; font-weight: 700; margin-right: 4px;">${badgeText}</span>
-              ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b;">(${escapeHtml(item.place)})</span>` : ''}
-              ${item.desc && item.desc !== cat ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${escapeHtml(item.desc)}</div>` : ''}
+            <div class="log-text" style="font-size: 13px; font-weight: 700; color: #0f172a;">
+              <span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; font-weight: 800; margin-right: 4px;">${badgeText}</span>
+              ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b; font-weight: normal;">(${escapeHtml(item.place)})</span>` : ''}
+              ${item.desc && item.desc !== cat ? `<div style="font-size: 11px; color: #64748b; margin-top: 1px; font-weight: normal;">${escapeHtml(item.desc)}</div>` : ''}
             </div>
-            <div class="log-time" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+            <div class="log-time" style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">
               📅 ${escapeHtml(item.date || '')} · ${escapeHtml(item.method || '카드')} · ${escapeHtml(item.author || '가족')}
             </div>
           </div>
           <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
             <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
-            <button type="button" class="delete-item-btn" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 4px;" onclick="App.ledger.delete('${item.id}')">✕</button>
+            <button type="button" class="delete-item-btn" onclick="App.ledger.delete('${item.id}')">✕</button>
           </div>
         </div>
       `;
