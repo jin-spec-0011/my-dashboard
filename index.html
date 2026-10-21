@@ -558,78 +558,78 @@
     </div>
   </section>
 
-  <!-- 7. 💰 간편 가계부 화면 -->
-  <section id="screen-ledger" class="screen">
-    <div class="header-nav">
-      <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
-      <h2>💰 간편 가계부</h2>
+<!-- 가계부 탭 섹션 -->
+<section id="ledgerSection" class="content-section">
+  <!-- 상단 월 선택 및 내보내기 바 -->
+  <div class="ledger-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="button" class="btn-icon" onclick="App.ledger.prevMonth()">◀</button>
+      <input type="month" id="ledgerMonthPicker" class="input-month" onchange="App.ledger.changeMonth(this.value)">
+      <button type="button" class="btn-icon" onclick="App.ledger.nextMonth()">▶</button>
     </div>
+    <button type="button" class="btn-primary" onclick="App.ledger.exportExcel()">📥 CSV 내보내기</button>
+  </div>
 
-    <div class="ledger-month-toolbar">
-      <div class="ledger-month-nav">
-        <button type="button" class="btn-month-step" onclick="App.ledger.prevMonth()">◀</button>
-        <input type="month" id="ledgerMonthPicker" class="ledger-month-picker" onchange="App.ledger.changeMonth(this.value)">
-        <button type="button" class="btn-month-step" onclick="App.ledger.nextMonth()">▶</button>
-      </div>
-      <button type="button" class="btn-excel-export" onclick="App.ledger.exportExcel()">📥 엑셀(CSV)</button>
+  <!-- 통합 요약 대시보드 카드 -->
+  <div class="summary-card-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+    <div class="card" style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <div style="font-size: 11px; color: #64748b; font-weight: 600;">기준 고정비 (355만 원)</div>
+      <div id="ledgerFixedActualDisplay" style="font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 4px;">0원</div>
+      <div id="ledgerFixedRemainDisplay" style="font-size: 11px; color: #64748b; margin-top: 2px;">잔여 이체액: 3,550,000원</div>
     </div>
-
-    <div class="card budget-card">
-      <div class="budget-card-header">
-        <div>
-          <span class="budget-sub-title" id="ledgerMonthLabel">2026년 9월 총 지출</span>
-          <h3 class="budget-spend-total" id="ledgerTotalSpendDisplay">0원</h3>
-        </div>
-        <button type="button" class="btn-budget-edit" onclick="App.ledger.promptBudgetChange()">⚙️ 예산 설정</button>
-      </div>
-
-      <div class="budget-bar-wrap">
-        <div class="budget-bar-track">
-          <div id="ledgerProgressBar" class="budget-bar-fill" style="width: 0%;"></div>
-        </div>
-      </div>
-
-      <div class="budget-info-row">
-        <div class="budget-info-item">
-          <span class="info-label">설정 예산</span>
-          <span class="info-val" id="ledgerBudgetDisplay">1,500,000원</span>
-        </div>
-        <div class="budget-info-item">
-          <span class="info-label">사용률</span>
-          <span class="info-val" id="ledgerPercentDisplay">0%</span>
-        </div>
-        <div class="budget-info-item">
-          <span class="info-label">잔여 금액</span>
-          <span class="info-val text-green" id="ledgerRemainDisplay">1,500,000원</span>
-        </div>
-      </div>
+    <div class="card" style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <div style="font-size: 11px; color: #64748b; font-weight: 600;">생활비 예산 (100만 원)</div>
+      <div id="ledgerLivingActualDisplay" style="font-size: 16px; font-weight: 800; color: #10b981; margin-top: 4px;">0원</div>
+      <div id="ledgerLivingRemainDisplay" style="font-size: 11px; color: #10b981; margin-top: 2px;">남은 잔액: 1,000,000원</div>
     </div>
+  </div>
 
-    <div class="card form-card">
-      <div class="grid-2">
-        <div class="form-group">
-          <label>날짜</label>
-          <input type="date" id="ledgerDateInput" class="memo-text-input">
-        </div>
-        <div class="form-group">
-          <label>금액 (원)</label>
-          <input type="number" id="ledgerAmountInput" class="memo-text-input" placeholder="예: 25000">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>내역 / 사용처</label>
-        <input type="text" id="ledgerDescInput" class="memo-text-input" placeholder="예: 이마트 장보기">
-      </div>
-      <button type="button" class="btn-save" onclick="App.ledger.add()">지출 내역 저장</button>
+  <!-- 기존 레거시 호환 프로그레스 바 영역 -->
+  <div class="card" style="padding: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+      <span id="ledgerMonthLabel" style="font-weight: 700;">당월 생활비 소진율</span>
+      <span id="ledgerPercentDisplay" style="font-weight: 800; color: #2563eb;">0%</span>
     </div>
+    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+      <div id="ledgerProgressBar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.3s ease;"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px;">
+      <span>총 지출: <strong id="ledgerTotalSpendDisplay">0원</strong></span>
+      <span>목표 예산: <strong id="ledgerBudgetDisplay">1,000,000원</strong></span>
+      <span id="ledgerRemainDisplay" class="info-val text-green">1,000,000원</span>
+    </div>
+  </div>
 
-    <div class="card list-card">
-      <div class="list-header">
-        <h3 id="ledgerSummaryTitle">📋 이달의 지출 상세 내역</h3>
-      </div>
-      <div id="ledgerList" class="log-list"></div>
+  <!-- 신규 지출 등록 폼 -->
+  <div class="card" style="padding: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px;">
+    <div style="font-size: 13px; font-weight: 700; margin-bottom: 10px;">✏️ 지출 등록 (마스터 자동 판정)</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+      <input type="date" id="ledgerDateInput" class="input-text">
+      <input type="number" id="ledgerAmountInput" class="input-text" placeholder="금액 (원)">
     </div>
-  </section>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+      <input type="text" id="ledgerCategoryInput" class="input-text" placeholder="세부분류 (식비, 외식, 교육 등)">
+      <input type="text" id="ledgerPlaceInput" class="input-text" placeholder="구매처/출금처 (쿠팡, 노브랜드 등)">
+    </div>
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 10px;">
+      <input type="text" id="ledgerDescInput" class="input-text" placeholder="상세 내용 및 비고">
+      <select id="ledgerMethodInput" class="input-text">
+        <option value="삼성카드">삼성카드</option>
+        <option value="신용카드">신용카드</option>
+        <option value="자동이체">자동이체</option>
+        <option value="계좌이체">계좌이체</option>
+        <option value="현금">현금</option>
+      </select>
+    </div>
+    <button type="button" class="btn-primary" style="width: 100%; height: 38px;" onclick="App.ledger.add()">등록하기</button>
+  </div>
+
+  <!-- 지출 내역 리스트 -->
+  <div class="card" style="padding: 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <div id="ledgerSummaryTitle" style="font-size: 13px; font-weight: 700; margin-bottom: 12px;">📋 지출 상세 내역</div>
+    <div id="ledgerList"></div>
+  </div>
+</section>
 
   <!-- 8. ✈️ 가족 여행 지도 화면 -->
   <section id="screen-trip" class="screen">
