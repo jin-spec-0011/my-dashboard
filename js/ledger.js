@@ -1,6 +1,6 @@
 /**
  * GOGO 스마트 매니저 - 가계부 통합 관리 모듈 (js/ledger.js)
- * 규격: 고정비(355만) + 생활비(100만) 마스터 규격서 완전 호환
+ * 마스터 규격: 고정비(기준 355만) + 생활비(예산 100만) 자동 집계 및 키워드 판정 엔진
  */
 
 window.App = window.App || {};
@@ -197,7 +197,7 @@ App.ledger = {
 
     const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
 
-    // 1. 고정비 실지출
+    // 1. 고정비 실지출 합산
     let fixedTotal = 0;
     this.CONFIG.FIXED_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -208,7 +208,7 @@ App.ledger = {
       fixedTotal += spent;
     });
 
-    // 2. 생활비 실지출
+    // 2. 생활비 실지출 합산
     let livingTotal = 0;
     this.CONFIG.LIVING_CATEGORIES.forEach(cat => {
       const spent = thisMonthItems.reduce((acc, cur) => {
@@ -220,7 +220,7 @@ App.ledger = {
       livingTotal += spent;
     });
 
-    // 미분류 생활비 처리
+    // 미분류 생활비 처리 (Fallback)
     const legacyLivingFallback = thisMonthItems.reduce((acc, cur) => {
       const text = cur.category || cur.desc || '';
       return (this.evalLivingStatus(text) === "O") ? acc + (Number(cur.amount) || 0) : acc;
@@ -274,7 +274,7 @@ App.ledger = {
       progressBarEl.style.background = percent >= 100 ? '#ef4444' : (percent >= 80 ? '#f59e0b' : '#2563eb');
     }
 
-    // 리스트 렌더링
+    // 지출 리스트 렌더링
     const listEl = document.getElementById('ledgerList');
     if (!listEl) return;
 
