@@ -1,3 +1,6 @@
+// sw.js 최상단
+const CACHE_NAME = 'gogo-dashboard-v20261022-ledger';
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
