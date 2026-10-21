@@ -1,15 +1,13 @@
 /**
- * GOGO 스마트 매니저 - 가계부 모듈 (js/ledger.js)
- * 규격: 마스터 규격서(고정비 355만 + 생활비 100만 이원화 관리) 및 레거시 데이터 100% 호환
+ * GOGO 스마트 매니저 - 가계부 통합 관리 모듈 (js/ledger.js)
+ * 마스터 규격서(고정비 355만 + 생활비 100만 관리) 완벽 구현
  */
 
 window.App = window.App || {};
 
 App.ledger = {
   currentMonthKey: '',
-  activeTab: 'summary', // 'summary' | 'living' | 'fixed'
 
-  // 마스터 규격서 카테고리 및 예산 설정
   CONFIG: {
     FIXED_BUDGET: 3550000,
     LIVING_BUDGET: 1000000,
@@ -35,20 +33,24 @@ App.ledger = {
       { name: "기타", keywords: ["기타", "잡비", "예비비"], target: 10000 }
     ],
     FIXED_KEYWORDS: ["이자", "차량", "관리비", "유류", "보험", "교육", "운동", "통신", "곗돈"],
-    LIVING_EXCLUSION_KEYWORDS: ["교육", "운동", "고정", "이자", "보험", "차량", "통신"]
+    LIVING_EXCLUSIONS: ["교육", "운동", "고정", "이자", "보험", "차량", "통신"]
   },
 
   init() {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
-    this.currentMonthKey = todayStr.substring(0, 7);
+    try {
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+      this.currentMonthKey = todayStr.substring(0, 7);
 
-    const dateInp = document.getElementById('ledgerDateInput');
-    const monthPicker = document.getElementById('ledgerMonthPicker');
+      const dateInp = document.getElementById('ledgerDateInput');
+      const monthPicker = document.getElementById('ledgerMonthPicker');
 
-    if (dateInp) dateInp.value = todayStr;
-    if (monthPicker) monthPicker.value = this.currentMonthKey;
+      if (dateInp) dateInp.value = todayStr;
+      if (monthPicker) monthPicker.value = this.currentMonthKey;
+    } catch (e) {
+      console.error("[Ledger Init Error]", e);
+    }
   },
 
   changeMonth(newMonthKey) {
@@ -73,84 +75,86 @@ App.ledger = {
     this.changeMonth(`${y}-${String(m).padStart(2, '0')}`);
   },
 
-  // 자동 판정: 고정비 키워드 매칭
   evalFixedStatus(text) {
-    if (!text || !text.trim()) return "-";
+    if (!text || typeof text !== 'string' || !text.trim()) return "-";
     const t = text.trim();
-    const match = this.CONFIG.FIXED_KEYWORDS.some(k => t.includes(k));
-    return match ? "O" : "X";
+    return this.CONFIG.FIXED_KEYWORDS.some(k => t.includes(k)) ? "O" : "X";
   },
 
-  // 자동 판정: 생활비 침범 방지 매칭
   evalLivingStatus(text) {
-    if (!text || !text.trim()) return "-";
+    if (!text || typeof text !== 'string' || !text.trim()) return "-";
     const t = text.trim();
-    const hasFixed = this.CONFIG.LIVING_EXCLUSION_KEYWORDS.some(k => t.includes(k));
-    return hasFixed ? "X" : "O";
+    return this.CONFIG.LIVING_EXCLUSIONS.some(k => t.includes(k)) ? "X" : "O";
   },
 
-  // 하위 호환성 유지: 기존 getBudget 및 신규 기준치 통합
   getBudget() {
     return this.CONFIG.LIVING_BUDGET;
   },
 
   add() {
-    const dateInp = document.getElementById('ledgerDateInput');
-    const amountInp = document.getElementById('ledgerAmountInput');
-    const descInp = document.getElementById('ledgerDescInput');
-    const categoryInp = document.getElementById('ledgerCategoryInput');
-    const placeInp = document.getElementById('ledgerPlaceInput');
-    const methodInp = document.getElementById('ledgerMethodInput');
+    try {
+      const dateInp = document.getElementById('ledgerDateInput');
+      const amountInp = document.getElementById('ledgerAmountInput');
+      const descInp = document.getElementById('ledgerDescInput');
+      const categoryInp = document.getElementById('ledgerCategoryInput');
+      const placeInp = document.getElementById('ledgerPlaceInput');
+      const methodInp = document.getElementById('ledgerMethodInput');
 
-    const date = dateInp ? dateInp.value : '';
-    const amount = amountInp ? parseInt(amountInp.value, 10) : 0;
-    const desc = descInp ? descInp.value.trim() : '';
-    const category = categoryInp ? categoryInp.value.trim() : (desc || '기타');
-    const place = placeInp ? placeInp.value.trim() : '';
-    const method = methodInp ? methodInp.value : '삼성카드';
+      const date = dateInp ? dateInp.value : '';
+      const amount = amountInp ? parseInt(amountInp.value, 10) : 0;
+      const desc = descInp ? descInp.value.trim() : '';
+      const category = categoryInp ? categoryInp.value.trim() : (desc || '기타');
+      const place = placeInp ? placeInp.value.trim() : '';
+      const method = methodInp ? methodInp.value : '삼성카드';
 
-    if (!date) return alert("날짜를 선택하세요.");
-    if (!amount || amount <= 0) return alert("올바른 금액을 입력하세요.");
-    if (!desc && !category) return alert("지출 내역 또는 세부 분류를 입력하세요.");
+      if (!date) return alert("날짜를 선택하세요.");
+      if (isNaN(amount) || amount <= 0) return alert("올바른 금액을 입력하세요.");
+      if (!desc && !category) return alert("세부 분류 또는 상세 내용을 입력하세요.");
 
-    const author = (App.auth && App.auth.currentUser !== 'public')
-      ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
-      : '가족';
+      const author = (App.auth && App.auth.currentUser !== 'public')
+        ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
+        : '가족';
 
-    // 신규 스키마 및 하위 호환 필드 동시 주입
-    const newEntry = {
-      id: Date.now(),
-      date: date,
-      month: date.substring(0, 7),
-      amount: amount,
-      desc: desc || category,
-      category: category,
-      place: place,
-      method: method,
-      author: author,
-      confirmed: false,
-      statusFixed: this.evalFixedStatus(category),
-      statusLiving: this.evalLivingStatus(category)
-    };
+      const newEntry = {
+        id: Date.now(),
+        date: date,
+        month: date.substring(0, 7),
+        amount: amount,
+        desc: desc || category,
+        category: category,
+        place: place,
+        method: method,
+        author: author,
+        confirmed: false,
+        statusFixed: this.evalFixedStatus(category),
+        statusLiving: this.evalLivingStatus(category)
+      };
 
-    if (App.stores?.ledger) {
-      App.stores.ledger.add(newEntry);
+      if (App.stores?.ledger) {
+        App.stores.ledger.add(newEntry);
+      }
+
+      if (amountInp) amountInp.value = '';
+      if (descInp) descInp.value = '';
+      if (placeInp) placeInp.value = '';
+      if (categoryInp) categoryInp.value = '';
+
+      this.changeMonth(date.substring(0, 7));
+      if (App.ui?.toast) {
+        App.ui.toast(`💰 ${amount.toLocaleString()}원 지출이 저장되었습니다.`);
+      }
+      if (App.ticker) App.ticker.refresh();
+    } catch (e) {
+      console.error("[Ledger Add Error]", e);
+      alert("지출 등록 중 오류가 발생했습니다.");
     }
-
-    if (amountInp) amountInp.value = '';
-    if (descInp) descInp.value = '';
-    if (placeInp) placeInp.value = '';
-
-    this.changeMonth(date.substring(0, 7));
-    App.ui.toast(`💰 ${amount.toLocaleString()}원 지출이 등록되었습니다.`);
-    if (App.ticker) App.ticker.refresh();
   },
 
   delete(id) {
     if (confirm("해당 지출 내역을 삭제하시겠습니까?")) {
       if (App.stores?.ledger) {
         App.stores.ledger.remove(id);
-        App.ui.toast("🗑️ 내역이 삭제되었습니다.");
+        if (App.ui?.toast) App.ui.toast("🗑️ 내역이 삭제되었습니다.");
         this.render(App.stores.ledger.getItems());
         if (App.ticker) App.ticker.refresh();
       }
@@ -165,8 +169,7 @@ App.ledger = {
       return alert(`${this.currentMonthKey}월에 등록된 지출 내역이 없습니다.`);
     }
 
-    // 마스터 규격서 A~J 전체 열 포함 CSV 포맷팅
-    let csvContent = "\uFEFFNo,일자,세부분류,구매/출금처,상세내용,결제수단,지출금액,반영유무(생활비),반영유무(고정비),작성자\n";
+    let csvContent = "\uFEFFNo,일자,세부분류,구매처/출금처,상세내용,결제수단,지출금액,반영유무(생활비),반영유무(고정비),작성자\n";
     thisMonthItems.forEach((item, idx) => {
       const cat = item.category || item.desc || '';
       const livingStatus = item.statusLiving || this.evalLivingStatus(cat);
@@ -178,16 +181,15 @@ App.ledger = {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `GOGO가계부_${this.currentMonthKey}_마스터내역.csv`;
+    link.download = `GOGO가계부_${this.currentMonthKey}_지출관리.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    App.ui.toast(`📥 ${this.currentMonthKey}월 통합 내역이 다운로드되었습니다.`);
+    if (App.ui?.toast) App.ui.toast(`📥 ${this.currentMonthKey}월 CSV 파일이 다운로드되었습니다.`);
   },
 
-  // 핵심 집계 및 렌더링 파이프라인
   render(items = []) {
     const currentMonthKey = this.currentMonthKey || new Date().toISOString().substring(0, 7);
     const [yearNum, monthNumStr] = currentMonthKey.split('-');
@@ -195,40 +197,54 @@ App.ledger = {
 
     const thisMonthItems = items.filter(i => (i.month || (i.date && i.date.substring(0, 7))) === currentMonthKey);
 
-    // 1. 고정비 실지출 계산 (반영 유무: O)
+    // 고정비 실지출 합산
     let fixedTotal = 0;
     this.CONFIG.FIXED_CATEGORIES.forEach(cat => {
-      cat.actual = thisMonthItems.reduce((acc, cur) => {
+      const spent = thisMonthItems.reduce((acc, cur) => {
         const text = cur.category || cur.desc || '';
         const isO = (cur.statusFixed || this.evalFixedStatus(text)) === "O";
         return (isO && text.includes(cat.keyword)) ? acc + (Number(cur.amount) || 0) : acc;
       }, 0);
-      fixedTotal += cat.actual;
+      fixedTotal += spent;
     });
 
-    // 2. 생활비 실지출 계산 (반영 유무: O, 고정비 키워드 배제)
+    // 생활비 실지출 합산
     let livingTotal = 0;
     this.CONFIG.LIVING_CATEGORIES.forEach(cat => {
-      cat.actual = thisMonthItems.reduce((acc, cur) => {
+      const spent = thisMonthItems.reduce((acc, cur) => {
         const text = cur.category || cur.desc || '';
         const isO = (cur.statusLiving || this.evalLivingStatus(text)) === "O";
         const matched = cat.keywords.some(k => text.includes(k));
         return (isO && matched) ? acc + (Number(cur.amount) || 0) : acc;
       }, 0);
-      livingTotal += cat.actual;
+      livingTotal += spent;
     });
 
-    // 레거시 미분류 건 대비
+    // 미분류 생활비 Fallback 집계
     const legacyLivingFallback = thisMonthItems.reduce((acc, cur) => {
       const text = cur.category || cur.desc || '';
       return (this.evalLivingStatus(text) === "O") ? acc + (Number(cur.amount) || 0) : acc;
     }, 0);
     const finalLivingSpend = Math.max(livingTotal, legacyLivingFallback);
 
-    const livingRemaining = this.CONFIG.LIVING_BUDGET - finalLivingSpend;
-    const totalMonthSpend = fixedTotal + finalLivingSpend;
+    const fixedRemain = this.CONFIG.FIXED_BUDGET - fixedTotal;
+    const livingRemain = this.CONFIG.LIVING_BUDGET - finalLivingSpend;
 
-    // 레거시 DOM 노드 업데이트 (기존 UI 파괴 방지)
+    // 상단 신규 대시보드 표시 갱신
+    const fixedActEl = document.getElementById('ledgerFixedActualDisplay');
+    const fixedRemEl = document.getElementById('ledgerFixedRemainDisplay');
+    const livingActEl = document.getElementById('ledgerLivingActualDisplay');
+    const livingRemEl = document.getElementById('ledgerLivingRemainDisplay');
+
+    if (fixedActEl) fixedActEl.innerText = `${fixedTotal.toLocaleString()}원`;
+    if (fixedRemEl) fixedRemEl.innerText = `잔여 이체액: ${fixedRemain.toLocaleString()}원`;
+    if (livingActEl) livingActEl.innerText = `${finalLivingSpend.toLocaleString()}원`;
+    if (livingRemEl) {
+      livingRemEl.innerText = livingRemain >= 0 ? `남은 잔액: ${livingRemain.toLocaleString()}원` : `+${Math.abs(livingRemain).toLocaleString()}원 초과`;
+      livingRemEl.style.color = livingRemain >= 0 ? '#10b981' : '#ef4444';
+    }
+
+    // 레거시 요소 동기화
     const monthLabelEl = document.getElementById('ledgerMonthLabel');
     const totalSpendEl = document.getElementById('ledgerTotalSpendDisplay');
     const budgetDisplayEl = document.getElementById('ledgerBudgetDisplay');
@@ -237,7 +253,7 @@ App.ledger = {
     const progressBarEl = document.getElementById('ledgerProgressBar');
     const summaryTitleEl = document.getElementById('ledgerSummaryTitle');
 
-    if (monthLabelEl) monthLabelEl.innerText = `${yearNum}년 ${monthNum}월 총 결산`;
+    if (monthLabelEl) monthLabelEl.innerText = `${yearNum}년 ${monthNum}월 생활비 소진율`;
     if (summaryTitleEl) summaryTitleEl.innerText = `📋 ${monthNum}월 지출 내역 (${thisMonthItems.length}건)`;
     if (totalSpendEl) totalSpendEl.innerText = `${finalLivingSpend.toLocaleString()}원`;
     if (budgetDisplayEl) budgetDisplayEl.innerText = `${this.CONFIG.LIVING_BUDGET.toLocaleString()}원`;
@@ -246,13 +262,8 @@ App.ledger = {
     if (percentDisplayEl) percentDisplayEl.innerText = `${percent}%`;
 
     if (remainDisplayEl) {
-      if (livingRemaining >= 0) {
-        remainDisplayEl.innerText = `${livingRemaining.toLocaleString()}원`;
-        remainDisplayEl.className = 'info-val text-green';
-      } else {
-        remainDisplayEl.innerText = `+${Math.abs(livingRemaining).toLocaleString()}원 초과`;
-        remainDisplayEl.className = 'info-val text-red';
-      }
+      remainDisplayEl.innerText = livingRemain >= 0 ? `${livingRemain.toLocaleString()}원 남음` : `+${Math.abs(livingRemain).toLocaleString()}원 초과`;
+      remainDisplayEl.className = livingRemain >= 0 ? 'info-val text-green' : 'info-val text-red';
     }
 
     if (progressBarEl) {
@@ -261,56 +272,39 @@ App.ledger = {
       progressBarEl.style.background = percent >= 100 ? '#ef4444' : (percent >= 80 ? '#f59e0b' : '#2563eb');
     }
 
-    // 신규 통합 대시보드 마스터 뷰 렌더링 컨테이너
+    // 리스트 렌더링
     const listEl = document.getElementById('ledgerList');
     if (!listEl) return;
 
     if (thisMonthItems.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">${monthNum}월 등록된 내역이 없습니다.</div>`;
+      listEl.innerHTML = `<div style="color:#64748b;font-size:13px;text-align:center;padding:24px 0;">${monthNum}월 등록된 내역이 없습니다. 💰</div>`;
       return;
     }
 
-    // 엑셀 규격서 레이아웃을 반영한 리스트 렌더링
-    listEl.innerHTML = `
-      <!-- 마스터 총괄 요약 요약 카드 바 -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
-        <div style="background:var(--bg-sub, #f8fafc); padding:10px; border-radius:8px; border:1px solid var(--border,#e2e8f0);">
-          <div style="font-size:11px; color:#64748b;">고정비 실지출 (기준 355만)</div>
-          <div style="font-size:15px; font-weight:800; color:#0f172a;">${fixedTotal.toLocaleString()}원</div>
-          <div style="font-size:10px; color:#94a3b8;">잔여 이체액: ${(this.CONFIG.FIXED_BUDGET - fixedTotal).toLocaleString()}원</div>
-        </div>
-        <div style="background:var(--bg-sub, #f8fafc); padding:10px; border-radius:8px; border:1px solid var(--border,#e2e8f0);">
-          <div style="font-size:11px; color:#64748b;">생활비 잔액 (예산 100만)</div>
-          <div style="font-size:15px; font-weight:800; color:${livingRemaining >= 0 ? '#10b981' : '#ef4444'};">
-            ${livingRemaining.toLocaleString()}원
-          </div>
-          <div style="font-size:10px; color:#94a3b8;">총 지출합계: ${totalMonthSpend.toLocaleString()}원</div>
-        </div>
-      </div>
+    listEl.innerHTML = thisMonthItems.map(item => {
+      const cat = item.category || item.desc || '미분류';
+      const isLivingO = (item.statusLiving || this.evalLivingStatus(cat)) === 'O';
+      const badgeColor = isLivingO ? '#10b981' : '#64748b';
+      const badgeText = isLivingO ? '생활비' : '고정비';
 
-      <!-- 개별 리스트 아이템 -->
-      ${thisMonthItems.map(item => {
-        const cat = item.category || item.desc || '미분류';
-        const isLivingO = (item.statusLiving || this.evalLivingStatus(cat)) === 'O';
-        const badgeColor = isLivingO ? '#10b981' : '#64748b';
-        const badgeText = isLivingO ? '생활비' : '고정비/제외';
-
-        return `
-          <div class="log-item" style="border-left: 3px solid ${badgeColor}; padding-left: 8px;">
-            <div class="log-content">
-              <div class="log-text">
-                <span style="font-size:10px; padding:2px 4px; border-radius:4px; background:${badgeColor}20; color:${badgeColor}; font-weight:700; margin-right:4px;">${badgeText}</span>
-                ${escapeHtml(cat)}${item.place ? `<span style="font-size:11px; color:#64748b;">(${escapeHtml(item.place)})</span>` : ''}
-              </div>
-              <div class="log-time">📅 ${escapeHtml(item.date || '')} · ${escapeHtml(item.method \vert{}\vert{} '카드')} · ${escapeHtml(item.author || '가족')}</div>
+      return `
+        <div class="log-item" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 8px; background: #ffffff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
+          <div class="log-content">
+            <div class="log-text" style="font-size: 13px; font-weight: 600; color: #1e293b;">
+              <span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; font-weight: 700; margin-right: 4px;">${badgeText}</span>
+              ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b;">(${escapeHtml(item.place)})</span>` : ''}
+              ${item.desc && item.desc !== cat ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${escapeHtml(item.desc)}</div>` : ''}
             </div>
-            <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
-              <button type="button" class="delete-item-btn" onclick="App.ledger.delete('${item.id}')">✕</button>
+            <div class="log-time" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+              📅 ${escapeHtml(item.date || '')} · ${escapeHtml(item.method || '카드')} · ${escapeHtml(item.author || '가족')}
             </div>
           </div>
-        `;
-      }).join('')}
-    `;
+          <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
+            <button type="button" class="delete-item-btn" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 4px;" onclick="App.ledger.delete('${item.id}')">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 };
