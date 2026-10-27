@@ -46,50 +46,76 @@ App.calendar = {
     this.generate();
   },
 
-  /* 캘린더 A4 PDF 파일 직접 내보내기 (모바일 쏠림 방지 최적화) */
-  exportPDF() {
+  /* A4 PDF 내보내기: .pdf-export-mode(794 x 1120px) 주입 → 캡처 → 즉시 복원 */
+  async exportPDF() {
     const element = document.getElementById('printCalendarSheet');
     if (!element) return;
+    if (typeof window.html2pdf !== 'function') {
+      App.ui.toast('⚠️ PDF 라이브러리 로딩 전입니다. 인쇄 창으로 전환합니다.');
+      this.print();
+      return;
+    }
+    if (this._exporting) return;
+    this._exporting = true;
+    App.ui.toast('📄 PDF 생성 중입니다. 잠시만 기다려주세요...');
 
-    App.ui.toast("📄 PDF 생성 중입니다. 잠시만 기다려주세요...");
+    const goalInp = document.getElementById('calendarGoalInput');
+    const memoInp = document.getElementById('calendarMemoInput');
+    const goalBox = document.getElementById('calGoalBox');
+    const footerBox = document.getElementById('calFooterBox');
+    if (goalBox) goalBox.classList.toggle('is-empty', !(goalInp && goalInp.value.trim()));
+    if (footerBox) footerBox.classList.toggle('is-empty', !(memoInp && memoInp.value.trim()));
 
-    // 💡 캡처 시 모바일 390px 찌그러짐 방지: A4 표준 픽셀 폭(794px) 임시 적용
-    const originalWidth = element.style.width;
-    const originalMaxWidth = element.style.maxWidth;
-    element.style.width = '794px';
-    element.style.maxWidth = '794px';
+    /* textarea는 html2canvas에서 줄바꿈이 잘리므로 캡처 동안 div로 치환 */
+    let memoClone = null;
+    if (memoInp) {
+      memoClone = document.createElement('div');
+      memoClone.className = 'memo-textarea';
+      memoClone.style.whiteSpace = 'pre-wrap';
+      memoClone.textContent = memoInp.value;
+      memoInp.style.display = 'none';
+      memoInp.parentNode.insertBefore(memoClone, memoInp.nextSibling);
+    }
+
+    element.classList.add('pdf-export-mode');
+    const restore = () => {
+      element.classList.remove('pdf-export-mode');
+      if (memoClone && memoClone.parentNode) memoClone.parentNode.removeChild(memoClone);
+      if (memoInp) memoInp.style.display = '';
+      this._exporting = false;
+    };
 
     const opt = {
-      margin: [5, 5, 5, 5],
+      margin: [0, 0, 0, 0],
       filename: `GOGO캘린더_${this.currentYear}년_${this.currentMonth}월.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        letterRendering: true,
-        windowWidth: 794
-      },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, width: 794, height: 1120, windowWidth: 794, scrollX: 0, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    const restoreStyles = () => {
-      element.style.width = originalWidth;
-      element.style.maxWidth = originalMaxWidth;
-    };
-
-    if (window.html2pdf) {
-      html2pdf().set(opt).from(element).save().then(() => {
-        restoreStyles();
-        App.ui.toast("✅ PDF 다운로드가 완료되었습니다!");
-      }).catch(err => {
-        restoreStyles();
-        console.warn("html2pdf 오류, 인쇄 창으로 전환:", err);
-        window.print();
-      });
-    } else {
-      restoreStyles();
-      window.print();
+    try {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await window.html2pdf().set(opt).from(element).save();
+      App.ui.toast('✅ PDF 다운로드가 완료되었습니다!');
+    } catch (err) {
+      console.warn('[Calendar] html2pdf 오류, 인쇄 창으로 전환:', err);
+      restore();
+      this.print();
+      return;
     }
+    restore();
+  },
+
+  /* 브라우저 인쇄 (A4 @media print) */
+  print() {
+    const goalInp = document.getElementById('calendarGoalInput');
+    const memoInp = document.getElementById('calendarMemoInput');
+    const goalBox = document.getElementById('calGoalBox');
+    const footerBox = document.getElementById('calFooterBox');
+    if (goalBox) goalBox.classList.toggle('is-empty', !(goalInp && goalInp.value.trim()));
+    if (footerBox) footerBox.classList.toggle('is-empty', !(memoInp && memoInp.value.trim()));
+    if (App.router) App.router.go('calendar');
+    setTimeout(() => window.print(), 50);
   },
 
   setDeviceView(mode) {
@@ -207,8 +233,11 @@ App.calendar = {
   generate() {
     const yInp = document.getElementById('yearInput');
     const mInp = document.getElementById('monthInput');
-    if (yInp && yInp.value) this.currentYear = parseInt(yInp.value, 10);
-    if (mInp && mInp.value) this.currentMonth = parseInt(mInp.value, 10);
+    const yVal = yInp ? parseInt(yInp.value, 10) : NaN;
+    const mVal = mInp ? parseInt(mInp.value, 10) : NaN;
+    if (!isNaN(yVal) && yVal >= 1900 && yVal <= 2200) this.currentYear = yVal;
+    if (!isNaN(mVal) && mVal >= 1 && mVal <= 12) this.currentMonth = mVal;
+    this.updateInputs();
 
     const year = this.currentYear;
     const month = this.currentMonth;
@@ -248,9 +277,7 @@ App.calendar = {
     gridBody.className = `cal-sheet-grid-body cal-rows-${totalWeeks}`;
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const todayStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    const todayDate = todayStr();
 
     let cellsHtml = '';
     const totalCells = totalWeeks * 7;
@@ -265,7 +292,7 @@ App.calendar = {
         cellsHtml += `<div class="cal-grid-cell cell-empty"></div>`;
       } else {
         const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
-        const isToday = (dateStr === todayStr);
+        const isToday = (dateStr === todayDate);
 
         const holidayName = this.getHoliday(dateStr, month, currentDay);
         const isHoliday = Boolean(holidayName);

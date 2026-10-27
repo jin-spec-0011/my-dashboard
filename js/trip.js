@@ -60,7 +60,7 @@ App.trip = {
     if (!listEl) return;
 
     if (items.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">등록된 여행 기록이 없습니다. ✈️</div>`;
+      listEl.innerHTML = `<div class="empty-msg">등록된 여행 기록이 없습니다. ✈️</div>`;
       return;
     }
 
@@ -73,7 +73,7 @@ App.trip = {
             <div class="log-text">📍 ${escapeHtml(placeText)}</div>
             <div class="log-time">📅 ${escapeHtml(item.date || '')} ${memoText ? '· ' + escapeHtml(memoText) : ''}</div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.trip.delete('${item.id}')">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.trip.delete('${escapeHtml(String(item.id))}')">✕</button>
         </div>
       `;
     }).join('');

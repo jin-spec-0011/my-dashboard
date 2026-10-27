@@ -7,11 +7,7 @@ App.schedule = {
 
   init() {
     const dateInp = document.getElementById('scheduleDateInput');
-    if (dateInp) {
-      const now = new Date();
-      const offset = now.getTimezoneOffset() * 60000;
-      dateInp.value = new Date(now.getTime() - offset).toISOString().split('T')[0];
-    }
+    if (dateInp && !dateInp.value) dateInp.value = todayStr();
   },
 
   selectAuthor(author) {
@@ -103,6 +99,9 @@ App.schedule = {
 
     if (!title) return alert("일정 제목을 입력해주세요.");
     if (!date) return alert("날짜를 선택해주세요.");
+    if (isPrivate && !(App.auth && App.auth.currentUser !== 'public')) {
+      return alert("비공개 일정은 개인 프로필(진세/지혜) 모드에서만 등록할 수 있습니다.");
+    }
 
     const author = (App.auth && App.auth.currentUser !== 'public')
       ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
@@ -192,7 +191,7 @@ App.schedule = {
   delete(id, isPrivate) {
     if (confirm("해당 일정을 삭제하시겠습니까?")) {
       this.deleteSilently(id, isPrivate);
-      if (this.editingId === id) this.cancelEdit();
+      if (this.editingId !== null && String(this.editingId) === String(id)) this.cancelEdit();
       App.ui.toast("🗑️ 일정이 삭제되었습니다.");
       this.render();
       if (App.calendar) App.calendar.generate();
@@ -207,25 +206,25 @@ App.schedule = {
     const schedules = this.getAllSchedules();
 
     if (schedules.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">등록된 일정이 없습니다. 🗓️</div>`;
+      listEl.innerHTML = `<div class="empty-msg">등록된 일정이 없습니다. 🗓️</div>`;
       return;
     }
 
     listEl.innerHTML = schedules.map(item => {
       const titleText = item.title || item.text || '일정';
       const lockBadge = item.isPrivate ? `<span style="color:#be185d;font-size:11px;font-weight:700;">🔒 나만보기</span>` : '';
-      const isEditingThis = (this.editingId === item.id);
+      const isEditingThis = (this.editingId !== null && String(this.editingId) === String(item.id));
 
       return `
         <div class="log-item ${isEditingThis ? 'schedule-editing-item' : ''}">
-          <div class="log-content" onclick="App.schedule.startEdit('${item.id}', ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
+          <div class="log-content" onclick="App.schedule.startEdit('${escapeHtml(String(item.id))}', ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
             <div class="log-text">
               ${escapeHtml(titleText)} ${lockBadge}
               <span class="click-edit-tag">✏️ 클릭 시 수정</span>
             </div>
             <div class="log-time">📅 ${escapeHtml(item.date || '')} · 작성자: ${escapeHtml(item.author || '가족')}</div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.schedule.delete('${item.id}', ${Boolean(item.isPrivate)})">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.schedule.delete('${escapeHtml(String(item.id))}', ${Boolean(item.isPrivate)})">✕</button>
         </div>
       `;
     }).join('');

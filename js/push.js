@@ -7,7 +7,7 @@ App.push = {
   async init() {
     if ('serviceWorker' in navigator) {
       try {
-        this.swRegistration = await navigator.serviceWorker.register('sw.js');
+        this.swRegistration = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
         this.isSupported = true;
       } catch (error) {
         console.warn('서비스 워커 등록 실패:', error);
@@ -63,8 +63,8 @@ App.push = {
     if (this.swRegistration && this.swRegistration.showNotification) {
       this.swRegistration.showNotification(title, {
         body: body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
+        icon: 'icon.png',
+        badge: 'icon.png',
         vibrate: [200, 100, 200],
         data: { url: url }
       });
@@ -72,7 +72,7 @@ App.push = {
       try {
         new Notification(title, {
           body: body,
-          icon: 'https://cdn-icons-png.flaticon.com/512/854/854878.png'
+          icon: 'icon.png'
         });
       } catch (e) {
         console.warn("표준 Notification 실행 실패:", e);

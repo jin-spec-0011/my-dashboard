@@ -4,7 +4,7 @@ App.auth = {
   validPortalPINs: ["1019", "1234"],
 
   defaultPINHashes: {
-    jinse: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5ab67e", // 1111
+    jinse: "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c", // 1111
     jihye: "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9"  // 2222
   },
 
@@ -40,7 +40,7 @@ App.auth = {
       }
 
       const targetHash = window.location.hash.replace('#', '');
-      const validScreens = ['parking', 'memo', 'trip', 'ledger', 'schedule', 'calendar'];
+      const validScreens = ['parking', 'shopping', 'sticky', 'trip', 'ledger', 'schedule', 'calendar'];
       
       let destination = 'home';
       if (App.state && App.state.pendingRedirect) {

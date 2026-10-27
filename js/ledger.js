@@ -273,7 +273,7 @@ App.ledger = {
     if (!listEl) return;
 
     if (thisMonthItems.length === 0) {
-      listEl.innerHTML = `<div style="color:#64748b;font-size:13px;text-align:center;padding:24px 0;">${monthNum}월 등록된 내역이 없습니다. 💰</div>`;
+      listEl.innerHTML = `<div class="empty-msg">${monthNum}월 등록된 내역이 없습니다. 💰</div>`;
       return;
     }
 
@@ -297,7 +297,7 @@ App.ledger = {
           </div>
           <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
             <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
-            <button type="button" class="delete-item-btn" onclick="App.ledger.delete('${item.id}')">✕</button>
+            <button type="button" class="delete-item-btn" onclick="App.ledger.delete('${escapeHtml(String(item.id))}')">✕</button>
           </div>
         </div>
       `;
