@@ -118,6 +118,31 @@ window.todayStr = function () {
   return new Date(now.getTime() - offset).toISOString().split('T')[0];
 };
 
+/* 'YYYY-MM-DD' 날짜 연산 (UTC 기준 → 기기 시간대/DST 영향 없음) */
+const parseYmd = (str) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(str || ''));
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+};
+
+window.addDays = function (dateStr, n) {
+  const t = parseYmd(dateStr);
+  if (isNaN(t)) return dateStr;
+  return new Date(t + n * 86400000).toISOString().split('T')[0];
+};
+
+window.daysBetween = function (a, b) {
+  const ta = parseYmd(a);
+  const tb = parseYmd(b);
+  if (isNaN(ta) || isNaN(tb)) return 0;
+  return Math.round((tb - ta) / 86400000);
+};
+
+/* 일정 종료일 (endDate 없거나 잘못되면 시작일) */
+window.scheduleEnd = function (s) {
+  if (!s || !s.date) return '';
+  return s.endDate && s.endDate >= s.date ? s.endDate : s.date;
+};
+
 /**
  * 주차 기록 타임스탬프 정규화 (ms)
  * - 14자리 yyyyMMddHHmmss (iOS 단축어 / 신규 앱 저장) → KST 기준 해석
@@ -422,15 +447,15 @@ window.App = Object.assign(window.App || {}, {
       if (!el) return;
       const all = App.schedule ? App.schedule.getAllSchedules() : [];
       const today = todayStr();
-      const upcoming = all.filter((s) => s && s.date && s.date >= today)
+      const upcoming = all.filter((s) => s && s.date && scheduleEnd(s) >= today)
         .sort((a, b) => a.date.localeCompare(b.date));
       if (upcoming.length === 0) {
         el.innerHTML = '<span class="summary-loading">예정된 일정 없음 ✨</span>';
         return;
       }
       const next = upcoming[0];
-      const diff = Math.round((new Date(`${next.date}T00:00:00`) - new Date(`${today}T00:00:00`)) / 86400000);
-      const dday = diff === 0 ? 'D-Day' : `D-${diff}`;
+      const diff = daysBetween(today, next.date);
+      const dday = diff < 0 ? '진행중' : (diff === 0 ? 'D-Day' : `D-${diff}`);
       const authorText = next.isPrivate ? '🔒' : `[${next.author || '가족'}]`;
       el.innerHTML = `
         <div class="live-schedule-text">

@@ -1,3 +1,9 @@
+/**
+ * GOGO 스마트 매니저 - 가족 일정 관리 (js/schedule.js)
+ * - 단일 / 연속(기간) 일정: { id, title, date(시작일), endDate(종료일, 선택), author, isPrivate }
+ * - endDate가 없거나 date와 같으면 하루 일정 (기존 데이터 100% 호환)
+ * - 저장소: /family_schedules (공개), /private_schedules/{jinse|jihye} (비공개)
+ */
 window.App = window.App || {};
 
 App.schedule = {
@@ -6,67 +12,138 @@ App.schedule = {
   editingIsPrivate: false,
 
   init() {
-    const dateInp = document.getElementById('scheduleDateInput');
-    if (dateInp && !dateInp.value) dateInp.value = todayStr();
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    const today = todayStr();
+    if (startInp && !startInp.value) startInp.value = today;
+    if (endInp && !endInp.value) endInp.value = startInp ? startInp.value : today;
+    this.syncEndMin();
+    this.updateRangeHint();
+  },
+
+  /* 시작일 변경 시 기존 기간(일수)을 유지한 채 종료일도 함께 이동 */
+  onStartDateChange() {
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    if (startInp && endInp && startInp.value) {
+      const prevStart = this._lastStart || startInp.value;
+      const prevEnd = endInp.value || prevStart;
+      const duration = Math.max(0, daysBetween(prevStart, prevEnd));
+      endInp.value = addDays(startInp.value, duration);
+    }
+    this.syncEndMin();
+    this.updateRangeHint();
+  },
+
+  onEndDateChange() {
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    if (startInp && endInp && endInp.value && startInp.value && endInp.value < startInp.value) {
+      App.ui.toast('⚠️ 종료일은 시작일보다 빠를 수 없습니다.');
+      endInp.value = startInp.value;
+    }
+    this.updateRangeHint();
+  },
+
+  /* 기간 빠른 선택: 당일/1박2일/2박3일/1주 */
+  setDuration(days) {
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    if (!startInp || !endInp) return;
+    if (!startInp.value) startInp.value = todayStr();
+    endInp.value = addDays(startInp.value, Math.max(0, days - 1));
+    this.syncEndMin();
+    this.updateRangeHint();
+  },
+
+  syncEndMin() {
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    if (startInp && endInp) endInp.min = startInp.value || '';
+    this._lastStart = startInp ? startInp.value : '';
+  },
+
+  updateRangeHint() {
+    const hint = document.getElementById('scheduleRangeHint');
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
+    if (!hint || !startInp || !endInp) return;
+    const start = startInp.value;
+    const end = endInp.value || start;
+    if (!start) {
+      hint.innerText = '';
+      return;
+    }
+    const days = daysBetween(start, end) + 1;
+    hint.innerText = days <= 1 ? '📍 하루 일정' : `🗓️ ${days - 1}박 ${days}일 연속 일정`;
   },
 
   selectAuthor(author) {
     this.currentAuthor = author;
-    const btnJinse = document.getElementById('btn-author-jinse');
-    const btnJihye = document.getElementById('btn-author-jihye');
-    const btnFam = document.getElementById('btn-author-fam');
-
-    if (btnJinse) btnJinse.classList.toggle('active', author === '진세');
-    if (btnJihye) btnJihye.classList.toggle('active', author === '지혜');
-    if (btnFam) btnFam.classList.toggle('active', author === '가족');
+    const map = { 'btn-author-jinse': '진세', 'btn-author-jihye': '지혜', 'btn-author-fam': '가족' };
+    Object.keys(map).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('active', map[id] === author);
+    });
   },
 
   getAllSchedules() {
-    const publicList = App.stores?.schedules ? App.stores.schedules.getItems() : [];
+    const publicList = App.stores && App.stores.schedules ? App.stores.schedules.getItems() : [];
     let privateList = [];
-
-    const user = App.auth?.currentUser || 'public';
-    if (user === 'jinse' && App.stores?.privateJinse) {
-      privateList = App.stores.privateJinse.getItems().map(i => ({ ...i, isPrivate: true }));
-    } else if (user === 'jihye' && App.stores?.privateJihye) {
-      privateList = App.stores.privateJihye.getItems().map(i => ({ ...i, isPrivate: true }));
+    const user = App.auth ? App.auth.currentUser : 'public';
+    if (user === 'jinse' && App.stores && App.stores.privateJinse) {
+      privateList = App.stores.privateJinse.getItems().map((i) => Object.assign({}, i, { isPrivate: true }));
+    } else if (user === 'jihye' && App.stores && App.stores.privateJihye) {
+      privateList = App.stores.privateJihye.getItems().map((i) => Object.assign({}, i, { isPrivate: true }));
     }
-
     const merged = [...publicList, ...privateList];
     merged.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (Number(b.id) || 0) - (Number(a.id) || 0));
     return merged;
   },
 
-  /* 4번 요구사항: 일정 항목 클릭 시 수정 모드로 전환 */
+  /* "10-28 ~ 10-31 (4일)" / "2026-10-28" */
+  formatRange(item) {
+    const start = item.date || '';
+    const end = scheduleEnd(item);
+    if (!start) return '';
+    if (end === start) return start;
+    const days = daysBetween(start, end) + 1;
+    const endLabel = end.substring(0, 4) === start.substring(0, 4) ? end.substring(5) : end;
+    return `${start} ~ ${endLabel} (${days}일)`;
+  },
+
   startEdit(id, isPrivate) {
-    const schedules = this.getAllSchedules();
-    const target = schedules.find(s => String(s.id) === String(id));
+    const target = this.getAllSchedules().find((s) => String(s.id) === String(id));
     if (!target) return;
 
-    this.editingId = id;
+    this.editingId = target.id;
     this.editingIsPrivate = Boolean(isPrivate);
 
     const titleInput = document.getElementById('scheduleTitleInput');
-    const dateInput = document.getElementById('scheduleDateInput');
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
     const privateCheck = document.getElementById('schedulePrivateCheck');
     const saveBtn = document.getElementById('btnSaveSchedule');
     const banner = document.getElementById('scheduleEditBanner');
 
     if (titleInput) titleInput.value = target.title || target.text || '';
-    if (dateInput) dateInput.value = target.date || '';
+    if (startInp) startInp.value = target.date || '';
+    if (endInp) endInp.value = scheduleEnd(target) || target.date || '';
     if (privateCheck) privateCheck.checked = Boolean(target.isPrivate);
     this.selectAuthor(target.author || '진세');
+    this.syncEndMin();
+    this.updateRangeHint();
 
     if (saveBtn) {
-      saveBtn.innerText = "💾 일정 수정 완료";
-      saveBtn.style.background = "#059669";
+      saveBtn.innerText = '💾 일정 수정 완료';
+      saveBtn.style.background = '#059669';
     }
     if (banner) banner.style.display = 'flex';
 
-    // 폼으로 스크롤 이동
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (titleInput) titleInput.focus();
-    App.ui.toast("✏️ 일정을 수정할 수 있습니다.");
+    this.render();
+    App.ui.toast('✏️ 일정을 수정할 수 있습니다.');
   },
 
   cancelEdit() {
@@ -77,156 +154,139 @@ App.schedule = {
     const privateCheck = document.getElementById('schedulePrivateCheck');
     const saveBtn = document.getElementById('btnSaveSchedule');
     const banner = document.getElementById('scheduleEditBanner');
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
 
     if (titleInput) titleInput.value = '';
     if (privateCheck) privateCheck.checked = false;
+    if (startInp && endInp) endInp.value = startInp.value;
     if (saveBtn) {
-      saveBtn.innerText = "일정 등록";
-      saveBtn.style.background = "var(--primary-color)";
+      saveBtn.innerText = '일정 등록';
+      saveBtn.style.background = 'var(--primary-color)';
     }
     if (banner) banner.style.display = 'none';
+    this.syncEndMin();
+    this.updateRangeHint();
+    this.render();
   },
 
-  /* 신규 등록 또는 기존 일정 수정 저장 */
+  getPrivateStore() {
+    const user = App.auth ? App.auth.currentUser : 'public';
+    if (user === 'jinse') return App.stores.privateJinse;
+    if (user === 'jihye') return App.stores.privateJihye;
+    return null;
+  },
+
   saveOrUpdate() {
     const titleInput = document.getElementById('scheduleTitleInput');
-    const dateInput = document.getElementById('scheduleDateInput');
+    const startInp = document.getElementById('scheduleDateInput');
+    const endInp = document.getElementById('scheduleEndDateInput');
     const privateCheck = document.getElementById('schedulePrivateCheck');
 
     const title = titleInput ? titleInput.value.trim() : '';
-    const date = dateInput ? dateInput.value : '';
+    const date = startInp ? startInp.value : '';
+    let endDate = endInp && endInp.value ? endInp.value : date;
     const isPrivate = privateCheck ? privateCheck.checked : false;
 
-    if (!title) return alert("일정 제목을 입력해주세요.");
-    if (!date) return alert("날짜를 선택해주세요.");
-    if (isPrivate && !(App.auth && App.auth.currentUser !== 'public')) {
-      return alert("비공개 일정은 개인 프로필(진세/지혜) 모드에서만 등록할 수 있습니다.");
+    if (!title) {
+      alert('일정 제목을 입력해주세요.');
+      if (titleInput) titleInput.focus();
+      return;
+    }
+    if (!date) return alert('시작일을 선택해주세요.');
+    if (endDate < date) return alert('종료일은 시작일보다 빠를 수 없습니다.');
+    if (daysBetween(date, endDate) > 365) return alert('연속 일정은 최대 366일까지 등록할 수 있습니다.');
+    if (endDate === date) endDate = null;
+
+    if (isPrivate && !this.getPrivateStore()) {
+      return alert('비공개 일정은 개인 프로필(진세/지혜) 모드에서만 등록할 수 있습니다.');
     }
 
-    const author = (App.auth && App.auth.currentUser !== 'public')
-      ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
-      : this.currentAuthor;
+    const user = App.auth ? App.auth.currentUser : 'public';
+    const author = user === 'jinse' ? '진세' : (user === 'jihye' ? '지혜' : this.currentAuthor);
+    const fields = { title, date, endDate, author, isPrivate };
 
-    // 1. 기존 일정 수정 모드일 때
-    if (this.editingId) {
+    if (this.editingId !== null) {
       const oldId = this.editingId;
       const oldIsPrivate = this.editingIsPrivate;
-
-      // 비공개 상태가 변경되었을 경우 기존 위치 삭제 후 새 위치에 추가
       if (oldIsPrivate !== isPrivate) {
         this.deleteSilently(oldId, oldIsPrivate);
-        const newSched = { id: Date.now(), title, date, author, isPrivate };
-        this.insertSchedule(newSched, isPrivate);
+        this.insertSchedule(Object.assign({ id: Date.now() }, fields), isPrivate);
+      } else if (isPrivate) {
+        this.getPrivateStore().update(oldId, fields);
       } else {
-        const updates = { title, date, author, isPrivate };
-        if (isPrivate) {
-          const user = App.auth?.currentUser;
-          if (user === 'jinse') App.stores?.privateJinse?.update(oldId, updates);
-          else if (user === 'jihye') App.stores?.privateJihye?.update(oldId, updates);
-        } else {
-          App.stores?.schedules?.update(oldId, updates);
-        }
+        App.stores.schedules.update(oldId, fields);
       }
-
       App.ui.toast(`✅ [${author}] 일정이 수정되었습니다.`);
       this.cancelEdit();
-    } 
-    // 2. 신규 등록 모드일 때
-    else {
-      const newSchedule = {
-        id: Date.now(),
-        title: title,
-        date: date,
-        author: author,
-        isPrivate: isPrivate
-      };
-
-      if (isPrivate) {
-        const user = App.auth?.currentUser;
-        if (user === 'jinse' && App.stores?.privateJinse) {
-          App.stores.privateJinse.add(newSchedule);
-        } else if (user === 'jihye' && App.stores?.privateJihye) {
-          App.stores.privateJihye.add(newSchedule);
-        } else {
-          alert("비공개 일정은 개인 프로필(진세/지혜) 모드에서만 등록할 수 있습니다.");
-          return;
-        }
-      } else {
-        if (App.stores?.schedules) {
-          App.stores.schedules.add(newSchedule);
-        }
-      }
-
+    } else {
+      this.insertSchedule(Object.assign({ id: Date.now() }, fields), isPrivate);
       if (titleInput) titleInput.value = '';
       if (privateCheck) privateCheck.checked = false;
-      App.ui.toast(`🗓️ [${author}] 일정이 등록되었습니다.`);
+      if (endInp && startInp) endInp.value = startInp.value;
+      this.updateRangeHint();
+      App.ui.toast(`🗓️ [${author}] ${endDate ? '연속 ' : ''}일정이 등록되었습니다.`);
     }
 
     this.render();
     if (App.calendar) App.calendar.generate();
-    if (App.ticker) App.ticker.refresh();
+    if (App.summary) App.summary.refresh();
   },
 
   insertSchedule(item, isPrivate) {
     if (isPrivate) {
-      const user = App.auth?.currentUser;
-      if (user === 'jinse') App.stores?.privateJinse?.add(item);
-      else if (user === 'jihye') App.stores?.privateJihye?.add(item);
-    } else {
-      App.stores?.schedules?.add(item);
+      const store = this.getPrivateStore();
+      if (store) store.add(item);
+    } else if (App.stores && App.stores.schedules) {
+      App.stores.schedules.add(item);
     }
   },
 
   deleteSilently(id, isPrivate) {
     if (isPrivate) {
-      const user = App.auth?.currentUser;
-      if (user === 'jinse') App.stores?.privateJinse?.remove(id);
-      else if (user === 'jihye') App.stores?.privateJihye?.remove(id);
-    } else {
-      App.stores?.schedules?.remove(id);
+      const store = this.getPrivateStore();
+      if (store) store.remove(id);
+    } else if (App.stores && App.stores.schedules) {
+      App.stores.schedules.remove(id);
     }
   },
 
-  /* 0번 요구사항: 삭제 시 팝업 확인 */
   delete(id, isPrivate) {
-    if (confirm("해당 일정을 삭제하시겠습니까?")) {
-      this.deleteSilently(id, isPrivate);
-      if (this.editingId !== null && String(this.editingId) === String(id)) this.cancelEdit();
-      App.ui.toast("🗑️ 일정이 삭제되었습니다.");
-      this.render();
-      if (App.calendar) App.calendar.generate();
-      if (App.ticker) App.ticker.refresh();
-    }
+    if (!confirm('해당 일정을 삭제하시겠습니까?')) return;
+    this.deleteSilently(id, isPrivate);
+    if (this.editingId !== null && String(this.editingId) === String(id)) this.cancelEdit();
+    App.ui.toast('🗑️ 일정이 삭제되었습니다.');
+    this.render();
+    if (App.calendar) App.calendar.generate();
+    if (App.summary) App.summary.refresh();
   },
 
   render() {
     const listEl = document.getElementById('scheduleList');
     if (!listEl) return;
-
     const schedules = this.getAllSchedules();
-
     if (schedules.length === 0) {
-      listEl.innerHTML = `<div class="empty-msg">등록된 일정이 없습니다. 🗓️</div>`;
+      listEl.innerHTML = '<div class="empty-msg">등록된 일정이 없습니다. 🗓️</div>';
       return;
     }
-
-    listEl.innerHTML = schedules.map(item => {
+    listEl.innerHTML = schedules.map((item) => {
+      const id = escapeHtml(String(item.id));
       const titleText = item.title || item.text || '일정';
-      const lockBadge = item.isPrivate ? `<span style="color:#be185d;font-size:11px;font-weight:700;">🔒 나만보기</span>` : '';
-      const isEditingThis = (this.editingId !== null && String(this.editingId) === String(item.id));
-
+      const isRange = scheduleEnd(item) !== item.date;
+      const lockBadge = item.isPrivate ? '<span class="schedule-tag tag-private">🔒 나만보기</span>' : '';
+      const rangeBadge = isRange ? '<span class="schedule-tag tag-range">연속</span>' : '';
+      const isEditingThis = this.editingId !== null && String(this.editingId) === String(item.id);
       return `
         <div class="log-item ${isEditingThis ? 'schedule-editing-item' : ''}">
-          <div class="log-content" onclick="App.schedule.startEdit('${escapeHtml(String(item.id))}', ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
+          <div class="log-content" onclick="App.schedule.startEdit('${id}', ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
             <div class="log-text">
-              ${escapeHtml(titleText)} ${lockBadge}
-              <span class="click-edit-tag">✏️ 클릭 시 수정</span>
+              ${escapeHtml(titleText)} ${rangeBadge}${lockBadge}
+              <span class="click-edit-tag">✏️ 수정</span>
             </div>
-            <div class="log-time">📅 ${escapeHtml(item.date || '')} · 작성자: ${escapeHtml(item.author || '가족')}</div>
+            <div class="log-time">📅 ${escapeHtml(this.formatRange(item))} · 작성자: ${escapeHtml(item.author || '가족')}</div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.schedule.delete('${escapeHtml(String(item.id))}', ${Boolean(item.isPrivate)})">✕</button>
-        </div>
-      `;
+          <button type="button" class="delete-item-btn" onclick="App.schedule.delete('${id}', ${Boolean(item.isPrivate)})" title="삭제">✕</button>
+        </div>`;
     }).join('');
   }
 };

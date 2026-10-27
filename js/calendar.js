@@ -194,17 +194,22 @@ App.calendar = {
 
   getFormattedScheduleMemos(monthKey) {
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
+    const [y, m] = monthKey.split('-').map(Number);
+    const monthStart = `${monthKey}-01`;
+    const monthEnd = `${monthKey}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
     const thisMonthSchedules = allSchedules
-      .filter(s => s && s.date && s.date.startsWith(monthKey))
+      .filter((s) => s && s.date && s.date <= monthEnd && scheduleEnd(s) >= monthStart)
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     if (thisMonthSchedules.length === 0) return '';
 
-    return thisMonthSchedules.map(s => {
+    return thisMonthSchedules.map((s) => {
       const lockBadge = s.isPrivate ? '🔒' : '';
       const author = s.isPrivate ? '비공개' : (s.author || '가족');
       const title = s.title || s.text || '일정';
-      return `• ${s.date.substring(5)} ${lockBadge}[${author}] ${title}`;
+      const end = scheduleEnd(s);
+      const when = end !== s.date ? `${s.date.substring(5)}~${end.substring(5)}` : s.date.substring(5);
+      return `• ${when} ${lockBadge}[${author}] ${title}`;
     }).join('\n');
   },
 
@@ -278,57 +283,86 @@ App.calendar = {
 
     const allSchedules = App.schedule ? App.schedule.getAllSchedules() : [];
     const todayDate = todayStr();
+    const monthStart = `${monthKey}-01`;
+    const monthEnd = `${monthKey}-${String(lastDate).padStart(2, '0')}`;
 
+    /* 1) 날짜 셀 (모두 먼저 출력 → :nth-child 테두리 규칙 유지) */
     let cellsHtml = '';
     const totalCells = totalWeeks * 7;
-    let currentDay = 1;
-
     for (let i = 0; i < totalCells; i++) {
       const col = i % 7;
-
-      if (i < firstDay) {
-        cellsHtml += `<div class="cal-grid-cell cell-empty"></div>`;
-      } else if (currentDay > lastDate) {
-        cellsHtml += `<div class="cal-grid-cell cell-empty"></div>`;
-      } else {
-        const dateStr = `${monthKey}-${String(currentDay).padStart(2, '0')}`;
-        const isToday = (dateStr === todayDate);
-
-        const holidayName = this.getHoliday(dateStr, month, currentDay);
-        const isHoliday = Boolean(holidayName);
-
-        const daySchedules = allSchedules.filter(s => s && s.date === dateStr);
-
-        let eventsHtml = '';
-        daySchedules.forEach(s => {
-          const titleText = s.title || s.text || '일정';
-          const lockIcon = s.isPrivate ? '🔒' : '';
-          const authorBadge = s.isPrivate ? '' : (s.author ? `[${s.author}]` : '');
-          const isPriv = Boolean(s.isPrivate);
-
-          eventsHtml += `
-            <div class="td-event-badge ${isPriv ? 'private' : ''}" title="${escapeHtml(titleText)}">
-              ${lockIcon}${authorBadge} ${escapeHtml(titleText)}
-            </div>
-          `;
-        });
-
-        const isRed = (col === 0 || isHoliday);
-        const numClass = isRed ? 'sun' : (col === 6 ? 'sat' : '');
-
-        cellsHtml += `
-          <div class="cal-grid-cell ${isToday ? 'cell-today' : ''}">
-            <div class="cell-date-row">
-              <span class="cell-date-num ${numClass}">${currentDay}</span>
-              ${isHoliday ? `<span class="cell-holiday-tag">${escapeHtml(holidayName)}</span>` : ''}
-            </div>
-            <div class="cell-events-wrap">${eventsHtml}</div>
-          </div>
-        `;
-
-        currentDay++;
+      const row = Math.floor(i / 7) + 1;
+      const day = i - firstDay + 1;
+      const pos = `grid-row:${row};grid-column:${col + 1};`;
+      if (day < 1 || day > lastDate) {
+        cellsHtml += `<div class="cal-grid-cell cell-empty" style="${pos}"></div>`;
+        continue;
       }
+      const dateStr = `${monthKey}-${String(day).padStart(2, '0')}`;
+      const holidayName = this.getHoliday(dateStr, month, day);
+      const numClass = (col === 0 || holidayName) ? 'sun' : (col === 6 ? 'sat' : '');
+      cellsHtml += `
+        <div class="cal-grid-cell ${dateStr === todayDate ? 'cell-today' : ''}" style="${pos}">
+          <div class="cell-date-row">
+            <span class="cell-date-num ${numClass}">${day}</span>
+            ${holidayName ? `<span class="cell-holiday-tag">${escapeHtml(holidayName)}</span>` : ''}
+          </div>
+        </div>`;
     }
+
+    /* 2) 일정 막대: 이번 달과 겹치는 일정 → 주(row) 단위 구간으로 분할 → 레인 배정 */
+    const events = allSchedules
+      .filter((s) => s && s.date && s.date <= monthEnd && scheduleEnd(s) >= monthStart)
+      .map((s) => {
+        const end = scheduleEnd(s);
+        const clipStart = s.date < monthStart ? monthStart : s.date;
+        const clipEnd = end > monthEnd ? monthEnd : end;
+        return {
+          s,
+          startIdx: firstDay + daysBetween(monthStart, clipStart),
+          endIdx: firstDay + daysBetween(monthStart, clipEnd),
+          beforeMonth: s.date < monthStart,
+          afterMonth: end > monthEnd,
+          span: daysBetween(s.date, end) + 1
+        };
+      })
+      .sort((a, b) => a.startIdx - b.startIdx || b.span - a.span || String(a.s.id).localeCompare(String(b.s.id)));
+
+    let barsHtml = '';
+    for (let w = 0; w < totalWeeks; w++) {
+      const wStart = w * 7;
+      const wEnd = wStart + 6;
+      const lanes = []; /* lanes[n] = 해당 레인에서 마지막으로 사용된 열 index */
+      events.forEach((ev) => {
+        if (ev.endIdx < wStart || ev.startIdx > wEnd) return;
+        const segStart = Math.max(ev.startIdx, wStart);
+        const segEnd = Math.min(ev.endIdx, wEnd);
+        let lane = lanes.findIndex((lastCol) => lastCol < segStart);
+        if (lane === -1) {
+          lane = lanes.length;
+          lanes.push(segEnd);
+        } else {
+          lanes[lane] = segEnd;
+        }
+
+        const s = ev.s;
+        const isStart = segStart === ev.startIdx && !ev.beforeMonth;
+        const isEnd = segEnd === ev.endIdx && !ev.afterMonth;
+        const titleText = s.title || s.text || '일정';
+        const colorClass = s.isPrivate ? 'bar-private'
+          : (s.author === '진세' ? 'bar-jinse' : (s.author === '지혜' ? 'bar-jihye' : 'bar-family'));
+        const prefix = s.isPrivate ? '🔒' : (s.author ? `[${s.author}] ` : '');
+        const label = `${isStart ? '' : '◀ '}${prefix}${titleText}`;
+        const range = ev.span > 1 ? ` (${s.date.substring(5)}~${scheduleEnd(s).substring(5)})` : '';
+
+        barsHtml += `
+          <div class="cal-bar ${colorClass} ${isStart ? 'bar-start' : ''} ${isEnd ? 'bar-end' : ''} ${ev.span > 1 ? 'bar-multi' : ''}"
+               style="grid-row:${w + 1};grid-column:${(segStart % 7) + 1} / ${(segEnd % 7) + 2};--lane:${lane};"
+               title="${escapeHtml(prefix + titleText + range)}">${escapeHtml(label)}</div>`;
+      });
+    }
+
+    cellsHtml += barsHtml;
 
     gridBody.innerHTML = cellsHtml;
   }

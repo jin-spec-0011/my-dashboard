@@ -639,6 +639,45 @@ input[type="date"] { font-size: 12px; padding: 0 4px; }
 .td-event-badge { font-size: 8.5px; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 1px 2px; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
 .td-event-badge.private { background: #fce7f3; color: #be185d; }
 
+/* ── 📅 일정 막대 (연속 일정은 셀 경계를 넘어 하나로 연결) ── */
+.cal-sheet-grid-body { --bar-top: 23px; --bar-h: 14px; --bar-gap: 15px; }
+.cal-bar {
+  position: relative;
+  z-index: 2;
+  align-self: start;
+  min-width: 0;
+  height: var(--bar-h);
+  line-height: var(--bar-h);
+  margin: calc(var(--bar-top) + var(--lane, 0) * var(--bar-gap)) 0 3px 0;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 0;
+  cursor: default;
+}
+.cal-bar.bar-start { margin-left: 2px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.cal-bar.bar-end { margin-right: 2px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.cal-bar.bar-jinse { background: #dbeafe; color: #1e40af; }
+.cal-bar.bar-jihye { background: #fce7f3; color: #9d174d; }
+.cal-bar.bar-family { background: #dcfce7; color: #166534; }
+.cal-bar.bar-private { background: #f3e8ff; color: #6b21a8; }
+.cal-bar.bar-multi.bar-jinse { background: #3b82f6; color: #ffffff; }
+.cal-bar.bar-multi.bar-jihye { background: #ec4899; color: #ffffff; }
+.cal-bar.bar-multi.bar-family { background: #16a34a; color: #ffffff; }
+.cal-bar.bar-multi.bar-private { background: #9333ea; color: #ffffff; }
+
+/* 일정 폼: 기간 빠른 선택 */
+.duration-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.btn-duration { border: 1px solid var(--border-color); background: #f8fafc; color: #334155; font-size: 11px; font-weight: 700; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
+.btn-duration:active { background: #e2e8f0; }
+.range-hint { font-size: 11px; font-weight: 800; color: #2563eb; margin-left: auto; }
+.schedule-tag { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; margin-left: 3px; white-space: nowrap; }
+.schedule-tag.tag-range { background: #dbeafe; color: #1d4ed8; }
+.schedule-tag.tag-private { background: #fce7f3; color: #be185d; }
+
 .cal-sheet-footer { display: flex; flex-direction: column; gap: 3px; }
 .cal-sheet-memo-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 7px; display: flex; flex-direction: column; gap: 2px; }
 .memo-tag { font-size: 9.5px; font-weight: 800; color: #475569; }
@@ -673,6 +712,8 @@ input[type="date"] { font-size: 12px; padding: 0 4px; }
 .pdf-export-mode .cell-date-num { font-size: 26px !important; font-weight: 900 !important; }
 .pdf-export-mode .cell-holiday-tag { font-size: 10px !important; }
 .pdf-export-mode .td-event-badge { font-size: 10px !important; padding: 1px 3px !important; }
+.pdf-export-mode .cal-sheet-grid-body { --bar-top: 46px; --bar-h: 16px; --bar-gap: 18px; }
+.pdf-export-mode .cal-bar { font-size: 10.5px !important; }
 .pdf-export-mode .goal-input { font-size: 14px !important; }
 .pdf-export-mode .memo-textarea { font-size: 12px !important; }
 
@@ -825,6 +866,10 @@ input[type="date"] { font-size: 12px; padding: 0 4px; }
   .cell-date-num { font-size: 24pt !important; font-weight: 900 !important; line-height: 0.9 !important; }
   .cell-holiday-tag { font-size: 7.5pt !important; font-weight: 800 !important; }
   .td-event-badge { font-size: 7pt !important; background: #e2e8f0 !important; color: #000000 !important; border: 0.5px solid #000000 !important; padding: 0.2mm 1mm !important; }
+
+  .cal-sheet-grid-body { --bar-top: 12.5mm; --bar-h: 4mm; --bar-gap: 4.5mm; }
+  .cal-bar { font-size: 7pt !important; }
+  .cal-bar.bar-multi { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
   .cal-sheet-footer.is-empty { display: none !important; }
   .cal-sheet-footer { flex-shrink: 0 !important; }

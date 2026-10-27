@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 
-  <link rel="stylesheet" href="css/style.css?v=20261028">
+  <link rel="stylesheet" href="css/style.css?v=20261028b">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -249,16 +249,27 @@
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label>날짜</label>
-          <input type="date" id="scheduleDateInput" class="memo-text-input">
+          <label for="scheduleDateInput">시작일</label>
+          <input type="date" id="scheduleDateInput" class="memo-text-input" onchange="App.schedule.onStartDateChange()">
         </div>
         <div class="form-group">
-          <label>작성자</label>
-          <div class="toggle-group" id="scheduleAuthorGroup">
-            <button type="button" class="btn-toggle active" id="btn-author-jinse" onclick="App.schedule.selectAuthor('진세')">진세</button>
-            <button type="button" class="btn-toggle" id="btn-author-jihye" onclick="App.schedule.selectAuthor('지혜')">지혜</button>
-            <button type="button" class="btn-toggle" id="btn-author-fam" onclick="App.schedule.selectAuthor('가족')">가족</button>
-          </div>
+          <label for="scheduleEndDateInput">종료일</label>
+          <input type="date" id="scheduleEndDateInput" class="memo-text-input" onchange="App.schedule.onEndDateChange()">
+        </div>
+      </div>
+      <div class="duration-row">
+        <button type="button" class="btn-duration" onclick="App.schedule.setDuration(1)">당일</button>
+        <button type="button" class="btn-duration" onclick="App.schedule.setDuration(2)">1박2일</button>
+        <button type="button" class="btn-duration" onclick="App.schedule.setDuration(3)">2박3일</button>
+        <button type="button" class="btn-duration" onclick="App.schedule.setDuration(7)">1주</button>
+        <span id="scheduleRangeHint" class="range-hint"></span>
+      </div>
+      <div class="form-group">
+        <label>작성자</label>
+        <div class="toggle-group" id="scheduleAuthorGroup">
+          <button type="button" class="btn-toggle active" id="btn-author-jinse" onclick="App.schedule.selectAuthor('진세')">진세</button>
+          <button type="button" class="btn-toggle" id="btn-author-jihye" onclick="App.schedule.selectAuthor('지혜')">지혜</button>
+          <button type="button" class="btn-toggle" id="btn-author-fam" onclick="App.schedule.selectAuthor('가족')">가족</button>
         </div>
       </div>
       <div class="form-group">
@@ -640,14 +651,14 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/app.js?v=20261028"></script>
-  <script src="js/auth.js?v=20261028"></script>
-  <script src="js/push.js?v=20261028"></script>
-  <script src="js/parking.js?v=20261028"></script>
-  <script src="js/schedule.js?v=20261028"></script>
-  <script src="js/calendar.js?v=20261028"></script>
-  <script src="js/memo.js?v=20261028"></script>
-  <script src="js/ledger.js?v=20261028"></script>
-  <script src="js/trip.js?v=20261028"></script>
+  <script src="js/app.js?v=20261028b"></script>
+  <script src="js/auth.js?v=20261028b"></script>
+  <script src="js/push.js?v=20261028b"></script>
+  <script src="js/parking.js?v=20261028b"></script>
+  <script src="js/schedule.js?v=20261028b"></script>
+  <script src="js/calendar.js?v=20261028b"></script>
+  <script src="js/memo.js?v=20261028b"></script>
+  <script src="js/ledger.js?v=20261028b"></script>
+  <script src="js/trip.js?v=20261028b"></script>
 </body>
 </html>
