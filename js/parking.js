@@ -1,304 +1,311 @@
-window.App = window.App || {};
+/**
+ * GOGO 스마트 매니저 - 주차 위치 로거 엔진
+ * - 스키마 준수: /parking_logs.json
+ * - 14자리 KST 타임스탬프 규격 및 이기종(13자리 ms) 타임스탬프 통합 파서 적용
+ * - 차량별 최신 2개 유지 및 실시간 최신 상태 산출
+ */
 
-App.parking = {
-  currentFilter: 'all',
+const ParkingModule = (() => {
+  let parkingLogs = [];
+  let currentFilter = 'ALL'; // ALL, X1, ACCENT
+  let selectedCar = 'X1';
+  let selectedType = '지하 주차장';
+  let selectedFloor = 'B1';
 
-  /* 🚗 차종 및 이모지 판별 */
-  getCarKey(car) {
-    if (!car) return 'x1';
-    const str = String(car).toLowerCase().trim();
-    if (str.includes('x1')) return 'x1';
-    return 'accent';
-  },
+  // 타임스탬프 완전 정규화 (14자리 yyyyMMddHHmmss vs 13자리 Epoch ms 통합)
+  function normalizeParkingTimestamp(item) {
+    if (!item) return 0;
 
-  getCarEmoji(car) {
-    return this.getCarKey(car) === 'x1' ? '⚪' : '⚫';
-  },
-
-  getCarName(car) {
-    return this.getCarKey(car) === 'x1' ? 'X1' : '엑센트';
-  },
-
-  /* 💾 데이터 유실 방지: 저장소에서 직접 안전하게 읽기 */
-  getLogs() {
-    try {
-      const raw = safeGet('parking_logs');
-      const list = JSON.parse(raw || '[]');
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
+    // 1. item.id가 14자리 정수 규격인 경우 (예: 20261024215500)
+    if (item.id) {
+      const idStr = String(item.id).trim();
+      if (idStr.length === 14 && idStr.startsWith('20')) {
+        const y = parseInt(idStr.substring(0, 4), 10);
+        const m = parseInt(idStr.substring(4, 6), 10) - 1;
+        const d = parseInt(idStr.substring(6, 8), 10);
+        const h = parseInt(idStr.substring(8, 10), 10);
+        const min = parseInt(idStr.substring(10, 12), 10);
+        const s = parseInt(idStr.substring(12, 14), 10);
+        return new Date(y, m, d, h, min, s).getTime();
+      }
+      // 2. item.id가 13자리 ms인 경우 (예: Date.now())
+      if (idStr.length === 13 && !isNaN(Number(idStr))) {
+        return Number(idStr);
+      }
     }
-  },
 
-  /* 💾 로컬 스토리지 + 스토어 캐시 + Firebase 동시 영구 보존 */
-  saveLogs(list) {
-    safeSet('parking_logs', JSON.stringify(list));
-    if (App.stores && App.stores.parking && typeof App.stores.parking.load === 'function') {
-      App.stores.parking.load();
+    // 3. time 문자열 파싱 (예: "10월 27일 16:43")
+    if (item.time) {
+      const match = item.time.match(/(\d+)월\s*(\d+)일\s*(\d+):(\d+)/);
+      if (match) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const m = parseInt(match[1], 10) - 1;
+        const d = parseInt(match[2], 10);
+        const h = parseInt(match[3], 10);
+        const min = parseInt(match[4], 10);
+        return new Date(year, m, d, h, min, 0).getTime();
+      }
     }
-    if (App.isFirebaseActive && App.db) {
-      App.db.ref('parking_logs').set(list);
-    }
-  },
 
-  selectOption(type, value) {
-    App.state.parking[type] = value;
+    return Number(item.id) || 0;
+  }
 
-    if (type === 'car') {
-      const targetKey = this.getCarKey(value);
-      document.querySelectorAll('#carGroup .btn-toggle').forEach(btn => {
-        const btnKey = this.getCarKey(btn.innerText);
-        btn.classList.toggle('active', btnKey === targetKey);
-      });
-    } else if (type === 'type') {
-      document.querySelectorAll('#typeGroup .btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.trim() === value);
-      });
-      const isOutdoor = (value === '야외');
-      const floorCont = document.getElementById('floorContainer');
-      const mapSec = document.getElementById('outdoorMapSection');
-      if (floorCont) floorCont.style.display = isOutdoor ? 'none' : 'flex';
-      if (mapSec) mapSec.style.display = isOutdoor ? 'flex' : 'none';
-      if (isOutdoor) this.getCurrentLocation();
-    } else if (type === 'floor') {
-      document.querySelectorAll('#floorGroup .btn-toggle').forEach(btn => {
-        btn.classList.toggle('active', btn.innerText.trim() === value);
-      });
-    }
-  },
-
-  getCurrentLocation() {
-    const status = document.getElementById('gpsStatus');
-    if (!navigator.geolocation) {
-      if (status) status.innerText = "❌ GPS 미지원 기기";
-      return;
-    }
-    if (status) status.innerText = "🔄 GPS 좌표 수신 중...";
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        App.state.parking.lat = pos.coords.latitude;
-        App.state.parking.lng = pos.coords.longitude;
-        if (status) status.innerText = `📍 좌표 갱신 완료`;
-        const frame = document.getElementById('mapFrame');
-        if (frame) {
-          frame.src = `https://maps.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}&z=17&output=embed`;
-        }
-      },
-      () => {
-        if (status) status.innerText = "⚠️ GPS 수신 실패 (기본 위치)";
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  },
-
-  handlePhoto(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        App.state.parking.photoBase64 = canvas.toDataURL('image/jpeg', 0.65);
-
-        const previewImg = document.getElementById('parkingPhotoPreviewImg');
-        const placeholder = document.getElementById('parkingPhotoPlaceholder');
-        const btnRemove = document.getElementById('btnRemoveParkingPhoto');
-
-        if (previewImg) {
-          previewImg.src = App.state.parking.photoBase64;
-          previewImg.style.display = 'block';
-        }
-        if (placeholder) placeholder.style.display = 'none';
-        if (btnRemove) btnRemove.style.display = 'inline-block';
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  },
-
-  removePhoto() {
-    App.state.parking.photoBase64 = '';
-    const input = document.getElementById('parkingPhotoInput');
-    const previewImg = document.getElementById('parkingPhotoPreviewImg');
-    const placeholder = document.getElementById('parkingPhotoPlaceholder');
-    const btnRemove = document.getElementById('btnRemoveParkingPhoto');
-
-    if (input) input.value = '';
-    if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
-    if (placeholder) placeholder.style.display = 'block';
-    if (btnRemove) btnRemove.style.display = 'none';
-  },
-
-  /* 🚗 주차 저장: B1-25A 규격 적용 */
-  save() {
-    const { car, type, floor, lat, lng, photoBase64 } = App.state.parking;
-    const colSelect = document.getElementById('colSelect');
-    const rowSelect = document.getElementById('rowSelect');
-
-    const colVal = colSelect ? colSelect.value : 'A';
-    const rowVal = rowSelect ? rowSelect.value : '25';
-    const isOutdoor = (type === '야외');
-    const slotCode = `${rowVal}${colVal}`; // 👈 하이픈 없이 25A로 결합
-
-    const carKey = this.getCarKey(car);
-    const carName = this.getCarName(car);
-    const carEmoji = this.getCarEmoji(car);
-
-    const author = (App.auth && App.auth.currentUser !== 'public')
-      ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
-      : '가족';
-
-    const floorText = isOutdoor ? '야외' : (floor || 'B1');
-    const locationText = `${carName} - ${floorText}-${slotCode}`; // 👈 X1 - B1-25A
-
+  // 규격 준수: KST 기준 14자리 숫자 생성 (yyyyMMddHHmmss)
+  function generate14DigitKstId() {
     const now = new Date();
-    const timeStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kstTime = new Date(utcTime + (9 * 60 * 60000));
 
-    const newLog = {
-      id: Date.now(),
-      car: carName,
-      author: author,
-      floor: floorText,
-      slot: slotCode,
-      type: type,
-      text: locationText,
-      time: timeStr,
-      isOutdoor: isOutdoor,
-      lat: isOutdoor ? lat : null,
-      lng: isOutdoor ? lng : null,
-      photoBase64: photoBase64 || ''
-    };
+    const yyyy = kstTime.getFullYear();
+    const MM = String(kstTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(kstTime.getDate()).padStart(2, '0');
+    const HH = String(kstTime.getHours()).padStart(2, '0');
+    const mm = String(kstTime.getMinutes()).padStart(2, '0');
+    const ss = String(kstTime.getSeconds()).padStart(2, '0');
 
-    const allLogs = this.getLogs();
-    const sameCarLogs = allLogs.filter(i => this.getCarKey(i.car) === carKey);
-    const keptSameCar = sameCarLogs.slice(0, 1);
-    const otherCarLogs = allLogs.filter(i => this.getCarKey(i.car) !== carKey);
-    const keptOtherCar = otherCarLogs.slice(0, 2);
+    return Number(`${yyyy}${MM}${dd}${HH}${mm}${ss}`);
+  }
 
-    const finalCleanList = [newLog, ...keptSameCar, ...keptOtherCar];
+  // 한국어 표시 시간 포맷 (M월 d일 HH:mm)
+  function formatKoreanTime() {
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `${m}월 ${d}일 ${h}:${min}`;
+  }
 
-    this.saveLogs(finalCleanList);
-    this.render(finalCleanList);
+  // 초기화 및 실시간 리스너 연결
+  function init() {
+    bindEvents();
+    subscribeParkingData();
+  }
 
-    this.removePhoto();
-    App.ui.toast(`${carEmoji} [${carName}] ${floorText}-${slotCode} 저장 완료!`);
-    if (App.ticker) App.ticker.refresh();
-  },
-  delete(id) {
-    if (confirm("해당 주차 위치 기록을 삭제하시겠습니까?")) {
-      const allLogs = this.getLogs().filter(i => String(i.id) !== String(id));
-      this.saveLogs(allLogs);
-      this.render(allLogs);
-      App.ui.toast("🗑️ 주차 기록이 삭제되었습니다.");
-      if (App.ticker) App.ticker.refresh();
+  function subscribeParkingData() {
+    try {
+      const dbRef = firebase.database().ref('parking_logs');
+      dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+          parkingLogs = [];
+          renderList();
+          return;
+        }
+
+        // Object to Array 변환
+        const list = Object.keys(data).map((key) => {
+          const item = data[key];
+          return {
+            firebaseKey: key,
+            id: item.id || key,
+            car: item.car || '',
+            floor: item.floor || '',
+            slot: item.slot || '',
+            text: item.text || '',
+            author: item.author || '진세',
+            time: item.time || '',
+            type: item.type || '지하 주차장',
+            photo: item.photo || null
+          };
+        });
+
+        // 정규화된 타임스탬프 기준 완전 내림차순 정렬
+        list.sort((a, b) => normalizeParkingTimestamp(b) - normalizeParkingTimestamp(a));
+        parkingLogs = list;
+
+        // 차량별 최신 2개 초과 기록 자동 정리 로직 (정책 유지)
+        pruneOldRecords(list);
+
+        renderList();
+      }, (error) => {
+        console.error('Firebase 주차 데이터 동기화 에러:', error);
+      });
+    } catch (e) {
+      console.error('Firebase 연결 실패:', e);
     }
-  },
+  }
 
-  clear() {
-    if (confirm("전체 차량 주차 기록을 모두 초기화(삭제)하시겠습니까?")) {
-      this.saveLogs([]);
-      this.render([]);
-      App.ui.toast("🗑️ 전체 주차 기록이 초기화되었습니다.");
-      if (App.ticker) App.ticker.refresh();
-    }
-  },
-
-  setFilter(filter) {
-    this.currentFilter = filter;
-    const targetKey = filter === 'all' ? 'all' : this.getCarKey(filter);
-    document.querySelectorAll('.log-filter-bar .filter-btn').forEach(b => {
-      if (b.id === 'filter-all') {
-        b.classList.toggle('active', targetKey === 'all');
-      } else if (b.id === 'filter-x1') {
-        b.classList.toggle('active', targetKey === 'x1');
-      } else if (b.id === 'filter-accent') {
-        b.classList.toggle('active', targetKey === 'accent');
+  // 차량별 최신 2건 초과 데이터 자동 삭제
+  function pruneOldRecords(sortedList) {
+    const cars = ['X1', '엑센트'];
+    cars.forEach((carName) => {
+      const carItems = sortedList.filter((item) => item.car === carName);
+      if (carItems.length > 2) {
+        for (let i = 2; i < carItems.length; i++) {
+          const target = carItems[i];
+          if (target.firebaseKey) {
+            firebase.database().ref(`parking_logs/${target.firebaseKey}`).remove().catch((err) => {
+              console.warn('초과 주차 데이터 정리 실패:', err);
+            });
+          }
+        }
       }
     });
-    this.render();
-  },
+  }
 
-  render(items) {
-    const listEl = document.getElementById('logList');
-    if (!listEl) return;
+  function renderList() {
+    const container = document.getElementById('parking-record-list');
+    if (!container) return;
 
-    const sourceItems = (Array.isArray(items) && items.length > 0) ? items : this.getLogs();
-
-    let filtered = sourceItems;
-    if (this.currentFilter !== 'all') {
-      const filterKey = this.getCarKey(this.currentFilter);
-      filtered = sourceItems.filter(i => this.getCarKey(i.car) === filterKey);
+    // 필터링 적용
+    let filtered = parkingLogs;
+    if (currentFilter === 'X1') {
+      filtered = parkingLogs.filter((item) => item.car === 'X1');
+    } else if (currentFilter === 'ACCENT') {
+      filtered = parkingLogs.filter((item) => item.car === '엑센트');
     }
 
     if (filtered.length === 0) {
-      listEl.innerHTML = `<div style="color:var(--text-sub);font-size:13px;text-align:center;padding:24px 0;">주차 기록이 없습니다. 🚗</div>`;
+      container.innerHTML = '<div style="text-align:center; padding: 24px; color: #94a3b8; font-size: 13px;">기록된 주차 정보가 없습니다.</div>';
       return;
     }
 
-    // 각 차종별 가장 최신 1개 아이템 식별
-    const latestIds = {};
-    sourceItems.forEach(it => {
-      const carKey = this.getCarKey(it.car);
-      if (!latestIds[carKey]) {
-        latestIds[carKey] = it.id;
-      }
-    });
+    // 각 차량별 최신 항목 식별 (정규화 타임스탬프 기준 1위)
+    let latestX1Key = null;
+    let latestAccentKey = null;
 
-    listEl.innerHTML = filtered.map(item => {
-      const carKey = this.getCarKey(item.car);
-      const isCarLatest = (latestIds[carKey] === item.id);
-      const carEmoji = this.getCarEmoji(item.car);
+    const x1First = parkingLogs.find((item) => item.car === 'X1');
+    if (x1First) latestX1Key = x1First.firebaseKey;
 
-      let mapLinks = '';
-      if (item.isOutdoor && item.lat && item.lng) {
-        const kmap = `kakaomap://look?p=${item.lat},${item.lng}`;
-        const nmap = `nmap://action/path?dlat=${item.lat}&dlng=${item.lng}&dname=주차위치&appname=gogo`;
-        const gmap = `https://www.google.com/maps?q=${item.lat},${item.lng}`;
-        mapLinks = `
-          <div class="map-links-group" style="display:flex; gap:6px; margin-top:4px;">
-            <a href="${kmap}" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">카카오맵</a>
-            <a href="${nmap}" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">네이버지도</a>
-            <a href="${gmap}" target="_blank" class="log-map-link" style="font-size:11px; color:#2563eb; font-weight:700;">구글지도</a>
-          </div>
-        `;
-      }
+    const accentFirst = parkingLogs.find((item) => item.car === '엑센트');
+    if (accentFirst) latestAccentKey = accentFirst.firebaseKey;
 
-      let photoHtml = '';
-      if (item.photoBase64) {
-        photoHtml = `<img src="${item.photoBase64}" class="parking-log-thumb" onclick="window.open('${item.photoBase64}')" title="사진 확대보기">`;
-      }
+    let html = '';
+    filtered.forEach((item) => {
+      const isX1 = item.car === 'X1';
+      const carBullet = isX1 ? '⚪' : '⚫';
+      const isLatest = (isX1 && item.firebaseKey === latestX1Key) || (!isX1 && item.firebaseKey === latestAccentKey);
 
-      return `
-        <div class="log-item ${isCarLatest ? 'parking-latest-card' : ''}">
-          <div class="log-content">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span class="log-text">${carEmoji} ${escapeHtml(item.text)}</span>
-              ${isCarLatest ? '<span class="parking-latest-badge">⭐ 최신 주차</span>' : ''}
+      html += `
+        <div class="record-item">
+          <div class="record-info">
+            <div class="record-main-text">
+              <span>${carBullet} ${escapeHtml(item.text)}</span>
+              ${isLatest ? '<span class="badge-latest">⭐ 최신 주차</span>' : ''}
             </div>
-            <div class="log-time">🕒 ${escapeHtml(item.time)} · 등록: ${escapeHtml(item.author || '가족')}</div>
-            ${mapLinks}
+            <div class="record-sub-text">
+              🕒 ${escapeHtml(item.time)} · 등록: ${escapeHtml(item.author)}
+            </div>
           </div>
-          ${photoHtml}
-          <button type="button" class="delete-item-btn" onclick="App.parking.delete('${item.id}')">✕</button>
+          <button class="btn-item-delete" onclick="ParkingModule.deleteRecord('${item.firebaseKey}')" title="삭제">✕</button>
         </div>
       `;
-    }).join('');
+    });
+
+    container.innerHTML = html;
   }
-};
+
+  function saveParkingLocation() {
+    const slotInput = document.getElementById('input-parking-slot');
+    const slotValue = slotInput ? slotInput.value.trim().toUpperCase() : '';
+
+    if (!slotValue) {
+      alert('기둥 번호와 구역을 정확히 입력하세요.');
+      return;
+    }
+
+    const newId = generate14DigitKstId();
+    const formattedTime = formatKoreanTime();
+    const currentModeAuthor = localStorage.getItem('GOGO_CURRENT_USER') || '진세';
+    const locationText = `${selectedCar} - ${selectedFloor}-${slotValue}`;
+
+    const newPayload = {
+      id: newId,
+      car: selectedCar,
+      floor: selectedFloor,
+      slot: slotValue,
+      text: locationText,
+      author: currentModeAuthor,
+      time: formattedTime,
+      type: selectedType
+    };
+
+    const targetRef = firebase.database().ref(`parking_logs/${newId}`);
+    targetRef.set(newPayload).then(() => {
+      if (slotInput) slotInput.value = '';
+      alert(`${locationText} 위치가 정상 등록되었습니다.`);
+    }).catch((err) => {
+      console.error('주차 위치 저장 실패:', err);
+      alert('저장 중 오류가 발생했습니다.');
+    });
+  }
+
+  function deleteRecord(key) {
+    if (!confirm('해당 주차 기록을 삭제하시겠습니까?')) return;
+    firebase.database().ref(`parking_logs/${key}`).remove().catch((err) => {
+      console.error('주차 기록 삭제 오류:', err);
+    });
+  }
+
+  function deleteAllRecords() {
+    if (!confirm('차량별 모든 주차 기록을 영구 삭제하시겠습니까?')) return;
+    firebase.database().ref('parking_logs').remove().then(() => {
+      alert('모든 주차 기록이 초기화되었습니다.');
+    }).catch((err) => {
+      console.error('전체 삭제 실패:', err);
+    });
+  }
+
+  function bindEvents() {
+    // 차량 토글
+    document.querySelectorAll('.car-select-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.car-select-btn').forEach((b) => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        selectedCar = e.currentTarget.getAttribute('data-car');
+      });
+    });
+
+    // 층수 토글
+    document.querySelectorAll('.floor-select-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.floor-select-btn').forEach((b) => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        selectedFloor = e.currentTarget.getAttribute('data-floor');
+      });
+    });
+
+    // 필터 버튼
+    document.querySelectorAll('.parking-filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.parking-filter-btn').forEach((b) => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        currentFilter = e.currentTarget.getAttribute('data-filter');
+        renderList();
+      });
+    });
+
+    // 저장 버튼
+    const saveBtn = document.getElementById('btn-save-parking');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', saveParkingLocation);
+    }
+
+    // 전체 삭제 버튼
+    const deleteAllBtn = document.getElementById('btn-delete-all-parking');
+    if (deleteAllBtn) {
+      deleteAllBtn.addEventListener('click', deleteAllRecords);
+    }
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  return {
+    init,
+    deleteRecord,
+    normalizeParkingTimestamp
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  ParkingModule.init();
+});
