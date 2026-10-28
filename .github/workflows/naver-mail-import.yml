@@ -1,0 +1,68 @@
+name: Naver Mail Import
+
+# 네이버 메일(IMAP, 읽기 전용) → 결제: family_ledger / 예약: 일정 자동 등록
+# - 수동 실행: 기본 DRY-RUN (앱 데이터 미변경, 결과는 Firebase mail_import_state/last_run)
+# - 자동 실행: 저장소 변수 MAIL_IMPORT_ENABLED=true 일 때만 매시간 동작
+# - Public 저장소: 로그에는 건수만 출력됨
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'DRY-RUN (앱 데이터 미변경, 미리보기만 저장)'
+        type: boolean
+        default: true
+      since_days:
+        description: '조회 기간(일, 1~90)'
+        type: string
+        default: '3'
+      reprocess:
+        description: '처리 이력 무시하고 재분석 (중복 등록은 방지됨)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: naver-mail-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.event_name == 'workflow_dispatch' || vars.MAIL_IMPORT_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: .github/scripts
+    steps:
+      - name: 저장소 불러오기
+        uses: actions/checkout@v4
+
+      - name: Node 20 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 파서 셀프테스트 (한/일/영 샘플)
+        run: node mail_import.mjs --self-test
+
+      - name: 의존성 설치
+        run: npm install --no-save --no-audit --no-fund --loglevel=error imapflow@1 mailparser@3 firebase-admin@12
+
+      - name: 메일 가져오기 및 적재
+        env:
+          NAVER_IMAP_USER: ${{ secrets.NAVER_IMAP_USER }}
+          NAVER_IMAP_PASS: ${{ secrets.NAVER_IMAP_PASS }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          SINCE_DAYS: ${{ inputs.since_days || '3' }}
+          REPROCESS: ${{ inputs.reprocess || false }}
+          AUTHOR: ${{ vars.MAIL_IMPORT_AUTHOR || '진세' }}
+          SCHEDULE_TARGET: ${{ vars.MAIL_IMPORT_SCHEDULE_TARGET || 'family' }}
+          RESERVATION_TO_LEDGER: ${{ vars.MAIL_IMPORT_RESERVATION_TO_LEDGER || 'false' }}
+          DEFAULT_METHOD: ${{ vars.MAIL_IMPORT_DEFAULT_METHOD || '삼성카드' }}
+          NAVER_FOLDERS: ${{ vars.MAIL_IMPORT_FOLDERS || 'INBOX' }}
+        run: node mail_import.mjs
