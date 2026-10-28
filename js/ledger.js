@@ -91,54 +91,157 @@ App.ledger = {
     return this.CONFIG.LIVING_BUDGET;
   },
 
+  editingId: null,
+
+  getFormEls() {
+    return {
+      dateInp: document.getElementById('ledgerDateInput'),
+      amountInp: document.getElementById('ledgerAmountInput'),
+      descInp: document.getElementById('ledgerDescInput'),
+      categoryInp: document.getElementById('ledgerCategoryInput'),
+      placeInp: document.getElementById('ledgerPlaceInput'),
+      methodInp: document.getElementById('ledgerMethodInput'),
+      saveBtn: document.getElementById('btnSaveLedger'),
+      banner: document.getElementById('ledgerEditBanner'),
+      title: document.getElementById('ledgerFormTitle'),
+      card: document.getElementById('ledgerFormCard')
+    };
+  },
+
+  ensureMethodOption(methodInp, value) {
+    if (!methodInp || !value) return;
+    const exists = Array.from(methodInp.options).some((o) => o.value === value);
+    if (!exists) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value;
+      methodInp.appendChild(opt);
+    }
+    methodInp.value = value;
+  },
+
+  resetForm(keepDate = true) {
+    const el = this.getFormEls();
+    if (el.amountInp) el.amountInp.value = '';
+    if (el.descInp) el.descInp.value = '';
+    if (el.placeInp) el.placeInp.value = '';
+    if (el.categoryInp) el.categoryInp.value = '';
+    if (el.methodInp) el.methodInp.value = '삼성카드';
+    if (!keepDate && el.dateInp) {
+      const now = new Date();
+      el.dateInp.value = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    }
+  },
+
+  setEditUI(isEditing) {
+    const el = this.getFormEls();
+    if (el.saveBtn) {
+      el.saveBtn.innerText = isEditing ? '💾 지출 수정 완료' : '지출 내역 저장';
+      el.saveBtn.style.background = isEditing ? '#059669' : '';
+    }
+    if (el.banner) el.banner.style.display = isEditing ? 'flex' : 'none';
+    if (el.title) el.title.innerText = isEditing ? '✏️ 지출 내역 수정' : '✏️ 지출 등록 (마스터 자동 판정)';
+  },
+
+  startEdit(id) {
+    try {
+      const items = App.stores?.ledger ? App.stores.ledger.getItems() : [];
+      const target = items.find((i) => String(i.id) === String(id));
+      if (!target) {
+        if (App.ui?.toast) App.ui.toast('⚠️ 해당 내역을 찾을 수 없습니다.');
+        return;
+      }
+      const el = this.getFormEls();
+      this.editingId = target.id;
+
+      if (el.dateInp) el.dateInp.value = target.date || '';
+      if (el.amountInp) el.amountInp.value = Number(target.amount) || '';
+      if (el.categoryInp) el.categoryInp.value = target.category || '';
+      if (el.placeInp) el.placeInp.value = target.place || '';
+      if (el.descInp) el.descInp.value = target.desc && target.desc !== target.category ? target.desc : '';
+      this.ensureMethodOption(el.methodInp, target.method || '삼성카드');
+
+      this.setEditUI(true);
+      this.render(items);
+
+      const anchor = el.banner || el.card;
+      if (anchor && anchor.scrollIntoView) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el.amountInp) setTimeout(() => el.amountInp.focus({ preventScroll: true }), 300);
+      if (App.ui?.toast) App.ui.toast('✏️ 지출 내역을 수정할 수 있습니다.');
+    } catch (e) {
+      console.error('[Ledger Edit Error]', e);
+      alert('수정 모드 전환 중 오류가 발생했습니다.');
+    }
+  },
+
+  cancelEdit() {
+    this.editingId = null;
+    this.resetForm(true);
+    this.setEditUI(false);
+    this.render(App.stores?.ledger ? App.stores.ledger.getItems() : []);
+  },
+
   add() {
     try {
-      const dateInp = document.getElementById('ledgerDateInput');
-      const amountInp = document.getElementById('ledgerAmountInput');
-      const descInp = document.getElementById('ledgerDescInput');
-      const categoryInp = document.getElementById('ledgerCategoryInput');
-      const placeInp = document.getElementById('ledgerPlaceInput');
-      const methodInp = document.getElementById('ledgerMethodInput');
+      const el = this.getFormEls();
 
-      const date = dateInp ? dateInp.value : '';
-      const amount = amountInp ? parseInt(amountInp.value, 10) : 0;
-      const desc = descInp ? descInp.value.trim() : '';
-      const category = categoryInp ? categoryInp.value.trim() : (desc || '기타');
-      const place = placeInp ? placeInp.value.trim() : '';
-      const method = methodInp ? methodInp.value : '삼성카드';
+      const date = el.dateInp ? el.dateInp.value : '';
+      const amount = el.amountInp ? parseInt(String(el.amountInp.value).replace(/[^0-9]/g, ''), 10) : 0;
+      const desc = el.descInp ? el.descInp.value.trim() : '';
+      const category = el.categoryInp ? el.categoryInp.value.trim() : '';
+      const place = el.placeInp ? el.placeInp.value.trim() : '';
+      const method = el.methodInp ? el.methodInp.value : '삼성카드';
 
-      if (!date) return alert("날짜를 선택하세요.");
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return alert("날짜를 선택하세요.");
       if (isNaN(amount) || amount <= 0) return alert("올바른 금액을 입력하세요.");
+      if (amount > 100000000) return alert("금액이 너무 큽니다. 다시 확인해주세요.");
       if (!desc && !category) return alert("세부 분류 또는 상세 내용을 입력하세요.");
+
+      const finalCategory = category || desc || '기타';
+      const fields = {
+        date: date,
+        month: date.substring(0, 7),
+        amount: amount,
+        desc: desc || finalCategory,
+        category: finalCategory,
+        place: place,
+        method: method,
+        statusFixed: this.evalFixedStatus(finalCategory),
+        statusLiving: this.evalLivingStatus(finalCategory)
+      };
+
+      if (this.editingId !== null) {
+        const editId = this.editingId;
+        const exists = App.stores?.ledger && App.stores.ledger.getItems().some((i) => String(i.id) === String(editId));
+        if (!exists) {
+          this.cancelEdit();
+          return alert("수정할 내역이 삭제되었거나 존재하지 않습니다.");
+        }
+        App.stores.ledger.update(editId, Object.assign({}, fields, { confirmed: true, needsReview: false }));
+        this.editingId = null;
+        this.resetForm(true);
+        this.setEditUI(false);
+        this.changeMonth(date.substring(0, 7));
+        if (App.ui?.toast) App.ui.toast(`✅ ${amount.toLocaleString()}원 내역이 수정되었습니다.`);
+        if (App.ticker) App.ticker.refresh();
+        return;
+      }
 
       const author = (App.auth && App.auth.currentUser !== 'public')
         ? (App.auth.currentUser === 'jinse' ? '진세' : '지혜')
         : '가족';
 
-      const newEntry = {
+      const newEntry = Object.assign({
         id: Date.now(),
-        date: date,
-        month: date.substring(0, 7),
-        amount: amount,
-        desc: desc || category,
-        category: category,
-        place: place,
-        method: method,
         author: author,
-        confirmed: false,
-        statusFixed: this.evalFixedStatus(category),
-        statusLiving: this.evalLivingStatus(category)
-      };
+        confirmed: false
+      }, fields);
 
       if (App.stores?.ledger) {
         App.stores.ledger.add(newEntry);
       }
 
-      if (amountInp) amountInp.value = '';
-      if (descInp) descInp.value = '';
-      if (placeInp) placeInp.value = '';
-      if (categoryInp) categoryInp.value = '';
-
+      this.resetForm(true);
       this.changeMonth(date.substring(0, 7));
       if (App.ui?.toast) {
         App.ui.toast(`💰 ${amount.toLocaleString()}원 지출이 저장되었습니다.`);
@@ -146,7 +249,7 @@ App.ledger = {
       if (App.ticker) App.ticker.refresh();
     } catch (e) {
       console.error("[Ledger Add Error]", e);
-      alert("지출 등록 중 오류가 발생했습니다.");
+      alert("지출 저장 중 오류가 발생했습니다.");
     }
   },
 
@@ -154,6 +257,7 @@ App.ledger = {
     if (confirm("해당 지출 내역을 삭제하시겠습니까?")) {
       if (App.stores?.ledger) {
         App.stores.ledger.remove(id);
+        if (this.editingId !== null && String(this.editingId) === String(id)) this.cancelEdit();
         if (App.ui?.toast) App.ui.toast("🗑️ 내역이 삭제되었습니다.");
         this.render(App.stores.ledger.getItems());
         if (App.ticker) App.ticker.refresh();
@@ -283,21 +387,26 @@ App.ledger = {
       const badgeColor = isLivingO ? '#10b981' : '#64748b';
       const badgeText = isLivingO ? '생활비' : '고정비';
 
+      const safeId = escapeHtml(String(item.id));
+      const isEditingThis = this.editingId !== null && String(this.editingId) === String(item.id);
+      const reviewBadge = item.needsReview ? '<span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: #fef3c7; color: #b45309; font-weight: 800; margin-left: 4px;">확인필요</span>' : '';
+
       return `
-        <div class="log-item" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 6px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <div class="log-content">
+        <div class="log-item ${isEditingThis ? 'schedule-editing-item' : ''}" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 6px; background: ${isEditingThis ? '#ecfdf5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isEditingThis ? '#059669' : 'var(--border-color)'}; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+          <div class="log-content" onclick="App.ledger.startEdit('${safeId}')" style="cursor: pointer; min-width: 0; flex: 1;" title="탭하여 수정">
             <div class="log-text" style="font-size: 13px; font-weight: 700; color: #0f172a;">
               <span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; font-weight: 800; margin-right: 4px;">${badgeText}</span>
-              ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b; font-weight: normal;">(${escapeHtml(item.place)})</span>` : ''}
-              ${item.desc && item.desc !== cat ? `<div style="font-size: 11px; color: #64748b; margin-top: 1px; font-weight: normal;">${escapeHtml(item.desc)}</div>` : ''}
+              ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b; font-weight: normal;">(${escapeHtml(item.place)})</span>` : ''}${reviewBadge}
+              <span class="click-edit-tag">✏️ 수정</span>
+              ${item.desc && item.desc !== cat ? `<div style="font-size: 11px; color: #64748b; margin-top: 1px; font-weight: normal; word-break: break-all;">${escapeHtml(item.desc)}</div>` : ''}
             </div>
             <div class="log-time" style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">
               📅 ${escapeHtml(item.date || '')} · ${escapeHtml(item.method || '카드')} · ${escapeHtml(item.author || '가족')}
             </div>
           </div>
-          <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+          <div style="text-align: right; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
             <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
-            <button type="button" class="delete-item-btn" onclick="App.ledger.delete('${escapeHtml(String(item.id))}')">✕</button>
+            <button type="button" class="delete-item-btn" onclick="event.stopPropagation(); App.ledger.delete('${safeId}')" title="삭제">✕</button>
           </div>
         </div>
       `;

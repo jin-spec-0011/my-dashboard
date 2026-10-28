@@ -46,6 +46,13 @@ body {
   overflow-x: hidden;
 }
 
+/* 📱 iOS 홈 화면 앱(standalone): 상태바 아래 블러 구간을 피해서 콘텐츠 시작 */
+@media (display-mode: standalone) {
+  body {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 30px);
+  }
+}
+
 button, input, select, textarea { font-family: inherit; }
 
 .screen {
