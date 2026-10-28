@@ -85,10 +85,10 @@ const END_LABELS = [
 ];
 
 const SCHEDULE_ICONS = [
-  [/항공|탑승|비행|flight|airline|airport|航空|搭乗|フライト|\b(ICN|GMP|NRT|HND|KIX|FUK|CJU|PUS)\b/i, '✈️'],
+  [/항공|비행기|flight|airline|airport|航空|フライト|\b(ICN|GMP|NRT|HND|KIX|FUK|CJU|PUS)\b/i, '✈️'],
   [/호텔|숙소|숙박|펜션|리조트|에어비앤비|airbnb|hotel|ホテル|宿泊|旅館|booking\.com|agoda|아고다|야놀자|여기어때|expedia|楽天トラベル|じゃらん/i, '🏨'],
   [/KTX|SRT|코레일|新幹線|\bJR\b|列車|train|rail/i, '🚄'],
-  [/공연|콘서트|티켓|예매|인터파크|멜론티켓|ticket|チケット|公演|映画|CGV|메가박스|롯데시네마/i, '🎫'],
+  [/공연|콘서트|티켓|예매|인터파크|멜론티켓|에버랜드|롯데월드|놀이공원|테마파크|입장권|ticket|チケット|公演|映画|CGV|메가박스|롯데시네마|ディズニー|USJ/i, '🎫'],
   [/캐치테이블|레스토랑|식당|restaurant|レストラン|一休|食べログ|tablecheck|opentable|dining/i, '🍽️'],
   [/병원|진료|검진|クリニック|clinic|hospital/i, '🏥']
 ];
@@ -378,8 +378,11 @@ function parseMail(mail, opt) {
     if (start) {
       const end = findLabeledDate(text, END_LABELS, mailYmd, start.ymd);
       const endYmd = end && end.ymd > start.ymd && daysDiff(start.ymd, end.ymd) <= 60 ? end.ymd : null;
-      const hay = `${subject}\n${fromStr}\n${text.slice(0, 3000)}`;
-      const icon = (SCHEDULE_ICONS.find(([re]) => re.test(hay)) || [null, '📌'])[1];
+      // 제목·발신자 우선 판정 → 없을 때만 본문 (본문의 부수 단어로 오분류 방지)
+      const head = `${subject}\n${fromStr}`;
+      const icon = (SCHEDULE_ICONS.find(([re]) => re.test(head))
+        || SCHEDULE_ICONS.find(([re]) => re.test(text.slice(0, 3000)))
+        || [null, '📌'])[1];
       const title = clip(`${icon} ${start.time ? `${start.time} ` : ''}${cleanSubject(subject)}${needsReview ? ' ❓' : ''}`, 50);
       result.schedule = {
         id: baseId,
@@ -668,6 +671,8 @@ function selfTest() {
       check: (r) => r.schedule && r.schedule.date === '2026-12-24' && /^🎫 19:30/.test(r.schedule.title) },
     { name: '연말 연도 넘김 추론', mail: { subject: 'ご予約確認', text: 'ご来店日 1月3日 12:00', date: new Date('2026-12-20T03:00:00Z') },
       check: (r) => r.schedule && r.schedule.date === '2027-01-03' },
+    { name: '테마파크 예약 아이콘(본문 탑승 단어 무시)', mail: { subject: '[에버랜드] 스마트예약 완료 안내', fromName: '에버랜드', fromAddr: 'noreply@everland.com', text: '이용일: 2026-11-15\n어트랙션 탑승 시간을 확인하세요' },
+      check: (r) => r.schedule && r.schedule.date === '2026-11-15' && /^🎫/.test(r.schedule.title) },
     { name: '배송 안내 제외', mail: { subject: 'Your order has shipped', text: 'Order total $10' }, check: (r) => r.kind === 'shipping' && !r.ledger }
   ];
 

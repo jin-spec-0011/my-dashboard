@@ -462,8 +462,13 @@
       </div>
     </div>
 
-    <div class="card form-card">
-      <span class="form-section-title">✏️ 지출 등록 (마스터 자동 판정)</span>
+    <div id="ledgerEditBanner" class="edit-mode-banner" style="display: none;">
+      <span>✏️ 지출 내역 수정 모드 중입니다.</span>
+      <button type="button" class="btn-cancel-edit" onclick="App.ledger.cancelEdit()">취소</button>
+    </div>
+
+    <div class="card form-card" id="ledgerFormCard">
+      <span class="form-section-title" id="ledgerFormTitle">✏️ 지출 등록 (마스터 자동 판정)</span>
       <div class="grid-2">
         <div class="form-group">
           <label>날짜</label>
@@ -500,7 +505,7 @@
           </select>
         </div>
       </div>
-      <button type="button" class="btn-save" onclick="App.ledger.add()">지출 내역 저장</button>
+      <button type="button" id="btnSaveLedger" class="btn-save" onclick="App.ledger.add()">지출 내역 저장</button>
     </div>
 
     <div class="card list-card">
