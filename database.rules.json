@@ -1,0 +1,63 @@
+{
+  "rules": {
+    "parking_logs": {
+      ".read": true,
+      ".write": true,
+      "$id": {
+        ".validate": "newData.hasChild('id')",
+        "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "photoBase64": { ".validate": "newData.isString() && newData.val().length <= 500000" },
+        "photo": { ".validate": "newData.isString() && newData.val().length <= 500000" }
+      }
+    },
+    "family_todos": {
+      ".read": true,
+      ".write": true,
+      "$i": { ".validate": "newData.hasChild('id')" }
+    },
+    "family_stickies": {
+      ".read": true,
+      ".write": true,
+      "$i": {
+        ".validate": "newData.hasChild('id')",
+        "text": { ".validate": "newData.isString() && newData.val().length <= 5000" }
+      }
+    },
+    "family_ledger": {
+      ".read": true,
+      ".write": true,
+      "$i": { ".validate": "newData.hasChild('id')" }
+    },
+    "family_schedules": {
+      ".read": true,
+      ".write": true,
+      "$i": { ".validate": "newData.hasChild('id')" }
+    },
+    "family_trips": {
+      ".read": true,
+      ".write": true,
+      "$i": { ".validate": "newData.hasChild('id')" }
+    },
+    "private_schedules": {
+      "$user": {
+        ".read": "$user === 'jinse' || $user === 'jihye'",
+        ".write": "$user === 'jinse' || $user === 'jihye'",
+        "$i": { ".validate": "newData.hasChild('id')" }
+      }
+    },
+    "auth_pins": {
+      ".read": true,
+      "$user": {
+        ".write": "$user === 'jinse' || $user === 'jihye'",
+        ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+      }
+    },
+    "calendar_data": {
+      ".read": true,
+      "$key": {
+        ".write": "$key.matches(/^calendar_(goal|memo)_[0-9]{4}-[0-9]{2}$/)",
+        ".validate": "newData.isString() && newData.val().length <= 5000"
+      }
+    }
+  }
+}

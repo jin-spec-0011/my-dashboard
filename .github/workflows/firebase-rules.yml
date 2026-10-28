@@ -1,0 +1,100 @@
+name: Firebase Rules Deploy
+
+# database.rules.json 이 바뀌면: 에뮬레이터 테스트 → 통과 시에만 실제 Firebase 배포 → 실서버 확인
+on:
+  push:
+    branches: [main]
+    paths:
+      - database.rules.json
+      - firebase.json
+      - firebase-tests/**
+      - .github/workflows/firebase-rules.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-rules
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: gogo-manager-f0a68
+  DB_URL: https://gogo-manager-f0a68-default-rtdb.firebaseio.com
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 저장소 불러오기
+        uses: actions/checkout@v4
+
+      - name: Node 20 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Java 17 설정 (에뮬레이터용)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Firebase CLI 설치
+        run: npm install -g firebase-tools@13.29.1
+
+      - name: 규칙 테스트 (에뮬레이터)
+        run: firebase emulators:exec --only database --project "$PROJECT_ID" "node firebase-tests/rules.test.mjs"
+
+      - name: 서비스 계정 키 확인
+        id: secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT 시크릿이 없어 배포를 건너뜁니다."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          python3 - "$RUNNER_TEMP/sa.json" <<'PY'
+          import json, sys
+          try:
+              d = json.load(open(sys.argv[1]))
+          except Exception as e:
+              print(f"::error::시크릿 JSON 형식 오류 (붙여넣기가 잘렸을 수 있음): {e}")
+              sys.exit(1)
+          if d.get("type") != "service_account":
+              print("::error::서비스 계정 키(type=service_account)가 아닙니다.")
+              sys.exit(1)
+          if d.get("project_id") != "gogo-manager-f0a68":
+              print(f"::error::다른 프로젝트의 키입니다: {d.get('project_id')}")
+              sys.exit(1)
+          print("서비스 계정 키 확인 완료:", d.get("client_email"))
+          PY
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
+      - name: Firebase 규칙 배포
+        if: steps.secret.outputs.present == 'true'
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          firebase deploy --only database --project "$PROJECT_ID" --non-interactive
+
+      - name: 실서버 규칙 확인
+        if: steps.secret.outputs.present == 'true'
+        run: |
+          sleep 5
+          root=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/.json?shallow=true")
+          parking=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/parking_logs.json?shallow=true")
+          schedules=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/family_schedules.json?shallow=true")
+          echo "루트 읽기: $root (기대 401) / 주차 읽기: $parking (기대 200) / 일정 읽기: $schedules (기대 200)"
+          if [ "$root" != "401" ] || [ "$parking" != "200" ] || [ "$schedules" != "200" ]; then
+            echo "::error::실서버 규칙 확인 실패"
+            exit 1
+          fi
+          echo "✅ 실서버 규칙 적용 확인"
+
+      - name: 키 파일 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
