@@ -1,26 +1,30 @@
 name: Naver Mail Import
+run-name: Naver Mail Import · ${{ inputs.request_id || 'manual' }}
 
 # 네이버 메일(IMAP, 읽기 전용) → 결제: family_ledger / 예약: 일정 자동 등록
-# - 수동 실행: 기본 DRY-RUN (앱 데이터 미변경, 결과는 Firebase mail_import_state/last_run)
-# - 자동 실행: 저장소 변수 MAIL_IMPORT_ENABLED=true 일 때만 매시간 동작
+# - 온디맨드 전용: 가계부 화면 [📧 메일] 버튼(GitHub API workflow_dispatch) 또는 Actions 탭 수동 실행
+# - 자동(cron) 실행 없음
+# - 중복 방지: 처리 이력(mail_import_state/processed) + srcId + 날짜·금액 동일 건 스킵 → 기존 데이터 유지
 # - Public 저장소: 로그에는 건수만 출력됨
 on:
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'DRY-RUN (앱 데이터 미변경, 미리보기만 저장)'
         type: boolean
-        default: true
+        default: false
       since_days:
-        description: '조회 기간(일, 1~90)'
+        description: '조회 기간(일, 1~90 또는 auto = 마지막 실적재 이후)'
         type: string
-        default: '3'
+        default: 'auto'
       reprocess:
         description: '처리 이력 무시하고 재분석 (중복 등록은 방지됨)'
         type: boolean
         default: false
+      request_id:
+        description: '앱 요청 식별자 (앱이 실행 상태 추적용으로 자동 입력)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -31,7 +35,6 @@ concurrency:
 
 jobs:
   import:
-    if: github.event_name == 'workflow_dispatch' || vars.MAIL_IMPORT_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -57,8 +60,8 @@ jobs:
           NAVER_IMAP_USER: ${{ secrets.NAVER_IMAP_USER }}
           NAVER_IMAP_PASS: ${{ secrets.NAVER_IMAP_PASS }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
-          SINCE_DAYS: ${{ inputs.since_days || '3' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SINCE_DAYS: ${{ inputs.since_days || 'auto' }}
           REPROCESS: ${{ inputs.reprocess || false }}
           AUTHOR: ${{ vars.MAIL_IMPORT_AUTHOR || '진세' }}
           SCHEDULE_TARGET: ${{ vars.MAIL_IMPORT_SCHEDULE_TARGET || 'family' }}

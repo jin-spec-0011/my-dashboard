@@ -294,6 +294,195 @@ App.ledger = {
     if (App.ui?.toast) App.ui.toast(`📥 ${this.currentMonthKey}월 CSV 파일이 다운로드되었습니다.`);
   },
 
+  /* ══════════════════════════════════════════════════
+     📧 네이버 메일 → 가계부 온디맨드 가져오기
+     - 버튼 탭 시에만 GitHub Actions(naver-mail-import.yml) workflow_dispatch 호출
+     - 토큰: Fine-grained PAT (이 저장소 / Actions: Read and write 만) → 기기 localStorage 에만 저장
+     - 중복 방지는 서버 스크립트가 담당 (처리 이력 + srcId + 날짜·금액)
+     ══════════════════════════════════════════════════ */
+  MAIL_IMPORT: {
+    OWNER: 'jin-spec-0011',
+    REPO: 'my-dashboard',
+    WORKFLOW: 'naver-mail-import.yml',
+    REF: 'main',
+    TOKEN_KEY: 'gh_mail_import_token',
+    POLL_MS: 5000,
+    TIMEOUT_MS: 11 * 60 * 1000
+  },
+
+  mailImportRunning: false,
+
+  getMailToken() {
+    try {
+      return String(safeGet(this.MAIL_IMPORT.TOKEN_KEY) || '').trim();
+    } catch (e) {
+      return '';
+    }
+  },
+
+  clearMailToken() {
+    try { localStorage.removeItem(this.MAIL_IMPORT.TOKEN_KEY); } catch (e) { /* noop */ }
+    try { safeSet(this.MAIL_IMPORT.TOKEN_KEY, ''); } catch (e) { /* noop */ }
+  },
+
+  askMailToken() {
+    const input = window.prompt(
+      '📧 메일 가져오기 최초 1회 설정\n\nGitHub Fine-grained 토큰을 붙여넣으세요.\n(저장소: my-dashboard / 권한: Actions → Read and write)\n\n이 기기에만 저장됩니다.',
+      ''
+    );
+    if (input === null) return '';
+    const token = String(input).trim();
+    if (!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(token)) {
+      App.ui.toast('⚠️ 토큰 형식이 올바르지 않습니다 (github_pat_ 로 시작).');
+      return '';
+    }
+    safeSet(this.MAIL_IMPORT.TOKEN_KEY, token);
+    return token;
+  },
+
+  setMailBtn(text, busy) {
+    const btn = document.getElementById('btnLedgerMailImport');
+    if (!btn) return;
+    btn.innerText = text;
+    btn.disabled = !!busy;
+    btn.classList.toggle('is-busy', !!busy);
+  },
+
+  async ghFetch(path, token, options = {}) {
+    const url = `https://api.github.com/repos/${this.MAIL_IMPORT.OWNER}/${this.MAIL_IMPORT.REPO}${path}`;
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 15000) : null;
+    try {
+      return await fetch(url, Object.assign({}, options, {
+        headers: Object.assign({
+          'Accept': 'application/vnd.github+json',
+          'Authorization': `Bearer ${token}`,
+          'X-GitHub-Api-Version': '2022-11-28'
+        }, options.headers || {}),
+        cache: 'no-store',
+        signal: ctrl ? ctrl.signal : undefined
+      }));
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  },
+
+  countMailItems() {
+    try {
+      const list = App.stores && App.stores.ledger ? App.stores.ledger.getItems() : [];
+      return new Set(list.filter((x) => x && x.source === 'naver-mail').map((x) => String(x.srcId || x.id))).size;
+    } catch (e) {
+      return 0;
+    }
+  },
+
+  async importMailNow() {
+    if (this.mailImportRunning) {
+      App.ui.toast('⏳ 이미 메일을 가져오는 중입니다.');
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      App.ui.toast('⚠️ 오프라인 상태입니다. 네트워크 연결 후 다시 시도하세요.');
+      return;
+    }
+
+    let token = this.getMailToken();
+    if (!token) token = this.askMailToken();
+    if (!token) return;
+
+    this.mailImportRunning = true;
+    const before = this.countMailItems();
+    const requestId = `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    const startedAt = Date.now();
+
+    try {
+      this.setMailBtn('⏳ 요청 중', true);
+
+      const res = await this.ghFetch(`/actions/workflows/${this.MAIL_IMPORT.WORKFLOW}/dispatches`, token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ref: this.MAIL_IMPORT.REF,
+          inputs: { dry_run: 'false', since_days: 'auto', reprocess: 'false', request_id: requestId }
+        })
+      });
+
+      if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
+        App.ui.toast('⚠️ GitHub API 호출 한도 초과 - 잠시 후 다시 시도하세요.');
+        return;
+      }
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        this.clearMailToken();
+        App.ui.toast(`⚠️ 토큰 인증 실패(HTTP ${res.status}) - 다시 탭하여 새 토큰을 입력하세요.`);
+        return;
+      }
+      if (res.status === 422) {
+        App.ui.toast('⚠️ 워크플로 입력값 오류(HTTP 422) - main 브랜치 배포 상태를 확인하세요.');
+        return;
+      }
+      if (res.status !== 204) {
+        App.ui.toast(`⚠️ 실행 요청 실패 (HTTP ${res.status})`);
+        return;
+      }
+
+      this.setMailBtn('⏳ 대기열', true);
+      const run = await this.waitMailRun(token, requestId, startedAt);
+
+      if (!run) {
+        App.ui.toast('⌛ 실행 확인 시간 초과 - 백그라운드에서 계속 진행되며 완료 시 자동 반영됩니다.');
+        return;
+      }
+      if (run.conclusion !== 'success') {
+        App.ui.toast(`⚠️ 메일 가져오기 실패 (${run.conclusion || 'unknown'}) - GitHub Actions 로그 확인`);
+        return;
+      }
+
+      await new Promise((r) => setTimeout(r, 1500));
+      if (App.forceSyncAll) await App.forceSyncAll(true);
+      const added = Math.max(0, this.countMailItems() - before);
+      App.ui.toast(added > 0 ? `✅ 메일 결제 ${added}건 추가 (중복 제외)` : '✅ 새 결제 메일 없음 (기존 데이터 유지)');
+    } catch (e) {
+      console.error('[Ledger MailImport]', e);
+      App.ui.toast(e && e.name === 'AbortError' ? '⚠️ GitHub 응답 지연 - 잠시 후 다시 시도하세요.' : '⚠️ 메일 가져오기 중 오류가 발생했습니다.');
+    } finally {
+      this.mailImportRunning = false;
+      this.setMailBtn('📧 메일', false);
+    }
+  },
+
+  /** request_id 가 run-name 에 포함된 실행을 찾아 완료까지 대기 → 완료 run 반환, 시간 초과 시 null */
+  async waitMailRun(token, requestId, startedAt) {
+    const sinceIso = new Date(startedAt - 2 * 60 * 1000).toISOString();
+    const query = `?event=workflow_dispatch&per_page=10&created=${encodeURIComponent(`>=${sinceIso}`)}`;
+    const deadline = startedAt + this.MAIL_IMPORT.TIMEOUT_MS;
+    let runId = null;
+
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, this.MAIL_IMPORT.POLL_MS));
+      try {
+        let run = null;
+        if (!runId) {
+          const res = await this.ghFetch(`/actions/workflows/${this.MAIL_IMPORT.WORKFLOW}/runs${query}`, token);
+          if (!res.ok) continue;
+          const data = await res.json();
+          const runs = data && Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
+          run = runs.find((r) => String(r.display_title || r.name || '').includes(requestId)) || null;
+          if (run) runId = run.id;
+        } else {
+          const res = await this.ghFetch(`/actions/runs/${runId}`, token);
+          if (!res.ok) continue;
+          run = await res.json();
+        }
+        if (!run) continue;
+        if (run.status === 'completed') return run;
+        this.setMailBtn(run.status === 'in_progress' ? '📡 수집 중' : '⏳ 대기열', true);
+      } catch (e) {
+        console.warn('[Ledger MailImport] 상태 조회 재시도', e);
+      }
+    }
+    return null;
+  },
+
   render(items = []) {
     const currentMonthKey = this.currentMonthKey || new Date().toISOString().substring(0, 7);
     const [yearNum, monthNumStr] = currentMonthKey.split('-');
