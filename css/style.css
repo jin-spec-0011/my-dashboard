@@ -542,6 +542,28 @@ input[type="date"] { font-size: 12px; padding: 0 4px; }
   cursor: pointer;
   flex-shrink: 0;
 }
+.ledger-toolbar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.btn-mail-import {
+  background: #03c75a;
+  color: #ffffff;
+  border: none;
+  padding: 0 10px;
+  height: 32px;
+  min-width: 64px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-mail-import:disabled, .btn-mail-import.is-busy { background: #94a3b8; cursor: wait; }
+@media (max-width: 360px) {
+  .ledger-month-picker { max-width: 112px; }
+  .btn-mail-import, .btn-excel-export { padding: 0 7px; font-size: 10.5px; }
+}
+@media print { .ledger-toolbar-actions { display: none !important; } }
 .stat-card { padding: 10px; border-radius: 12px; }
 .stat-label { font-size: 11px; color: #64748b; font-weight: 700; }
 .stat-value { font-size: 17px; font-weight: 800; color: #0f172a; margin-top: 2px; }

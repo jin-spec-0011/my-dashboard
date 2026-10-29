@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 
-  <link rel="stylesheet" href="css/style.css?v=20261028b">
+  <link rel="stylesheet" href="css/style.css?v=20261029m">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -428,7 +428,10 @@
         <input type="month" id="ledgerMonthPicker" class="ledger-month-picker" onchange="App.ledger.changeMonth(this.value)">
         <button type="button" class="btn-month-step" onclick="App.ledger.nextMonth()">▶</button>
       </div>
-      <button type="button" class="btn-excel-export" onclick="App.ledger.exportExcel()">📥 CSV</button>
+      <div class="ledger-toolbar-actions">
+        <button type="button" id="btnLedgerMailImport" class="btn-mail-import" onclick="App.ledger.importMailNow()" title="네이버 메일에서 결제 내역 가져오기 (중복 제외)">📧 메일</button>
+        <button type="button" class="btn-excel-export" onclick="App.ledger.exportExcel()">📥 CSV</button>
+      </div>
     </div>
 
     <div class="grid-2">
@@ -656,14 +659,14 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/app.js?v=20261028b"></script>
-  <script src="js/auth.js?v=20261028b"></script>
-  <script src="js/push.js?v=20261028b"></script>
-  <script src="js/parking.js?v=20261028b"></script>
-  <script src="js/schedule.js?v=20261028b"></script>
-  <script src="js/calendar.js?v=20261028b"></script>
-  <script src="js/memo.js?v=20261028b"></script>
-  <script src="js/ledger.js?v=20261028b"></script>
-  <script src="js/trip.js?v=20261028b"></script>
+  <script src="js/app.js?v=20261029m"></script>
+  <script src="js/auth.js?v=20261029m"></script>
+  <script src="js/push.js?v=20261029m"></script>
+  <script src="js/parking.js?v=20261029m"></script>
+  <script src="js/schedule.js?v=20261029m"></script>
+  <script src="js/calendar.js?v=20261029m"></script>
+  <script src="js/memo.js?v=20261029m"></script>
+  <script src="js/ledger.js?v=20261029m"></script>
+  <script src="js/trip.js?v=20261029m"></script>
 </body>
 </html>

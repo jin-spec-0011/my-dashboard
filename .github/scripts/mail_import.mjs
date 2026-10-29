@@ -439,6 +439,13 @@ function envBool(name, def = false) {
   return v === 'true' || v === '1' || v === 'yes';
 }
 
+/** auto 조회 기간: 마지막 실적재 시각 기준 경과일 + 1일 여유 (3~90일로 제한, 중복은 처리 이력으로 차단) */
+const AUTO_FIRST_DAYS = 30;
+function resolveAutoSinceDays(lastAt, now) {
+  const elapsed = Math.ceil(Math.max(0, now - lastAt) / 86400000);
+  return Math.min(Math.max(elapsed + 1, 3), 90);
+}
+
 async function loadFx() {
   const fx = { USD: 1400, JPY: 9.3, EUR: 1500 };
   try {
@@ -467,9 +474,10 @@ async function main() {
   try { sa = JSON.parse(saRaw); } catch (e) { throw new Error('FIREBASE_SERVICE_ACCOUNT JSON 형식 오류'); }
   if (sa.type !== 'service_account' || sa.project_id !== PROJECT_ID) throw new Error('서비스 계정 키의 프로젝트가 다릅니다.');
 
+  const runStartedAt = Date.now();
   const dryRun = envBool('DRY_RUN', false);
   const reprocess = envBool('REPROCESS', false);
-  const sinceDays = Math.min(Math.max(parseInt(process.env.SINCE_DAYS || '3', 10) || 3, 1), 90);
+  const sinceRaw = String(process.env.SINCE_DAYS || 'auto').trim().toLowerCase();
   const author = String(process.env.AUTHOR || '진세').trim() || '진세';
   const target = String(process.env.SCHEDULE_TARGET || 'family').trim();
   const pm = target.match(/^private:(jinse|jihye)$/);
@@ -493,6 +501,16 @@ async function main() {
 
   const processedSnap = await db.ref(`${STATE_PATH}/processed`).once('value');
   const processed = processedSnap.val() || {};
+
+  // 조회 기간: 숫자 지정 또는 auto(마지막 실적재 이후 + 1일 여유, 최초 30일)
+  let sinceDays;
+  if (sinceRaw === 'auto' || sinceRaw === '') {
+    const lastSnap = await db.ref(`${STATE_PATH}/last_real_run_at`).once('value');
+    const lastAt = Number(lastSnap.val()) || 0;
+    sinceDays = lastAt > 0 ? resolveAutoSinceDays(lastAt, Date.now()) : AUTO_FIRST_DAYS;
+  } else {
+    sinceDays = Math.min(Math.max(parseInt(sinceRaw, 10) || 3, 1), 90);
+  }
 
   const counts = { scanned: 0, ad: 0, cancel: 0, statement: 0, shipping: 0, promo: 0, none: 0, skippedProcessed: 0, payment: 0, reservation: 0, parsedLedger: 0, parsedSchedule: 0, failed: 0 };
   const preview = [];
@@ -619,6 +637,7 @@ async function main() {
       if (!v || !v.t || v.t < cutoff) processedUpdates[k] = null;
     }
     if (Object.keys(processedUpdates).length) await db.ref(`${STATE_PATH}/processed`).update(processedUpdates);
+    await db.ref(`${STATE_PATH}/last_real_run_at`).set(runStartedAt);
   }
 
   await db.ref(`${STATE_PATH}/last_run`).set({
@@ -700,6 +719,16 @@ function selfTest() {
     && m1.list.length === 2 && new Set(m1.list.map((x) => x.id)).size === 2 && Array.isArray(m1.list);
   console.log(`${m1ok ? '✅' : '❌'} 병합: 내용중복/ID충돌/srcId중복 처리`);
   if (!m1ok) fail++;
+
+  // auto 조회 기간
+  const D = 86400000;
+  const n0 = Date.UTC(2026, 9, 29);
+  const aok = resolveAutoSinceDays(n0 - 3600000, n0) === 3
+    && resolveAutoSinceDays(n0 - 10 * D, n0) === 11
+    && resolveAutoSinceDays(n0 - 400 * D, n0) === 90
+    && resolveAutoSinceDays(n0 + D, n0) === 3;
+  console.log(`${aok ? '✅' : '❌'} auto 조회 기간 계산`);
+  if (!aok) fail++;
   const m2 = mergeItems({ k1: { id: 5, date: '2026-11-01', title: 'A' } }, [{ id: 9, date: '2026-11-01', title: 'B', srcId: 'z' }], 1, 'schedule');
   const m2ok = m2.list.length === 1 && m2.list[0].id === 9;
   console.log(`${m2ok ? '✅' : '❌'} 병합: 객체형 원본 정규화 + 최대 건수 제한`);
