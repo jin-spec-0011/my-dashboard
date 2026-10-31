@@ -46,29 +46,49 @@ App.calendar = {
     this.generate();
   },
 
-  /* A4 PDF 내보내기: .pdf-export-mode(794 x 1120px) 주입 → 캡처 → 즉시 복원 */
-  async exportPDF() {
-    const element = document.getElementById('printCalendarSheet');
-    if (!element) return;
-    if (typeof window.html2pdf !== 'function') {
-      App.ui.toast('⚠️ PDF 라이브러리 로딩 전입니다. 인쇄 창으로 전환합니다.');
-      this.print();
-      return;
-    }
-    if (this._exporting) return;
-    this._exporting = true;
-    App.ui.toast('📄 PDF 생성 중입니다. 잠시만 기다려주세요...');
+  /* iOS/iPadOS 판별 (iPadOS 13+ 데스크톱 UA: MacIntel + 터치 포인트 포함) */
+  _isIOS() {
+    const ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua)) return true;
+    return navigator.platform === 'MacIntel' && Number(navigator.maxTouchPoints) > 1;
+  },
 
+  /* 홈 화면 PWA(standalone) 실행 여부 — iOS standalone은 window.print()가 무시됨 */
+  _isStandalone() {
+    try {
+      if (window.navigator.standalone === true) return true;
+      return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /* 목표/메모 공란 박스 숨김 클래스 동기화 */
+  _syncEmptyBoxes() {
     const goalInp = document.getElementById('calendarGoalInput');
     const memoInp = document.getElementById('calendarMemoInput');
     const goalBox = document.getElementById('calGoalBox');
     const footerBox = document.getElementById('calFooterBox');
     if (goalBox) goalBox.classList.toggle('is-empty', !(goalInp && goalInp.value.trim()));
     if (footerBox) footerBox.classList.toggle('is-empty', !(memoInp && memoInp.value.trim()));
+  },
+
+  _pdfFilename() {
+    return `GOGO캘린더_${this.currentYear}년_${this.currentMonth}월.pdf`;
+  },
+
+  /* .pdf-export-mode(794 x 1120px) 주입 후 html2pdf 워커 실행 → 즉시 복원 */
+  async _runPdf(handler) {
+    const element = document.getElementById('printCalendarSheet');
+    if (!element) throw new Error('printCalendarSheet 요소 없음');
+    if (typeof window.html2pdf !== 'function') throw new Error('html2pdf 미로딩');
+
+    this._syncEmptyBoxes();
 
     /* textarea는 html2canvas에서 줄바꿈이 잘리므로 캡처 동안 div로 치환 */
+    const memoInp = document.getElementById('calendarMemoInput');
     let memoClone = null;
-    if (memoInp) {
+    if (memoInp && memoInp.parentNode) {
       memoClone = document.createElement('div');
       memoClone.className = 'memo-textarea';
       memoClone.style.whiteSpace = 'pre-wrap';
@@ -77,17 +97,22 @@ App.calendar = {
       memoInp.parentNode.insertBefore(memoClone, memoInp.nextSibling);
     }
 
+    /* 뷰어 모드(폰/패드 축소 스케일) 영향 제거 */
+    const wrapper = document.getElementById('calendarViewportWrapper');
+    const prevWrapperClass = wrapper ? wrapper.className : '';
+    if (wrapper) wrapper.className = 'calendar-viewport-wrapper view-web';
+
     element.classList.add('pdf-export-mode');
     const restore = () => {
       element.classList.remove('pdf-export-mode');
+      if (wrapper) wrapper.className = prevWrapperClass;
       if (memoClone && memoClone.parentNode) memoClone.parentNode.removeChild(memoClone);
       if (memoInp) memoInp.style.display = '';
-      this._exporting = false;
     };
 
     const opt = {
       margin: [0, 0, 0, 0],
-      filename: `GOGO캘린더_${this.currentYear}년_${this.currentMonth}월.pdf`,
+      filename: this._pdfFilename(),
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: true, width: 794, height: 1120, windowWidth: 794, scrollX: 0, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -95,27 +120,169 @@ App.calendar = {
 
     try {
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await window.html2pdf().set(opt).from(element).save();
-      App.ui.toast('✅ PDF 다운로드가 완료되었습니다!');
-    } catch (err) {
-      console.warn('[Calendar] html2pdf 오류, 인쇄 창으로 전환:', err);
+      const worker = window.html2pdf().set(opt).from(element);
+      return await handler(worker);
+    } finally {
       restore();
-      this.print();
-      return;
     }
-    restore();
   },
 
-  /* 브라우저 인쇄 (A4 @media print) */
+  /* A4 PDF 내보내기 (다운로드) */
+  async exportPDF() {
+    if (this._exporting) return;
+    if (typeof window.html2pdf !== 'function') {
+      App.ui.toast('⚠️ PDF 라이브러리 로딩 전입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    this._exporting = true;
+    App.ui.toast('📄 PDF 생성 중입니다. 잠시만 기다려주세요...');
+    try {
+      await this._runPdf((worker) => worker.save());
+      App.ui.toast('✅ PDF 다운로드가 완료되었습니다!');
+    } catch (err) {
+      console.warn('[Calendar] html2pdf 오류:', err);
+      App.ui.toast('⚠️ PDF 생성에 실패했습니다.');
+    } finally {
+      this._exporting = false;
+    }
+  },
+
+  /* 인쇄 버튼 진입점
+     - PC/일반 브라우저: 사용자 제스처 내 동기 window.print() (A4 @media print)
+     - iOS/iPadOS 홈 화면 PWA: print() 무시됨 → A4 PDF 생성 → 공유 시트 '프린트'
+     - 그 외 print() 무반응(beforeprint 미발생) 시 동일 PDF 경로로 폴백 */
   print() {
-    const goalInp = document.getElementById('calendarGoalInput');
-    const memoInp = document.getElementById('calendarMemoInput');
-    const goalBox = document.getElementById('calGoalBox');
-    const footerBox = document.getElementById('calFooterBox');
-    if (goalBox) goalBox.classList.toggle('is-empty', !(goalInp && goalInp.value.trim()));
-    if (footerBox) footerBox.classList.toggle('is-empty', !(memoInp && memoInp.value.trim()));
     if (App.router) App.router.go('calendar');
-    setTimeout(() => window.print(), 50);
+    this._syncEmptyBoxes();
+
+    if (this._isIOS() && this._isStandalone()) {
+      this.printViaPdf();
+      return;
+    }
+
+    let fired = false;
+    const onBefore = () => { fired = true; };
+    window.addEventListener('beforeprint', onBefore, { once: true });
+
+    try {
+      window.print();
+    } catch (err) {
+      console.warn('[Calendar] window.print 오류:', err);
+    }
+
+    setTimeout(() => {
+      window.removeEventListener('beforeprint', onBefore);
+      if (!fired && typeof window.onbeforeprint !== 'undefined') {
+        console.warn('[Calendar] 인쇄 창 미표시 → PDF 인쇄 경로로 전환');
+        this.printViaPdf();
+      }
+    }, 1500);
+  },
+
+  /* PDF Blob 생성 후 '인쇄 / 공유' 시트 표시 (공유 호출은 새 탭 제스처에서 수행) */
+  async printViaPdf() {
+    if (this._exporting) return;
+    if (typeof window.html2pdf !== 'function') {
+      App.ui.toast('⚠️ PDF 라이브러리 로딩 전입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    this._exporting = true;
+    App.ui.toast('🖨️ 인쇄용 A4 PDF 생성 중...');
+    try {
+      const blob = await this._runPdf((worker) => worker.outputPdf('blob'));
+      if (!(blob instanceof Blob) || blob.size === 0) throw new Error('PDF Blob 생성 실패');
+      this._openPrintSheet(blob);
+    } catch (err) {
+      console.warn('[Calendar] 인쇄용 PDF 생성 오류:', err);
+      App.ui.toast('⚠️ 인쇄용 PDF 생성에 실패했습니다.');
+    } finally {
+      this._exporting = false;
+    }
+  },
+
+  _closePrintSheet() {
+    const sheet = document.getElementById('calPrintSheetModal');
+    if (sheet && sheet.parentNode) sheet.parentNode.removeChild(sheet);
+    if (this._printBlobUrl) {
+      try { URL.revokeObjectURL(this._printBlobUrl); } catch (e) { /* noop */ }
+      this._printBlobUrl = null;
+    }
+    this._printFile = null;
+  },
+
+  _openPrintSheet(blob) {
+    this._closePrintSheet();
+    const filename = this._pdfFilename();
+    let file = null;
+    try {
+      file = new File([blob], filename, { type: 'application/pdf' });
+    } catch (e) {
+      file = null;
+    }
+    this._printFile = file;
+    this._printBlobUrl = URL.createObjectURL(blob);
+
+    const canShareFile = !!(file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
+
+    const overlay = document.createElement('div');
+    overlay.id = 'calPrintSheetModal';
+    overlay.className = 'modal-overlay no-print';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+      <div class="modal-card">
+        <button type="button" class="modal-close-icon-btn" data-act="close" title="닫기">✕</button>
+        <div class="modal-header"><h3>🖨️ A4 인쇄 준비 완료</h3></div>
+        <div class="modal-body">
+          <p class="modal-desc">${canShareFile
+            ? '아래 버튼 → 공유 시트에서 <b>프린트</b>를 선택하세요.'
+            : 'PDF를 연 뒤 공유(⬆️) → <b>프린트</b>를 선택하세요.'}</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-modal-save" data-act="${canShareFile ? 'share' : 'open'}">
+            ${canShareFile ? '🖨️ 인쇄 / 공유 열기' : '📄 PDF 열기'}
+          </button>
+          ${canShareFile ? '<button type="button" class="btn-modal-secondary" data-act="open">📄 PDF 미리보기</button>' : ''}
+          <button type="button" class="btn-modal-cancel" data-act="close">닫기</button>
+        </div>
+      </div>`;
+
+    overlay.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) {
+        if (e.target === overlay) this._closePrintSheet();
+        return;
+      }
+      const act = btn.getAttribute('data-act');
+      if (act === 'close') {
+        this._closePrintSheet();
+      } else if (act === 'share') {
+        try {
+          await navigator.share({ files: [this._printFile], title: filename });
+          this._closePrintSheet();
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          console.warn('[Calendar] 공유 시트 오류:', err);
+          App.ui.toast('⚠️ 공유 시트를 열 수 없어 PDF를 엽니다.');
+          this._openPdfUrl(filename);
+        }
+      } else if (act === 'open') {
+        this._openPdfUrl(filename);
+      }
+    });
+
+    document.body.appendChild(overlay);
+  },
+
+  _openPdfUrl(filename) {
+    if (!this._printBlobUrl) return;
+    const a = document.createElement('a');
+    a.href = this._printBlobUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    if (!this._isIOS()) a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   },
 
   setDeviceView(mode) {
