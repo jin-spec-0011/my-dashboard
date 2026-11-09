@@ -217,7 +217,7 @@ App.parking = {
       const k = this.getCarKey(item.car || item.text);
       const isLatest = latestIds[k] === String(item.id);
       const photo = item.photoBase64 || item.photo || '';
-      const safeId = escapeHtml(String(item.id));
+      const safeId = jsArg(item.id);
       let mapLinks = '';
       if (item.isOutdoor && item.lat && item.lng) {
         const lat = Number(item.lat);
@@ -239,8 +239,8 @@ App.parking = {
             <div class="log-time">🕒 ${escapeHtml(item.time || '')} · 등록: ${escapeHtml(item.author || '가족')}</div>
             ${mapLinks}
           </div>
-          ${photo && /^data:image\//.test(photo) ? `<img src="${photo}" class="parking-log-thumb" alt="주차 사진" onclick="App.parking.openPhoto('${safeId}')">` : ''}
-          <button type="button" class="delete-item-btn" onclick="App.parking.delete('${safeId}')" title="삭제">✕</button>
+          ${isSafeImageDataUrl(photo) ? `<img src="${escapeHtml(photo)}" class="parking-log-thumb" alt="주차 사진" onclick="App.parking.openPhoto(${safeId})">` : ''}
+          <button type="button" class="delete-item-btn" onclick="App.parking.delete(${safeId})" title="삭제">✕</button>
         </div>`;
     }).join('');
   },
@@ -248,11 +248,27 @@ App.parking = {
   openPhoto(id) {
     const item = this.getLogs().find((i) => String(i.id) === String(id));
     const photo = item ? (item.photoBase64 || item.photo) : '';
-    if (!photo) return;
+    if (!isSafeImageDataUrl(photo)) {
+      App.ui.toast('⚠️ 표시할 수 없는 사진 형식입니다.');
+      return;
+    }
     const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(`<title>주차 사진</title><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${photo}" style="max-width:100%;max-height:100vh;"></body>`);
-      w.document.close();
+    if (!w) {
+      App.ui.toast('⚠️ 팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.');
+      return;
+    }
+    try {
+      const doc = w.document;
+      doc.title = '주차 사진';
+      doc.body.style.cssText = 'margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;';
+      const img = doc.createElement('img');
+      img.alt = '주차 사진';
+      img.style.cssText = 'max-width:100%;max-height:100vh;';
+      img.src = photo;
+      doc.body.appendChild(img);
+    } catch (e) {
+      console.error('[Parking] 사진 창 렌더 실패', e);
+      w.close();
     }
   }
 };

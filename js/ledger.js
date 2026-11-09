@@ -274,11 +274,29 @@ App.ledger = {
     }
 
     let csvContent = "\uFEFFNo,일자,세부분류,구매처/출금처,상세내용,결제수단,지출금액,반영유무(생활비),반영유무(고정비),작성자\n";
+    /* CSV 셀 이스케이프: 따옴표 이중화 + 엑셀 수식 인젝션(= + - @ 탭 CR) 차단 */
+    const csvCell = (value) => {
+      let s = value === null || value === undefined ? '' : String(value);
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
     thisMonthItems.forEach((item, idx) => {
       const cat = item.category || item.desc || '';
       const livingStatus = item.statusLiving || this.evalLivingStatus(cat);
       const fixedStatus = item.statusFixed || this.evalFixedStatus(cat);
-      csvContent += `${idx + 1},${item.date || ''},"${cat}","${(item.place || '').replace(/"/g, '""')}","${(item.desc || '').replace(/"/g, '""')}",${item.method || '카드'},${item.amount || 0},${livingStatus},${fixedStatus},${item.author || '가족'}\n`;
+      const amount = Number(item.amount) || 0;
+      csvContent += [
+        idx + 1,
+        csvCell(item.date || ''),
+        csvCell(cat),
+        csvCell(item.place || ''),
+        csvCell(item.desc || ''),
+        csvCell(item.method || '카드'),
+        amount,
+        csvCell(livingStatus),
+        csvCell(fixedStatus),
+        csvCell(item.author || '가족')
+      ].join(',') + '\n';
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -576,13 +594,13 @@ App.ledger = {
       const badgeColor = isLivingO ? '#10b981' : '#64748b';
       const badgeText = isLivingO ? '생활비' : '고정비';
 
-      const safeId = escapeHtml(String(item.id));
+      const safeId = jsArg(item.id);
       const isEditingThis = this.editingId !== null && String(this.editingId) === String(item.id);
       const reviewBadge = item.needsReview ? '<span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: #fef3c7; color: #b45309; font-weight: 800; margin-left: 4px;">확인필요</span>' : '';
 
       return `
         <div class="log-item ${isEditingThis ? 'schedule-editing-item' : ''}" style="border-left: 3px solid ${badgeColor}; padding: 8px 10px; margin-bottom: 6px; background: ${isEditingThis ? '#ecfdf5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isEditingThis ? '#059669' : 'var(--border-color)'}; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-          <div class="log-content" onclick="App.ledger.startEdit('${safeId}')" style="cursor: pointer; min-width: 0; flex: 1;" title="탭하여 수정">
+          <div class="log-content" onclick="App.ledger.startEdit(${safeId})" style="cursor: pointer; min-width: 0; flex: 1;" title="탭하여 수정">
             <div class="log-text" style="font-size: 13px; font-weight: 700; color: #0f172a;">
               <span style="font-size: 10px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}20; color: ${badgeColor}; font-weight: 800; margin-right: 4px;">${badgeText}</span>
               ${escapeHtml(cat)} ${item.place ? `<span style="font-size: 11px; color: #64748b; font-weight: normal;">(${escapeHtml(item.place)})</span>` : ''}${reviewBadge}
@@ -595,7 +613,7 @@ App.ledger = {
           </div>
           <div style="text-align: right; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
             <span style="font-weight: 800; font-size: 14px; color: #ef4444;">${Number(item.amount || 0).toLocaleString()}원</span>
-            <button type="button" class="delete-item-btn" onclick="event.stopPropagation(); App.ledger.delete('${safeId}')" title="삭제">✕</button>
+            <button type="button" class="delete-item-btn" onclick="event.stopPropagation(); App.ledger.delete(${safeId})" title="삭제">✕</button>
           </div>
         </div>
       `;

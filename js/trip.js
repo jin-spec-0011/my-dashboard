@@ -73,7 +73,7 @@ App.trip = {
             <div class="log-text">📍 ${escapeHtml(placeText)}</div>
             <div class="log-time">📅 ${escapeHtml(item.date || '')} ${memoText ? '· ' + escapeHtml(memoText) : ''}</div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.trip.delete('${escapeHtml(String(item.id))}')">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.trip.delete(${jsArg(item.id)})">✕</button>
         </div>
       `;
     }).join('');

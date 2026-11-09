@@ -19,6 +19,23 @@ window.escapeHtml = function (str) {
     .replace(/'/g, '&#039;');
 };
 
+/**
+ * HTML 속성(onclick 등) 안에 넣을 JS 문자열 리터럴 생성
+ * - JSON.stringify 로 따옴표/역슬래시/개행을 JS 이스케이프 → escapeHtml 로 속성 탈출 차단
+ * - 예: onclick="App.x.delete(${jsArg(id)})"  (바깥 따옴표를 직접 쓰지 않음)
+ */
+window.jsArg = function (value) {
+  const s = value === null || value === undefined ? '' : String(value);
+  return escapeHtml(JSON.stringify(s));
+};
+
+/* 주차 사진 Base64 화이트리스트 검증 (속성 탈출·스크립트 URL 차단) */
+window.isSafeImageDataUrl = function (value) {
+  return typeof value === 'string'
+    && value.length <= 700000
+    && /^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+};
+
 /* crypto.subtle 미지원 환경(webOS 구형 런타임, http 접속)용 순수 JS SHA-256 */
 function sha256Fallback(ascii) {
   const rightRotate = (value, amount) => (value >>> amount) | (value << (32 - amount));

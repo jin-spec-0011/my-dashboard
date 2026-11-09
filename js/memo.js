@@ -145,15 +145,15 @@ App.memo = {
     }
     const sorted = [...list].sort((a, b) => Number(Boolean(a.completed)) - Number(Boolean(b.completed)));
     listEl.innerHTML = sorted.map((t) => {
-      const id = escapeHtml(String(t.id));
+      const id = jsArg(t.id);
       const done = Boolean(t.completed);
       return `
         <div class="log-item ${done ? 'completed' : ''}">
-          <div class="log-content" style="flex-direction:row; align-items:center; gap:8px; cursor:pointer;" onclick="App.memo.toggleTodo('${id}')">
+          <div class="log-content" style="flex-direction:row; align-items:center; gap:8px; cursor:pointer;" onclick="App.memo.toggleTodo(${id})">
             <span style="font-size:18px;">${done ? '☑️' : '⬜'}</span>
             <span class="log-text" style="${done ? 'text-decoration:line-through;color:#94a3b8;' : ''}">${escapeHtml(t.text || t.title || '')}</span>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.memo.deleteTodo('${id}')" title="삭제">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.memo.deleteTodo(${id})" title="삭제">✕</button>
         </div>`;
     }).join('');
   },
@@ -273,12 +273,12 @@ App.memo = {
       return;
     }
     listEl.innerHTML = source.map((s) => {
-      const id = escapeHtml(String(s.id));
+      const id = jsArg(s.id);
       const done = Boolean(s.completed);
       const dateText = s.date ? `📅 ${s.date}` : (s.time ? `🕒 ${s.time}` : '');
       return `
-        <div class="sticky-note-card ${done ? 'completed' : ''}" onclick="App.memo.openEditModal('${id}')" title="클릭하여 수정">
-          <button type="button" class="sticky-check-btn" onclick="App.memo.toggleSticky('${id}', event)" title="완료 체크">${done ? '☑️' : '⬜'}</button>
+        <div class="sticky-note-card ${done ? 'completed' : ''}" onclick="App.memo.openEditModal(${id})" title="클릭하여 수정">
+          <button type="button" class="sticky-check-btn" onclick="App.memo.toggleSticky(${id}, event)" title="완료 체크">${done ? '☑️' : '⬜'}</button>
           <div style="flex:1; min-width:0;">
             <div class="sticky-text">${escapeHtml(s.text || '')}</div>
             <div class="sticky-meta-row">
@@ -286,7 +286,7 @@ App.memo = {
               <span>작성: ${escapeHtml(s.author || '가족')} · <strong style="color:#2563eb;">✏️ 수정</strong></span>
             </div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.memo.deleteSticky('${id}', event)" title="메모 삭제">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.memo.deleteSticky(${id}, event)" title="메모 삭제">✕</button>
         </div>`;
     }).join('');
   },

@@ -1,6 +1,7 @@
 name: Firebase Rules Deploy
 
 # database.rules.json 이 바뀌면: 에뮬레이터 테스트 → 통과 시에만 실제 Firebase 배포 → 실서버 확인
+# main 이외 브랜치에서 수동 실행(workflow_dispatch) 시: 테스트만 수행, 배포·실서버 확인은 건너뜀
 on:
   push:
     branches: [main]
@@ -76,20 +77,21 @@ jobs:
           echo "present=true" >> "$GITHUB_OUTPUT"
 
       - name: Firebase 규칙 배포
-        if: steps.secret.outputs.present == 'true'
+        if: steps.secret.outputs.present == 'true' && github.ref == 'refs/heads/main'
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           firebase deploy --only database --project "$PROJECT_ID" --non-interactive
 
-      - name: 실서버 규칙 확인
-        if: steps.secret.outputs.present == 'true'
+      - name: 실서버 규칙 확인 (비로그인 전면 차단)
+        if: steps.secret.outputs.present == 'true' && github.ref == 'refs/heads/main'
         run: |
           sleep 5
           root=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/.json?shallow=true")
           parking=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/parking_logs.json?shallow=true")
           schedules=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/family_schedules.json?shallow=true")
-          echo "루트 읽기: $root (기대 401) / 주차 읽기: $parking (기대 200) / 일정 읽기: $schedules (기대 200)"
-          if [ "$root" != "401" ] || [ "$parking" != "200" ] || [ "$schedules" != "200" ]; then
+          ledger=$(curl -s -o /dev/null -w '%{http_code}' "$DB_URL/family_ledger.json?shallow=true")
+          echo "비로그인 읽기 — 루트: $root / 주차: $parking / 일정: $schedules / 가계부: $ledger (모두 기대 401)"
+          if [ "$root" != "401" ] || [ "$parking" != "401" ] || [ "$schedules" != "401" ] || [ "$ledger" != "401" ]; then
             echo "::error::실서버 규칙 확인 실패"
             exit 1
           fi
