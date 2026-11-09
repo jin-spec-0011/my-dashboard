@@ -134,8 +134,8 @@ async function main() {
   /* 주차: iOS 단축어용 '추가 전용' 공개 쓰기 (C안) */
   await expect('단축어(토큰 없음) 새 주차 PUT', 'anon', 'PUT', '/parking_logs/20261028213000', parking(20261028213000), true);
   await expect('단축어(토큰 없음) 새 주차 POST', 'anon', 'POST', '/parking_logs', parking(20261028213500), true);
-  await expect('기존 주차 기록 덮어쓰기', 'anon', 'PUT', '/parking_logs/20261028015500', parking(20261028015500, { slot: '99Z' }), false);
-  await expect('기존 주차 기록 삭제', 'anon', 'DELETE', '/parking_logs/20261028015500', undefined, false);
+  await expect('기존 주차 기록 덮어쓰기', 'anon', 'PUT', '/parking_logs/20261028213000', parking(20261028213000, { slot: '99Z' }), false);
+  await expect('기존 주차 기록 삭제', 'anon', 'DELETE', '/parking_logs/20261028213000', undefined, false);
   await expect('주차 전체 덮어쓰기', 'anon', 'PUT', '/parking_logs', { 1: parking(1) }, false);
   await expect('주차 전체 삭제', 'anon', 'DELETE', '/parking_logs', undefined, false);
   await expect('새 주차: id 없는 데이터', 'anon', 'PUT', '/parking_logs/20261028214000', { car: 'X1' }, false);
