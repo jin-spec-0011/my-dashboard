@@ -185,6 +185,54 @@ App.gauth = {
     }
   },
 
+  isStandalonePWA() {
+    try {
+      return Boolean(window.navigator.standalone)
+        || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /* 팝업/리다이렉트 없이 동작 → iPhone 홈 화면 PWA · LG 스탠바이미 대응 */
+  async signInWithEmail(email, password) {
+    const mail = String(email || '').trim();
+    const pw = String(password || '');
+    if (!mail || !pw) {
+      this.showOverlay('login', '⚠️ 이메일과 비밀번호를 모두 입력하세요.');
+      return;
+    }
+    if (typeof firebase === 'undefined' || !firebase.auth) {
+      alert('로그인 모듈이 아직 로드되지 않았습니다. 새로고침해주세요.');
+      return;
+    }
+    try { safeSet('gauth_last_email', mail); } catch (e) { /* 무시 */ }
+    this.showOverlay('loading', '🔑 이메일 로그인 중...');
+    try {
+      await firebase.auth().signInWithEmailAndPassword(mail, pw);
+    } catch (e) {
+      console.warn('[GAuth] 이메일 로그인 실패', e);
+      this.showOverlay('login', this.describeError(e));
+    }
+  },
+
+  /* 본인 Gmail 로 비밀번호 설정(재설정) 메일 발송 → 관리자가 비밀번호를 알 필요 없음 */
+  async sendPasswordSetupMail(email) {
+    const mail = String(email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      this.showOverlay('login', '⚠️ 비밀번호를 설정할 이메일 주소를 먼저 입력하세요.');
+      return;
+    }
+    try {
+      firebase.auth().languageCode = 'ko';
+      await firebase.auth().sendPasswordResetEmail(mail);
+      this.showOverlay('login', `📧 ${mail} 로 비밀번호 설정 메일을 보냈습니다.\n메일의 링크에서 비밀번호를 정한 뒤 아래에서 로그인하세요.\n(메일이 없으면 스팸함 확인)`);
+    } catch (e) {
+      console.warn('[GAuth] 비밀번호 설정 메일 실패', e);
+      this.showOverlay('login', this.describeError(e));
+    }
+  },
+
   describeError(e) {
     const code = e && e.code ? e.code : '';
     const map = {
@@ -193,7 +241,14 @@ App.gauth = {
       'auth/unauthorized-domain': '⚠️ 승인되지 않은 도메인입니다.\nFirebase 콘솔 → Authentication → 설정 → 승인된 도메인에 현재 주소를 추가하세요.',
       'auth/operation-not-allowed': '⚠️ Google 로그인이 비활성화 상태입니다.\nFirebase 콘솔 → Authentication → 로그인 방법에서 Google을 사용 설정하세요.',
       'auth/network-request-failed': '⚠️ 네트워크 오류입니다. 연결 상태를 확인해주세요.',
-      'auth/user-disabled': '⚠️ 사용 중지된 계정입니다.'
+      'auth/user-disabled': '⚠️ 사용 중지된 계정입니다.',
+      'auth/wrong-password': '⚠️ 비밀번호가 올바르지 않습니다.',
+      'auth/user-not-found': '⚠️ 등록되지 않은 이메일입니다.\n관리자에게 계정 추가를 요청하거나 [비밀번호 설정 메일]을 먼저 받으세요.',
+      'auth/invalid-login-credentials': '⚠️ 이메일 또는 비밀번호가 올바르지 않습니다.',
+      'auth/invalid-credential': '⚠️ 이메일 또는 비밀번호가 올바르지 않습니다.',
+      'auth/invalid-email': '⚠️ 이메일 형식이 올바르지 않습니다.',
+      'auth/missing-email': '⚠️ 이메일 주소를 입력하세요.',
+      'auth/too-many-requests': '⚠️ 시도가 너무 많습니다. 잠시 후 다시 시도하세요.'
     };
     return map[code] || `⚠️ 로그인 실패 (${code || '알 수 없는 오류'})`;
   },
@@ -249,8 +304,43 @@ App.gauth = {
     if (mode === 'loading') {
       desc.textContent = message || '확인 중...';
     } else if (mode === 'login') {
-      desc.textContent = message || '가족 Google 계정으로 로그인하세요.';
-      card.appendChild(makeBtn('G  Google 계정으로 로그인', '#2563eb', () => this.signIn()));
+      const standalone = this.isStandalonePWA();
+      desc.textContent = message || (standalone
+        ? '홈 화면 앱에서는 이메일 로그인을 사용하세요.\n(Google 버튼은 Safari·PC 브라우저 전용)'
+        : '가족 Google 계정 또는 이메일로 로그인하세요.');
+
+      card.appendChild(makeBtn('G  Google 계정으로 로그인', standalone ? '#94a3b8' : '#2563eb', () => this.signIn()));
+
+      const divider = document.createElement('div');
+      divider.style.cssText = 'margin:18px 0 6px;font-size:12px;color:#94a3b8;';
+      divider.textContent = '──────  또는 이메일 로그인  ──────';
+      card.appendChild(divider);
+
+      const makeInput = (type, placeholder, autocomplete) => {
+        const inp = document.createElement('input');
+        inp.type = type;
+        inp.placeholder = placeholder;
+        inp.autocomplete = autocomplete;
+        inp.autocapitalize = 'none';
+        inp.spellcheck = false;
+        inp.style.cssText = 'width:100%;box-sizing:border-box;padding:12px;margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;';
+        return inp;
+      };
+      const emailInp = makeInput('email', '이메일 (본인 Gmail)', 'username');
+      const pwInp = makeInput('password', '비밀번호', 'current-password');
+      try { emailInp.value = safeGet('gauth_last_email') || ''; } catch (e) { emailInp.value = ''; }
+      const submit = () => this.signInWithEmail(emailInp.value, pwInp.value);
+      pwInp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') submit(); });
+      card.appendChild(emailInp);
+      card.appendChild(pwInp);
+      card.appendChild(makeBtn('✉️  이메일로 로그인', standalone ? '#2563eb' : '#0f766e', submit));
+
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.textContent = '🔑 비밀번호 설정 / 재설정 메일 받기';
+      link.style.cssText = 'margin-top:12px;background:none;border:0;color:#2563eb;font-size:13px;text-decoration:underline;cursor:pointer;';
+      link.addEventListener('click', () => this.sendPasswordSetupMail(emailInp.value));
+      card.appendChild(link);
     } else if (mode === 'denied') {
       desc.textContent = `이 계정은 가족 구성원으로 등록되지 않았습니다.\n\n계정: ${extra || '-'}\nUID: ${message}\n\n관리자가 Firebase 콘솔 → Realtime Database → members 에\n이 UID를 등록한 뒤 새로고침하세요.`;
       card.appendChild(makeBtn('📋 UID 복사', '#0f766e', async () => {
