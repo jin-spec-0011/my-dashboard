@@ -10,6 +10,7 @@
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
       "$id": {
+        ".write": "!data.exists() && newData.exists()",
         ".validate": "newData.hasChild('id')",
         "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
         "photoBase64": { ".validate": "newData.isString() && newData.val().length <= 500000" },

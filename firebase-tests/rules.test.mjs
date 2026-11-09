@@ -2,6 +2,7 @@
  * Firebase Realtime Database 보안 규칙 테스트 (에뮬레이터 전용)
  * 실행: firebase emulators:exec --only database "node firebase-tests/rules.test.mjs"
  * - 2단계(잠금) 규칙: 등록된 가족 UID(members/{uid})만 읽기/쓰기 허용
+ * - 예외: parking_logs/{새 id} 는 iOS 단축어용 '추가 전용' 공개 쓰기 (읽기·수정·삭제는 가족만)
  * - 사용자 인증: 에뮬레이터는 서명 없는(alg: none) ID 토큰을 ?auth= 로 받아 auth 변수로 사용
  * - 관리자 시드: Authorization: Bearer owner (규칙 우회)
  * - 하나라도 실패하면 exit 1 → 워크플로가 배포하지 않음
@@ -130,7 +131,15 @@ async function main() {
   for (const p of ['/', '/parking_logs', '/family_todos', '/family_stickies', '/family_ledger', '/family_schedules', '/family_trips', '/private_schedules/jinse', '/calendar_data', '/members', `/members/${UID_JINSE}`, '/auth_pins']) {
     await expect(`읽기 ${p}`, 'anon', 'GET', p, undefined, false);
   }
-  await expect('단축어(토큰 없음) 주차 저장', 'anon', 'PUT', '/parking_logs/20261028213000', parking(20261028213000), false);
+  /* 주차: iOS 단축어용 '추가 전용' 공개 쓰기 (C안) */
+  await expect('단축어(토큰 없음) 새 주차 PUT', 'anon', 'PUT', '/parking_logs/20261028213000', parking(20261028213000), true);
+  await expect('단축어(토큰 없음) 새 주차 POST', 'anon', 'POST', '/parking_logs', parking(20261028213500), true);
+  await expect('기존 주차 기록 덮어쓰기', 'anon', 'PUT', '/parking_logs/20261028015500', parking(20261028015500, { slot: '99Z' }), false);
+  await expect('기존 주차 기록 삭제', 'anon', 'DELETE', '/parking_logs/20261028015500', undefined, false);
+  await expect('주차 전체 덮어쓰기', 'anon', 'PUT', '/parking_logs', { 1: parking(1) }, false);
+  await expect('주차 전체 삭제', 'anon', 'DELETE', '/parking_logs', undefined, false);
+  await expect('새 주차: id 없는 데이터', 'anon', 'PUT', '/parking_logs/20261028214000', { car: 'X1' }, false);
+  await expect('새 주차: 사진 500KB 초과', 'anon', 'PUT', '/parking_logs/20261028214500', parking(20261028214500, { photoBase64: 'A'.repeat(600000) }), false);
   await expect('가계부 덮어쓰기', 'anon', 'PUT', '/family_ledger', [{ id: 1 }], false);
   await expect('루트 삭제', 'anon', 'DELETE', '/', undefined, false);
   await expect('캘린더 세션키 주입', 'anon', 'PUT', '/calendar_data/gogo_auth_pass', 'true', false);
