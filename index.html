@@ -22,19 +22,19 @@
   <link rel="stylesheet" href="css/style.css?v=20261031p">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
 
-  <!-- 0. 🔒 포털 진입 잠금 화면 -->
+  <!-- 0. 🔒 로그인 대기 화면 (Google 로그인 오버레이가 기본으로 덮음) -->
   <section id="screen-lock" class="screen active">
     <div class="lock-card">
-      <div class="lock-icon">🔒</div>
+      <div class="lock-icon">🔐</div>
       <h2 class="lock-title">스마트 포털</h2>
-      <p class="lock-desc">보안 PIN 4자리를 입력하세요.</p>
-      <input type="password" id="pinInput" class="pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter') App.auth.checkPIN()">
-      <button type="button" class="btn-lock-unlock" onclick="App.auth.checkPIN()">잠금 해제</button>
+      <p class="lock-desc">가족 Google 계정으로 로그인하세요.</p>
+      <button type="button" class="btn-lock-unlock" onclick="App.gauth.signIn()">Google 계정으로 로그인</button>
     </div>
   </section>
 
@@ -48,18 +48,17 @@
       <div class="header-right">
         <button type="button" class="btn-push-toggle" id="btnPushToggle" onclick="App.push.requestPermission()">🔔 알림</button>
         <span class="cloud-badge" id="cloudStatusBadge" onclick="App.forceSyncAll()" title="탭하여 실시간 강제 동기화">⚡ 연결 중...</span>
-        <button type="button" class="btn-icon-lock" onclick="App.auth.lock()" title="화면 잠금">🔒</button>
+        <button type="button" class="btn-icon-lock" onclick="App.gauth.signOut()" title="로그아웃">🚪</button>
       </div>
     </header>
 
     <div class="profile-switch-bar">
       <div class="profile-info-wrap">
-        <span class="profile-current-badge" id="currentProfileBadge">👥 가족 공용 모드</span>
+        <span class="profile-current-badge" id="currentProfileBadge">👥 로그인 확인 중</span>
       </div>
       <div class="profile-actions-wrap">
-        <button type="button" class="btn-prof btn-prof-public active" id="btn-prof-public" onclick="App.auth.requestProfileSwitch('public')">👥 공용</button>
-        <button type="button" class="btn-prof btn-prof-jinse" id="btn-prof-jinse" onclick="App.auth.requestProfileSwitch('jinse')">👤 진세</button>
-        <button type="button" class="btn-prof btn-prof-jihye" id="btn-prof-jihye" onclick="App.auth.requestProfileSwitch('jihye')">👤 지혜</button>
+        <button type="button" class="btn-prof" onclick="App.gauth.copyShortcutToken()" title="iOS 단축어 연동용 토큰 복사">🔑 단축어 토큰</button>
+        <button type="button" class="btn-prof" onclick="App.gauth.signOut()">🚪 로그아웃</button>
       </div>
     </div>
 
@@ -546,56 +545,6 @@
     </div>
   </section>
 
-  <!-- 🔒 개인 PIN 인증 모달 -->
-  <div id="profile-pin-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-      <button type="button" class="modal-close-icon-btn" onclick="App.auth.closeProfileModal()" title="닫기">✕</button>
-      <div class="modal-header"><h3 id="profileModalTitle">👤 개인 인증</h3></div>
-      <div class="modal-body">
-        <p class="modal-desc">비공개 일정을 열람하려면 개인 PIN 4자리를 입력하세요.</p>
-        <input type="password" id="profilePinInput" class="pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter') App.auth.verifyProfilePIN()">
-        <label class="remember-device-label">
-          <input type="checkbox" id="rememberDeviceCheck" class="custom-checkbox" checked>
-          <span>📱 이 기기 기억하기 (자동 로그인)</span>
-        </label>
-        <div class="modal-link-row">
-          <button type="button" class="btn-link" onclick="App.auth.openChangePinModal()">🔑 PIN 변경</button>
-          <button type="button" class="btn-link danger" onclick="App.auth.resetPersonalPIN()">🔄 분실/초기화</button>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-modal-save" onclick="App.auth.verifyProfilePIN()">인증 및 잠금해제</button>
-        <button type="button" class="btn-modal-cancel" onclick="App.auth.closeProfileModal()">취소</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 🔑 개인 PIN 변경 모달 -->
-  <div id="profile-pin-change-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
-      <button type="button" class="modal-close-icon-btn" onclick="App.auth.closeChangePinModal()" title="닫기">✕</button>
-      <div class="modal-header"><h3 id="changePinModalTitle">🔑 개인 PIN 변경</h3></div>
-      <div class="modal-body modal-body-left">
-        <div class="form-group">
-          <label>현재 PIN (4자리)</label>
-          <input type="password" id="currentPinInput" class="memo-text-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="현재 비밀번호">
-        </div>
-        <div class="form-group">
-          <label>새 PIN (4자리)</label>
-          <input type="password" id="newPinInput" class="memo-text-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="새 비밀번호">
-        </div>
-        <div class="form-group">
-          <label>새 PIN 확인</label>
-          <input type="password" id="newPinConfirmInput" class="memo-text-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="새 비밀번호 재입력">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-modal-save" onclick="App.auth.saveNewPIN()">새 비밀번호 저장</button>
-        <button type="button" class="btn-modal-cancel" onclick="App.auth.closeChangePinModal()">취소</button>
-      </div>
-    </div>
-  </div>
-
   <!-- 🛒 장보기 체크 → 가계부 연동 모달 -->
   <div id="shopping-ledger-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
@@ -659,8 +608,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/app.js?v=20261031p"></script>
-  <script src="js/auth.js?v=20261031p"></script>
+  <script src="js/app.js?v=20261109a"></script>
+  <script src="js/gauth.js?v=20261109a"></script>
+  <script src="js/auth.js?v=20261109a"></script>
   <script src="js/push.js?v=20261031p"></script>
   <script src="js/parking.js?v=20261031p"></script>
   <script src="js/schedule.js?v=20261031p"></script>
