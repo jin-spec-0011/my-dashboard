@@ -270,7 +270,7 @@ App.schedule = {
       return;
     }
     listEl.innerHTML = schedules.map((item) => {
-      const id = escapeHtml(String(item.id));
+      const id = jsArg(item.id);
       const titleText = item.title || item.text || '일정';
       const isRange = scheduleEnd(item) !== item.date;
       const lockBadge = item.isPrivate ? '<span class="schedule-tag tag-private">🔒 나만보기</span>' : '';
@@ -278,14 +278,14 @@ App.schedule = {
       const isEditingThis = this.editingId !== null && String(this.editingId) === String(item.id);
       return `
         <div class="log-item ${isEditingThis ? 'schedule-editing-item' : ''}">
-          <div class="log-content" onclick="App.schedule.startEdit('${id}', ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
+          <div class="log-content" onclick="App.schedule.startEdit(${id}, ${Boolean(item.isPrivate)})" style="cursor:pointer;" title="클릭하여 수정">
             <div class="log-text">
               ${escapeHtml(titleText)} ${rangeBadge}${lockBadge}
               <span class="click-edit-tag">✏️ 수정</span>
             </div>
             <div class="log-time">📅 ${escapeHtml(this.formatRange(item))} · 작성자: ${escapeHtml(item.author || '가족')}</div>
           </div>
-          <button type="button" class="delete-item-btn" onclick="App.schedule.delete('${id}', ${Boolean(item.isPrivate)})" title="삭제">✕</button>
+          <button type="button" class="delete-item-btn" onclick="App.schedule.delete(${id}, ${Boolean(item.isPrivate)})" title="삭제">✕</button>
         </div>`;
     }).join('');
   }
