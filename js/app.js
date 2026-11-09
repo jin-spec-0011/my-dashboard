@@ -1,7 +1,7 @@
 /**
  * GOGO 스마트 매니저 - 코어 (js/app.js)
  * - 공용 헬퍼(escapeHtml, sha256, safeGet/safeSet, parkingTime)
- * - Firebase 초기화 + 경로별 단일 실시간 리스너
+ * - Firebase 초기화 + 경로별 단일 실시간 리스너 (Google 로그인 완료 후에만 시작)
  * - 로컬스토리지 캐시 + Firebase 트랜잭션 저장 데이터 스토어
  * - 라우터 / 토스트 / 대시보드 라이브 요약 / N 뱃지
  */
@@ -267,7 +267,7 @@ function createDataStore({ key, firebasePath, maxItems = 500, onRender, sanitize
       }
     }).catch((err) => {
       console.error(`[Store:${key}] Firebase 저장 실패`, err);
-      if (App.ui) App.ui.toast('⚠️ 서버 저장 실패 - 네트워크를 확인해주세요.');
+      if (App.ui) App.ui.toast('⚠️ 서버 저장 실패 - 로그인/네트워크를 확인해주세요.');
     });
   };
 
@@ -338,11 +338,15 @@ const FIREBASE_CONFIG = {
   appId: '1:1016084163074:web:836b8517d023638e12551b'
 };
 
+/* calendar_data 에서 로컬스토리지로 반영 허용하는 키 접두어 (인증/세션 키 주입 차단) */
+const CALENDAR_KEY_PATTERN = /^calendar_(goal|memo)_\d{4}-\d{2}$/;
+
 window.App = Object.assign(window.App || {}, {
   db: null,
   isFirebaseActive: false,
   stores: {},
   _privateRef: null,
+  _listenersAttached: false,
 
   state: {
     pendingRedirect: null,
@@ -387,10 +391,6 @@ window.App = Object.assign(window.App || {}, {
         if (name === 'sticky' && App.memo) App.memo.filterStickies();
         if (name === 'ledger' && App.ledger) App.ledger.render(App.stores.ledger.getItems());
         if (name === 'trip' && App.trip) App.trip.renderList(App.stores.trips.getItems());
-        if (name === 'lock') {
-          const pin = document.getElementById('pinInput');
-          if (pin) setTimeout(() => pin.focus(), 150);
-        }
       } catch (e) {
         console.error(`[Router] ${name} 렌더 오류`, e);
       }
@@ -539,9 +539,13 @@ window.App = Object.assign(window.App || {}, {
     }
   },
 
+  isAuthed() {
+    return Boolean(App.gauth && App.gauth.profile);
+  },
+
   /* 개인 비공개 일정 채널 - 단일 리스너 유지 */
   syncPrivateChannel() {
-    if (!this.isFirebaseActive || !this.db) return;
+    if (!this.isFirebaseActive || !this.db || !this.isAuthed()) return;
     if (this._privateRef) {
       this._privateRef.off('value');
       this._privateRef = null;
@@ -557,11 +561,11 @@ window.App = Object.assign(window.App || {}, {
   },
 
   async forceSyncAll(silent = false) {
-    if (!silent) this.ui.toast('🔄 최신 데이터를 동기화하는 중...');
-    if (!this.db) {
-      if (!silent) this.ui.toast('⚠️ 서버에 연결되지 않았습니다.');
+    if (!this.db || !this.isAuthed()) {
+      if (!silent) this.ui.toast('⚠️ 로그인 후 동기화할 수 있습니다.');
       return;
     }
+    if (!silent) this.ui.toast('🔄 최신 데이터를 동기화하는 중...');
     const endpoints = [
       ['parking_logs', 'parking'],
       ['family_todos', 'todos'],
@@ -590,7 +594,7 @@ window.App = Object.assign(window.App || {}, {
     const handleWake = () => {
       clearTimeout(wakeTimer);
       wakeTimer = setTimeout(() => {
-        if (!this.db) return;
+        if (!this.db || !this.isAuthed()) return;
         try {
           this.db.goOnline();
           this.forceSyncAll(true);
@@ -604,7 +608,9 @@ window.App = Object.assign(window.App || {}, {
     window.addEventListener('online', handleWake);
   },
 
+  /* Google 로그인 + members 확인 완료 후 App.gauth 가 1회 호출 */
   initFirebase() {
+    if (this._listenersAttached) return;
     if (typeof firebase === 'undefined') {
       console.warn('[Firebase] SDK 로드 실패 - 오프라인 캐시로 동작');
       this.setCloudBadge(false, '⚠️ 오프라인');
@@ -619,9 +625,15 @@ window.App = Object.assign(window.App || {}, {
       this.setCloudBadge(false, '⚠️ 연결 실패');
       return;
     }
+    this._listenersAttached = true;
 
     const db = this.db;
-    const onErr = (path) => (err) => console.error(`[Firebase] ${path} 읽기 실패`, err);
+    const onErr = (path) => (err) => {
+      console.error(`[Firebase] ${path} 읽기 실패`, err);
+      if (err && /permission/i.test(String(err.code || err.message || ''))) {
+        this.setCloudBadge(false, '⛔ 권한 없음');
+      }
+    };
 
     db.ref('.info/connected').on('value', (snap) => {
       const ok = snap.val() === true;
@@ -645,14 +657,14 @@ window.App = Object.assign(window.App || {}, {
     db.ref('family_stickies').on('value', (snap) => {
       this.stores.stickies.syncFromFirebase(snap.val(), {
         title: () => '📌 새로운 고정 메모 등록',
-        body: (m) => m.text || '새로운 메모가 등록되었습니다.'
+        body: () => '새로운 메모가 등록되었습니다.'
       });
     }, onErr('family_stickies'));
 
     db.ref('family_ledger').on('value', (snap) => {
       this.stores.ledger.syncFromFirebase(snap.val(), {
         title: () => '💰 새로운 가계부 지출 내역',
-        body: (l) => `[${l.author || '가족'}] ${l.desc || '지출'}: ${Number(l.amount || 0).toLocaleString()}원`
+        body: (l) => `[${l.author || '가족'}] 지출 내역이 등록되었습니다.`
       });
     }, onErr('family_ledger'));
 
@@ -670,16 +682,11 @@ window.App = Object.assign(window.App || {}, {
       });
     }, onErr('family_trips'));
 
-    db.ref('auth_pins').on('value', (snap) => {
-      const data = snap.val() || {};
-      safeSet('pin_hash_jinse', data.jinse || '');
-      safeSet('pin_hash_jihye', data.jihye || '');
-    }, onErr('auth_pins'));
-
     db.ref('calendar_data').on('value', (snap) => {
       const data = snap.val() || {};
       let changed = false;
       Object.keys(data).forEach((k) => {
+        if (!CALENDAR_KEY_PATTERN.test(k)) return;
         const v = data[k] === null || data[k] === undefined ? '' : String(data[k]);
         if (safeGet(k) !== v) {
           safeSet(k, v);
@@ -742,17 +749,21 @@ window.App = Object.assign(window.App || {}, {
     safeInit('auth');
     safeInit('push');
 
-    this.initFirebase();
     this.attachLifecycleHandlers();
     this.summary.refresh();
     this.badge.refresh();
 
+    /* 로그인 확인 전까지는 잠금 화면 고정 → 확인 후 App.gauth 가 원래 화면으로 이동 */
     const hash = window.location.hash.replace('#', '');
-    if (safeGet('gogo_auth_pass') === 'true') {
-      this.router.go(this.router.screens.includes(hash) && hash !== 'lock' ? hash : 'home');
+    if (this.router.screens.includes(hash) && hash !== 'lock' && hash !== 'home') this.state.pendingRedirect = hash;
+    safeSet('gogo_auth_pass', 'false');
+    this.router.go('lock');
+
+    if (this.gauth && typeof this.gauth.start === 'function') {
+      this.gauth.start(() => this.initFirebase());
     } else {
-      if (this.router.screens.includes(hash) && hash !== 'lock' && hash !== 'home') this.state.pendingRedirect = hash;
-      this.router.go('lock');
+      console.error('[App] gauth.js 미로드 - 서버 동기화 불가');
+      this.setCloudBadge(false, '⚠️ 로그인 모듈 없음');
     }
   }
 });

@@ -1,14 +1,15 @@
 /**
  * GOGO 스마트 매니저 - Service Worker
  * - 앱 셸: 네트워크 우선 → 실패 시 캐시 (배포 직후 구버전 고착 방지)
- * - Firebase / 외부 CDN 요청은 가로채지 않음 (실시간 동기화 보호)
+ * - Firebase / 외부 CDN 요청은 가로채지 않음 (실시간 동기화·로그인 보호)
  */
-const CACHE_NAME = 'gogo-dashboard-v20261031-print-ios';
+const CACHE_NAME = 'gogo-dashboard-v20261109-gauth';
 const APP_SHELL = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/gauth.js',
   './js/auth.js',
   './js/push.js',
   './js/parking.js',
@@ -43,6 +44,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  /* Firebase Auth 리다이렉트 핸들러 경로는 캐시하지 않음 */
+  if (url.pathname.indexOf('/__/auth/') !== -1) return;
 
   event.respondWith(
     fetch(req)
@@ -72,14 +75,14 @@ self.addEventListener('push', (event) => {
     icon: 'icon.png',
     badge: 'icon.png',
     vibrate: [200, 100, 200],
-    data: { url: data.url || './index.html' }
+    data: { url: './index.html' }
   }));
 });
 
-/* 🔔 알림 탭 → 앱 포커스 */
+/* 🔔 알림 탭 → 앱 포커스 (동일 출처 index.html 로만 이동) */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || './index.html';
+  const targetUrl = './index.html';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

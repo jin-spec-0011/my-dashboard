@@ -84,6 +84,9 @@ async function main() {
   await expect('PIN: 평문 저장', 'PUT', '/auth_pins/jinse', '1234', false);
   await expect('PIN: 다른 사용자 경로', 'PUT', '/auth_pins/evil', 'c'.repeat(64), false);
   await expect('캘린더: 잘못된 키', 'PUT', '/calendar_data/evil', 'x', false);
+  await expect('가족 명단(members) 전체 읽기', 'GET', '/members', undefined, false);
+  await expect('가족 명단: 비로그인 개별 읽기', 'GET', '/members/someuid', undefined, false);
+  await expect('가족 명단: 클라이언트 쓰기', 'PUT', '/members/someuid', 'jinse', false);
 
   const failed = results.filter((r) => !r.ok);
   results.forEach((r) => console.log(`${r.ok ? 'PASS' : 'FAIL'}  [${r.want}] ${r.name}  (HTTP ${r.status})`));
