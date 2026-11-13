@@ -37,6 +37,19 @@ const parking = (id, extra = {}) => Object.assign({
   id, car: 'X1', floor: 'B1', slot: '18A', text: 'X1 - B1-18A', author: '진세', time: '10월 28일 21:00', type: '지하 주차장'
 }, extra);
 
+/* 🔧 차량 관리 페이로드 (js/mileage.js · iOS 단축어 규격) */
+const trip = (id, extra = {}) => Object.assign({
+  id, startId: id - 3000, car: 'X1', from: { lat: 36.63, lng: 127.43 }, to: { lat: 36.70, lng: 127.38 },
+  distance_km: 18.4, route_min: 25, elapsed_min: 28, flag: 'ok', source: 'kakao_est', author: '진세', time: '11월 13일 10:00'
+}, extra);
+const odo = (id, car, km) => ({ id, car, odometer_km: km, author: '진세', time: '11월 13일 10:00' });
+const rule = (extra = {}) => Object.assign({
+  name: '타이어 위치 교환', interval_km: 10000, interval_months: 12, warn_km: 1000, warn_days: 30, enabled: true, base_km: 0, base_date: '', order: 2, custom: false
+}, extra);
+const mlog = (id, extra = {}) => Object.assign({
+  id, car: 'X1', itemKey: 'tire_rotation', done_km: 12000, done_date: '2026-11-13', memo: '', author: '진세', time: '11월 13일 10:00'
+}, extra);
+
 async function main() {
   /* 기존 데이터 시드 (관리자 권한) */
   await req('PUT', '/', {
@@ -70,6 +83,27 @@ async function main() {
   await expect('주차 개별 삭제', 'DELETE', '/parking_logs/20261028210000', undefined, true);
   await expect('주차 전체 삭제(clearAll)', 'DELETE', '/parking_logs', undefined, true);
 
+  /* ── 🔧 차량 관리: 허용 ── */
+  await expect('단축어A PUT /trip_pending/x1', 'PUT', '/trip_pending/x1', { startId: 20261113090000, startIso: '2026-11-13T09:00:00+09:00', lat: 36.63, lng: 127.43 }, true);
+  await expect('출발 기록 읽기', 'GET', '/trip_pending', undefined, true);
+  await expect('단축어B PUT /trip_logs/{14자리id}', 'PUT', '/trip_logs/20261113100000', trip(20261113100000), true);
+  await expect('왕복 의심 운행 저장', 'PUT', '/trip_logs/20261113110000', trip(20261113110000, { distance_km: 0.4, elapsed_min: 45, flag: 'roundtrip_suspect' }), true);
+  await expect('앱: 왕복 거리 수동 보정', 'PUT', '/trip_logs/20261113110000/manual_km', 12.5, true);
+  await expect('운행 기록 읽기', 'GET', '/trip_logs', undefined, true);
+  await expect('단축어B DELETE /trip_pending/x1', 'DELETE', '/trip_pending/x1', undefined, true);
+  await expect('계기판 X1 저장', 'PUT', '/odometer_logs/20261113120000', odo(20261113120000, 'X1', 12345), true);
+  await expect('계기판 엑센트 저장', 'PUT', '/odometer_logs/20261113120100', odo(20261113120100, '엑센트', 150800), true);
+  await expect('계기판 기록 읽기', 'GET', '/odometer_logs', undefined, true);
+  await expect('정비 기준표 시드(차량 단위 객체)', 'PUT', '/maintenance_rules/x1', { engine_oil: rule({ name: '엔진오일 · 필터', interval_km: 16000, order: 1 }), tire_rotation: rule() }, true);
+  await expect('정비 사용자 항목 추가', 'PUT', '/maintenance_rules/accent/custom_20261113130000', rule({ name: '타이어 위치 교환', interval_km: 4000, interval_months: 0, custom: true }), true);
+  await expect('정비 기준표 읽기', 'GET', '/maintenance_rules', undefined, true);
+  await expect('정비 사용자 항목 삭제', 'DELETE', '/maintenance_rules/accent/custom_20261113130000', undefined, true);
+  await expect('정비 완료 기록', 'PUT', '/maintenance_logs/20261113140000', mlog(20261113140000), true);
+  await expect('정비 이력 읽기', 'GET', '/maintenance_logs', undefined, true);
+  await expect('정비 이력 삭제', 'DELETE', '/maintenance_logs/20261113140000', undefined, true);
+  await expect('운행 기록 삭제', 'DELETE', '/trip_logs/20261113100000', undefined, true);
+  await expect('계기판 기록 삭제', 'DELETE', '/odometer_logs/20261113120000', undefined, true);
+
   /* ── 차단되어야 하는 동작 ── */
   await expect('루트 전체 읽기', 'GET', '/', undefined, false);
   await expect('루트 전체 덮어쓰기', 'PUT', '/', { hacked: true }, false);
@@ -87,6 +121,20 @@ async function main() {
   await expect('가족 명단(members) 전체 읽기', 'GET', '/members', undefined, false);
   await expect('가족 명단: 비로그인 개별 읽기', 'GET', '/members/someuid', undefined, false);
   await expect('가족 명단: 클라이언트 쓰기', 'PUT', '/members/someuid', 'jinse', false);
+  await expect('출발 기록: 엑센트 등 다른 키', 'PUT', '/trip_pending/accent', { startId: 20261113090000, lat: 36.6, lng: 127.4 }, false);
+  await expect('출발 기록: 좌표 문자열', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: '36.6', lng: 127.4 }, false);
+  await expect('출발 기록: 좌표 범위 밖', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: 136.6, lng: 127.4 }, false);
+  await expect('운행: 엑센트 차량', 'PUT', '/trip_logs/20261113150000', trip(20261113150000, { car: '엑센트' }), false);
+  await expect('운행: 거리 1000km 초과', 'PUT', '/trip_logs/20261113150100', trip(20261113150100, { distance_km: 5000 }), false);
+  await expect('운행: 14자리 아닌 키(POST 자동키)', 'POST', '/trip_logs', trip(20261113150200), false);
+  await expect('운행: 잘못된 flag', 'PUT', '/trip_logs/20261113150300', trip(20261113150300, { flag: 'hack' }), false);
+  await expect('계기판: 음수', 'PUT', '/odometer_logs/20261113150400', odo(20261113150400, 'X1', -5), false);
+  await expect('계기판: 미등록 차량', 'PUT', '/odometer_logs/20261113150500', odo(20261113150500, 'K5', 1000), false);
+  await expect('정비 기준: 미등록 차량 경로', 'PUT', '/maintenance_rules/evil', { a: rule() }, false);
+  await expect('정비 기준: 잘못된 항목 키', 'PUT', '/maintenance_rules/x1/Bad-Key', rule(), false);
+  await expect('정비 기준: 이름 없음', 'PUT', '/maintenance_rules/x1/no_name', rule({ name: '' }), false);
+  await expect('정비 이력: 메모 100자 초과', 'PUT', '/maintenance_logs/20261113150600', mlog(20261113150600, { memo: 'x'.repeat(150) }), false);
+  await expect('정비 이력: 날짜 형식 오류', 'PUT', '/maintenance_logs/20261113150700', mlog(20261113150700, { done_date: '11/13' }), false);
 
   const failed = results.filter((r) => !r.ok);
   results.forEach((r) => console.log(`${r.ok ? 'PASS' : 'FAIL'}  [${r.want}] ${r.name}  (HTTP ${r.status})`));
