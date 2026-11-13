@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 
   <link rel="stylesheet" href="css/style.css?v=20261031p">
+  <link rel="stylesheet" href="css/mileage.css?v=20261113a">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -71,6 +72,17 @@
             <span class="menu-new-badge" id="badge-parking" style="display: none;">N</span>
           </div>
           <div class="card-desc live-summary-box" id="summary-parking"><span class="summary-loading">주차 현황 확인 중...</span></div>
+        </div>
+      </div>
+
+      <div class="menu-card" onclick="App.router.go('vehicle')">
+        <div class="card-icon-wrap bg-blue">🔧</div>
+        <div class="card-text-wrap">
+          <div class="card-title-row">
+            <span class="card-title">차량 관리</span>
+            <span class="menu-new-badge" id="badge-vehicle" style="display: none;">!</span>
+          </div>
+          <div class="card-desc live-summary-box" id="summary-vehicle"><span class="summary-loading">주행거리 확인 중...</span></div>
         </div>
       </div>
 
@@ -227,6 +239,15 @@
       </div>
       <div id="logList" class="log-list"></div>
     </div>
+  </section>
+
+  <!-- 2-1. 🔧 차량 관리 (주행거리 · 정비 알림) — 내용은 js/mileage.js 가 렌더 -->
+  <section id="screen-vehicle" class="screen">
+    <div class="header-nav">
+      <button type="button" class="btn-back" onclick="App.router.go('home')">← 홈으로</button>
+      <h2>🔧 차량 관리</h2>
+    </div>
+    <div id="vehicleRoot"><div class="empty-msg">차량 데이터를 불러오는 중...</div></div>
   </section>
 
   <!-- 3. 🗓️ 가족 일정 관리 -->
@@ -608,11 +629,12 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/app.js?v=20261109a"></script>
+  <script src="js/app.js?v=20261113a"></script>
   <script src="js/gauth.js?v=20261109c"></script>
   <script src="js/auth.js?v=20261109a"></script>
   <script src="js/push.js?v=20261031p"></script>
   <script src="js/parking.js?v=20261031p"></script>
+  <script src="js/mileage.js?v=20261113a"></script>
   <script src="js/schedule.js?v=20261031p"></script>
   <script src="js/calendar.js?v=20261031p"></script>
   <script src="js/memo.js?v=20261031p"></script>

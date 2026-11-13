@@ -366,7 +366,7 @@ window.App = Object.assign(window.App || {}, {
   },
 
   router: {
-    screens: ['lock', 'home', 'parking', 'schedule', 'calendar', 'shopping', 'sticky', 'ledger', 'trip'],
+    screens: ['lock', 'home', 'parking', 'schedule', 'calendar', 'shopping', 'sticky', 'ledger', 'trip', 'vehicle'],
     go(screenName) {
       const name = this.screens.includes(screenName) ? screenName : 'home';
       if (name !== 'lock' && safeGet('gogo_auth_pass') !== 'true') {
@@ -391,6 +391,7 @@ window.App = Object.assign(window.App || {}, {
         if (name === 'sticky' && App.memo) App.memo.filterStickies();
         if (name === 'ledger' && App.ledger) App.ledger.render(App.stores.ledger.getItems());
         if (name === 'trip' && App.trip) App.trip.renderList(App.stores.trips.getItems());
+        if (name === 'vehicle' && App.mileage) App.mileage.render();
       } catch (e) {
         console.error(`[Router] ${name} 렌더 오류`, e);
       }
@@ -400,7 +401,7 @@ window.App = Object.assign(window.App || {}, {
   /* 대시보드 카드 라이브 요약 */
   summary: {
     refresh() {
-      ['renderParking', 'renderSchedule', 'renderShopping', 'renderLedger', 'renderSticky', 'renderTrip'].forEach((fn) => {
+      ['renderParking', 'renderSchedule', 'renderShopping', 'renderLedger', 'renderSticky', 'renderTrip', 'renderVehicle'].forEach((fn) => {
         try { this[fn](); } catch (e) { console.error(`[Summary] ${fn}`, e); }
       });
     },
@@ -510,6 +511,12 @@ window.App = Object.assign(window.App || {}, {
       const first = list[0];
       const date = (first.date || '').substring(5);
       el.innerHTML = `<span class="live-trip-text">📍 ${escapeHtml(first.place || first.title || '여행지')} ${date ? `(${escapeHtml(date)})` : ''}</span>`;
+    },
+
+    renderVehicle() {
+      const el = document.getElementById('summary-vehicle');
+      if (!el || !App.mileage) return;
+      el.innerHTML = App.mileage.summaryHtml();
     }
   },
 
@@ -536,6 +543,14 @@ window.App = Object.assign(window.App || {}, {
       check('last_view_trip', 'trips', 'badge-trip');
       check('last_view_ledger', 'ledger', 'badge-ledger');
       check('last_view_schedule', 'schedules', 'badge-schedule');
+
+      /* 🔧 차량 정비: 초과(🔴) 항목이 있으면 N 대신 ! 표시 */
+      const vEl = document.getElementById('badge-vehicle');
+      if (vEl && App.mileage) {
+        let hasOver = false;
+        try { hasOver = App.mileage.alerts().some((a) => a.status === 'over'); } catch (e) { console.warn(e); }
+        vEl.style.display = hasOver ? 'inline-block' : 'none';
+      }
     }
   },
 
@@ -697,6 +712,13 @@ window.App = Object.assign(window.App || {}, {
       const typing = active && (active.id === 'calendarGoalInput' || active.id === 'calendarMemoInput');
       if (changed && !typing && this.calendar) this.calendar.generate();
     }, onErr('calendar_data'));
+
+    /* 🔧 차량 관리 (trip_pending / trip_logs / odometer_logs / maintenance_*) */
+    try {
+      if (this.mileage && typeof this.mileage.attach === 'function') this.mileage.attach(db);
+    } catch (e) {
+      console.error('[Firebase] 차량 관리 리스너 연결 실패', e);
+    }
 
     this.syncPrivateChannel();
   },

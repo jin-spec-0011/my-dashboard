@@ -1,0 +1,146 @@
+/* GOGO 스마트 매니저 - 차량 관리 (css/mileage.css)
+   모바일 390px 기준 · 기존 style.css 카드/리스트 클래스 위에 덧씌움 */
+
+.vehicle-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.vehicle-summary-alert {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehicle-alert-ok { color: #16a34a; }
+.vehicle-alert-soon { color: #d97706; font-weight: 600; }
+.vehicle-alert-over { color: #dc2626; font-weight: 700; }
+
+.vehicle-big-km {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 4px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vehicle-est-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #dbeafe;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.vehicle-meta {
+  font-size: 13px;
+  color: #475569;
+  margin-top: 4px;
+}
+
+.vehicle-warn {
+  font-size: 13px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.vehicle-live {
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.vehicle-mt-item {
+  align-items: flex-start;
+  border-left: 4px solid #cbd5e1;
+}
+
+.vehicle-mt-over { border-left-color: #dc2626; }
+.vehicle-mt-soon { border-left-color: #f59e0b; }
+.vehicle-mt-ok { border-left-color: #22c55e; }
+.vehicle-mt-unset { border-left-color: #cbd5e1; opacity: 0.85; }
+
+.vehicle-mt-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.vehicle-mt-sub a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.vehicle-mt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.vehicle-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.vehicle-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.vehicle-bar-ok { background: #22c55e; }
+.vehicle-bar-soon { background: #f59e0b; }
+.vehicle-bar-over { background: #dc2626; }
+
+.vehicle-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 4px;
+  background: #e2e8f0;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.vehicle-badge-warn {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+#vehicle-modal .modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 400px) {
+  .vehicle-big-km { font-size: 24px; }
+  .vehicle-mt-actions .btn-prof { padding: 6px 8px; font-size: 12px; }
+}
+
+@media print {
+  #screen-vehicle .vehicle-mt-actions,
+  #screen-vehicle .delete-item-btn { display: none !important; }
+}
