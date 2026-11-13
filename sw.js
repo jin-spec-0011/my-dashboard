@@ -3,16 +3,18 @@
  * - 앱 셸: 네트워크 우선 → 실패 시 캐시 (배포 직후 구버전 고착 방지)
  * - Firebase / 외부 CDN 요청은 가로채지 않음 (실시간 동기화·로그인 보호)
  */
-const CACHE_NAME = 'gogo-dashboard-v20261109-emaillogin';
+const CACHE_NAME = 'gogo-dashboard-v20261113-mileage';
 const APP_SHELL = [
   './',
   './index.html',
   './css/style.css',
+  './css/mileage.css',
   './js/app.js',
   './js/gauth.js',
   './js/auth.js',
   './js/push.js',
   './js/parking.js',
+  './js/mileage.js',
   './js/schedule.js',
   './js/calendar.js',
   './js/memo.js',
