@@ -64,6 +64,73 @@
         ".write": "$key.matches(/^calendar_(goal|memo)_[0-9]{4}-[0-9]{2}$/)",
         ".validate": "newData.isString() && newData.val().length <= 5000"
       }
+    },
+    "trip_pending": {
+      ".read": true,
+      "x1": {
+        ".write": true,
+        ".validate": "newData.child('startId').isNumber() && newData.child('lat').isNumber() && newData.child('lng').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+      }
+    },
+    "trip_logs": {
+      ".read": true,
+      "$id": {
+        ".write": true,
+        ".validate": "$id.matches(/^[0-9]{14}$/) && newData.hasChildren(['id', 'car', 'distance_km']) && newData.child('car').val() === 'X1'",
+        "distance_km": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "manual_km": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "flag": {
+          ".validate": "newData.val() === 'ok' || newData.val() === 'roundtrip_suspect'"
+        }
+      }
+    },
+    "odometer_logs": {
+      ".read": true,
+      "$id": {
+        ".write": true,
+        ".validate": "$id.matches(/^[0-9]{14}$/) && newData.hasChildren(['id', 'car', 'odometer_km']) && (newData.child('car').val() === 'X1' || newData.child('car').val() === '엑센트')",
+        "odometer_km": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999"
+        }
+      }
+    },
+    "maintenance_rules": {
+      ".read": true,
+      "$car": {
+        ".write": "$car === 'x1' || $car === 'accent'",
+        "$item": {
+          ".validate": "$item.matches(/^[a-z0-9_]{1,40}$/) && newData.hasChild('name')",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "interval_km": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300000"
+          },
+          "interval_months": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 240"
+          }
+        }
+      }
+    },
+    "maintenance_logs": {
+      ".read": true,
+      "$id": {
+        ".write": true,
+        ".validate": "$id.matches(/^[0-9]{14}$/) && newData.hasChildren(['id', 'car', 'itemKey', 'done_km', 'done_date'])",
+        "done_km": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999"
+        },
+        "done_date": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
+        "memo": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        }
+      }
     }
   }
 }
