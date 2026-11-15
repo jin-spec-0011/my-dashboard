@@ -67,8 +67,8 @@
     },
     "trip_pending": {
       ".read": true,
-      "x1": {
-        ".write": true,
+      "$car": {
+        ".write": "$car === 'x1' || $car === 'accent'",
         ".validate": "newData.child('startId').isNumber() && newData.child('lat').isNumber() && newData.child('lng').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
       }
     },
@@ -76,7 +76,7 @@
       ".read": true,
       "$id": {
         ".write": true,
-        ".validate": "$id.matches(/^[0-9]{14}$/) && newData.hasChildren(['id', 'car', 'distance_km']) && newData.child('car').val() === 'X1'",
+        ".validate": "$id.matches(/^[0-9]{14}$/) && newData.hasChildren(['id', 'car', 'distance_km']) && (newData.child('car').val() === 'X1' || newData.child('car').val() === '엑센트')",
         "distance_km": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
         },
