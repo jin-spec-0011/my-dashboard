@@ -91,6 +91,9 @@ async function main() {
   await expect('앱: 왕복 거리 수동 보정', 'PUT', '/trip_logs/20261113110000/manual_km', 12.5, true);
   await expect('운행 기록 읽기', 'GET', '/trip_logs', undefined, true);
   await expect('단축어B DELETE /trip_pending/x1', 'DELETE', '/trip_pending/x1', undefined, true);
+  await expect('엑센트 출발 PUT /trip_pending/accent', 'PUT', '/trip_pending/accent', { startId: 20261115230000, startIso: '2026-11-15T23:00:00+09:00', lat: 36.64, lng: 127.43 }, true);
+  await expect('엑센트 운행 저장', 'PUT', '/trip_logs/20261115233000', trip(20261115233000, { car: '엑센트' }), true);
+  await expect('엑센트 출발 기록 삭제', 'DELETE', '/trip_pending/accent', undefined, true);
   await expect('계기판 X1 저장', 'PUT', '/odometer_logs/20261113120000', odo(20261113120000, 'X1', 12345), true);
   await expect('계기판 엑센트 저장', 'PUT', '/odometer_logs/20261113120100', odo(20261113120100, '엑센트', 150800), true);
   await expect('계기판 기록 읽기', 'GET', '/odometer_logs', undefined, true);
@@ -121,10 +124,10 @@ async function main() {
   await expect('가족 명단(members) 전체 읽기', 'GET', '/members', undefined, false);
   await expect('가족 명단: 비로그인 개별 읽기', 'GET', '/members/someuid', undefined, false);
   await expect('가족 명단: 클라이언트 쓰기', 'PUT', '/members/someuid', 'jinse', false);
-  await expect('출발 기록: 엑센트 등 다른 키', 'PUT', '/trip_pending/accent', { startId: 20261113090000, lat: 36.6, lng: 127.4 }, false);
+  await expect('출발 기록: 미등록 차량 키', 'PUT', '/trip_pending/k5', { startId: 20261113090000, lat: 36.6, lng: 127.4 }, false);
   await expect('출발 기록: 좌표 문자열', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: '36.6', lng: 127.4 }, false);
   await expect('출발 기록: 좌표 범위 밖', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: 136.6, lng: 127.4 }, false);
-  await expect('운행: 엑센트 차량', 'PUT', '/trip_logs/20261113150000', trip(20261113150000, { car: '엑센트' }), false);
+  await expect('운행: 미등록 차량', 'PUT', '/trip_logs/20261113150000', trip(20261113150000, { car: 'K5' }), false);
   await expect('운행: 거리 1000km 초과', 'PUT', '/trip_logs/20261113150100', trip(20261113150100, { distance_km: 5000 }), false);
   await expect('운행: 14자리 아닌 키(POST 자동키)', 'POST', '/trip_logs', trip(20261113150200), false);
   await expect('운행: 잘못된 flag', 'PUT', '/trip_logs/20261113150300', trip(20261113150300, { flag: 'hack' }), false);
