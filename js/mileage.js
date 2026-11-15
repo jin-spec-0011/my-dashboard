@@ -1,11 +1,11 @@
 /**
  * GOGO 스마트 매니저 - 차량 관리 (js/mileage.js)
  * - X1   : iOS 단축어(블루투스 연결/해제) + 카카오 길찾기 API 추정 거리 → /trip_logs, 월 1회 계기판 보정
- * - 엑센트: 계기판 주행거리 수기 입력 → /odometer_logs
+ * - 엑센트: X1과 동일한 단축어 자동 적산(차량 블루투스) + 주유 시 계기판 입력으로 보정
  * - 정비 알림: /maintenance_rules (기준표) + /maintenance_logs (이력) → 남은 km / 남은 일수 판정
  *
  * Firebase 경로
- *   /trip_pending/x1            { startId, lat, lng }                         (단축어 A가 기록, B가 삭제)
+ *   /trip_pending/{x1|accent}   { startId, startIso, lat, lng }               (출발 단축어가 기록, 도착 단축어가 삭제)
  *   /trip_logs/{id}             { id, startId, car, from, to, distance_km, route_min, elapsed_min, flag, manual_km, source, author, time }
  *   /odometer_logs/{id}         { id, car, odometer_km, author, time }
  *   /maintenance_rules/{car}/{itemKey} { name, interval_km, interval_months, warn_km, warn_days, enabled, base_km, base_date, order, custom }
@@ -28,7 +28,7 @@ window.App = window.App || {};
 
   const CARS = {
     x1: { key: 'x1', name: 'X1', emoji: '⚪', auto: true },
-    accent: { key: 'accent', name: '엑센트', emoji: '⚫', auto: false }
+    accent: { key: 'accent', name: '엑센트', emoji: '⚫', auto: true }
   };
 
   const CACHE_KEY = 'vehicle_cache_v1';
@@ -269,8 +269,8 @@ window.App = window.App || {};
 
       if (last) res.staleDays = Math.floor((Date.now() - timeOf(last)) / 86400000);
 
-      if (car === 'x1') {
-        const trips = this.data.trips.filter((t) => carKeyOfItem(t) === 'x1');
+      if (CARS[car] && CARS[car].auto) {
+        const trips = this.data.trips.filter((t) => carKeyOfItem(t) === car);
         if (last && prev) {
           const tPrev = timeOf(prev);
           const tLast = timeOf(last);
@@ -292,6 +292,12 @@ window.App = window.App || {};
         const monthTrips = trips.filter((t) => idMonthKey(t) === mk);
         res.tripsMonth = monthTrips.length;
         res.monthKm = monthTrips.reduce((s, t) => s + this.tripKm(t), 0) * res.k;
+        /* 이번 달 운행 기록이 없으면 계기판 입력 차이로 대체 (자동화 도입 전 · 블루투스 미연결 운행) */
+        if (res.tripsMonth === 0) {
+          const startIdM = Number(`${mk}01000000`);
+          const beforeM = odos.find((o) => Number(o.id) < startIdM);
+          res.monthKm = last && beforeM && idMonthKey(last) === mk ? Math.max(0, num(last.odometer_km) - num(beforeM.odometer_km)) : 0;
+        }
       } else {
         if (last) res.current = num(last.odometer_km);
         const mk = kstMonthKey();
@@ -442,7 +448,7 @@ window.App = window.App || {};
         ${this.renderOverview(car, info, calc)}
         ${this.renderOdoForm(car, info, calc)}
         ${this.renderMaintenance(car)}
-        ${info.auto ? this.renderTrips() : ''}
+        ${info.auto ? this.renderTrips(car) : ''}
         ${this.renderHistory(car)}`;
     },
 
@@ -462,11 +468,11 @@ window.App = window.App || {};
         if (lastOdo) rows.push(`<div class="vehicle-meta">보정 이후 추정 누적: ${esc(fmtKm(calc.sinceKm))}</div>`);
         if (calc.kWarn) rows.push(`<div class="vehicle-warn">⚠️ ${esc(calc.kWarn)}</div>`);
         if (calc.staleDays !== null && calc.staleDays > 31) rows.push('<div class="vehicle-warn">⚠️ 월 1회 계기판 보정 시기가 지났습니다.</div>');
-        const p = this.data.pending && this.data.pending.x1;
+        const p = this.data.pending && this.data.pending[car];
         if (p && num(p.startId) !== null) {
           const ageH = (Date.now() - timeOf({ id: p.startId })) / 3600000;
           if (ageH > PENDING_STALE_HOURS) {
-            rows.push(`<div class="vehicle-warn">⚠️ 종료되지 않은 운행 기록이 있습니다 (${Math.floor(ageH)}시간 전 출발). <button type="button" class="btn-prof" onclick="App.mileage.clearPending()">정리</button></div>`);
+            rows.push(`<div class="vehicle-warn">⚠️ 종료되지 않은 운행 기록이 있습니다 (${Math.floor(ageH)}시간 전 출발). <button type="button" class="btn-prof" onclick="App.mileage.clearPending('${car}')">정리</button></div>`);
           } else {
             rows.push(`<div class="vehicle-live">🟢 운행 중 (${esc(String(p.startId).substring(8, 10))}:${esc(String(p.startId).substring(10, 12))} 출발)</div>`);
           }
@@ -489,7 +495,7 @@ window.App = window.App || {};
       return `
         <div class="card form-card">
           <div class="form-group">
-            <label>📟 계기판 주행거리 입력 ${info.auto ? '(월 1회 보정)' : '(주유 시 권장)'}</label>
+            <label>📟 계기판 주행거리 입력 ${car === 'accent' ? '(주유 시 권장 · 보정 기준)' : '(월 1회 보정)'}</label>
             <div class="input-with-btn-row">
               <input type="number" id="vehicleOdoInput" class="memo-text-input" inputmode="numeric" placeholder="예: 12345" onkeydown="if(event.key==='Enter') App.mileage.saveOdo()">
               <button type="button" class="btn-save btn-inline-action" onclick="App.mileage.saveOdo()">저장</button>
@@ -542,8 +548,8 @@ window.App = window.App || {};
         </div>`;
     },
 
-    renderTrips() {
-      const trips = this.data.trips.filter((t) => carKeyOfItem(t) === 'x1').slice(0, 10);
+    renderTrips(car) {
+      const trips = this.data.trips.filter((t) => carKeyOfItem(t) === car).slice(0, 10);
       const body = trips.length ? trips.map((t) => {
         const id = esc(String(t.id));
         const km = this.tripKm(t);
@@ -661,9 +667,10 @@ window.App = window.App || {};
       this.write(`${PATHS.trips}/${id}`, null).then(() => toast('🗑️ 삭제되었습니다.')).catch(() => {});
     },
 
-    clearPending() {
+    clearPending(car) {
+      if (!CARS[car]) return;
       if (!confirm('종료되지 않은 운행 기록을 정리하시겠습니까? (거리는 기록되지 않습니다)')) return;
-      this.write(`${PATHS.pending}/x1`, null).then(() => toast('🧹 정리되었습니다.')).catch(() => {});
+      this.write(`${PATHS.pending}/${car}`, null).then(() => toast('🧹 정리되었습니다.')).catch(() => {});
     },
 
     deleteLog(id) {
@@ -730,7 +737,7 @@ window.App = window.App || {};
       const actions = `
         <button type="button" class="btn-modal-save" onclick="App.mileage.submitModal()">✅ 완료 기록</button>
         <button type="button" class="btn-modal-cancel" onclick="App.mileage.closeModal()">취소</button>`;
-      this.showModal(`🔧 ${rule.name} 완료`, `${CARS[car].emoji} ${CARS[car].name}${car === 'x1' ? ' · 추정값이면 계기판 값으로 수정하세요' : ''}`, body, actions, () => {
+      this.showModal(`🔧 ${rule.name} 완료`, `${CARS[car].emoji} ${CARS[car].name} · 추정값이면 계기판 값으로 수정하세요`, body, actions, () => {
         const km = num(this.val('vmDoneKm'));
         const date = this.val('vmDoneDate');
         const memo = String(this.val('vmDoneMemo') || '').trim().substring(0, 100);
