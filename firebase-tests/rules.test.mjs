@@ -13,8 +13,14 @@ const PROJECT = 'gogo-manager-f0a68';
 const UID = {
   jinse: 'uid_jinse_test',
   jihye: 'uid_jihye_test',
-  stranger: 'uid_stranger_test'
+  stranger: 'uid_stranger_test',
+  frameXs: 'uid_frame_xs_test',
+  frameIpad: 'uid_frame_ipad_test',
+  stranger2: 'uid_stranger2_test'
 };
+
+const FID = 'fam_t2hoijplai';
+const F = (sub) => `/frame/${FID}/${sub}`;
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
 
@@ -92,7 +98,17 @@ async function main() {
     calendar_data: { 'calendar_goal_2026-10': '건강한 10월' },
     auth_pins: { jinse: 'a'.repeat(64) },
     legacy_unknown: { x: 1 },
-    members: { [UID.jinse]: 'jinse', [UID.jihye]: 'jihye' }
+    members: { [UID.jinse]: 'jinse', [UID.jihye]: 'jihye' },
+    frame: {
+      [FID]: {
+        viewers: {
+          [UID.frameXs]: { deviceId: 'dev_xs000001', approvedAt: 1, approvedBy: '진세' },
+          [UID.frameIpad]: { deviceId: 'dev_ipad0001', approvedAt: 1, approvedBy: '진세' }
+        }
+      }
+    },
+    push_config: { vapidPublic: 'BPUBLICKEYTEST' },
+    push_config_private: { vapidPrivate: 'SECRET' }
   }, 'owner');
 
   /* ── 허용되어야 하는 동작 (앱 / 단축어) ── */
@@ -187,6 +203,67 @@ async function main() {
   await expect('정비 기준: 이름 없음', 'PUT', '/maintenance_rules/x1/no_name', rule({ name: '' }), false);
   await expect('정비 이력: 메모 100자 초과', 'PUT', '/maintenance_logs/20261113150600', mlog(20261113150600, { memo: 'x'.repeat(150) }), false);
   await expect('정비 이력: 날짜 형식 오류', 'PUT', '/maintenance_logs/20261113150700', mlog(20261113150700, { done_date: '11/13' }), false);
+
+
+  /* ══════════ 🖼️ 디지털 액자 ══════════ */
+  const idx = (extra = {}) => Object.assign({ createdAt: 2026112410150001, bytes: 401234, keyId: 'k1', orient: 'p', w: 1200, h: 1600, by: '진세' }, extra);
+  const blob = (extra = {}) => Object.assign({ iv: 'AAAAAAAAAAAAAAAA', ct: 'Q'.repeat(5000), keyId: 'k1' }, extra);
+  const dev = (extra = {}) => Object.assign({ name: 'iPhone XS', placement: '미정', infoBar: true, nightStart: '00:00', nightEnd: '06:00', watch: true, qrCard: true }, extra);
+
+  /* 허용 */
+  await expect('액자: 업로더 index 쓰기', 'PUT', F('index/2026112410150001'), idx(), true);
+  await expect('액자: 업로더 blob 쓰기', 'PUT', F('blobs/2026112410150001'), blob(), true);
+  await expect('액자: 지혜 업로드', 'PUT', F('index/2026112410160001'), idx({ by: '지혜', orient: 'l', w: 1600, h: 1200 }), true, 'jihye');
+  await expect('액자: 업로더 설정 저장', 'PUT', F('settings'), { offlineText: '연결이 끊겼어요', showWeather: false }, true);
+  await expect('액자: 업로더 기기 설정', 'PUT', F('devices/dev_xs000001'), dev(), true);
+  await expect('액자: 업로더 기기 목록 읽기', 'GET', F('viewers'), undefined, true);
+  await expect('액자 XS: index 읽기', 'GET', F('index'), undefined, true, 'frameXs');
+  await expect('액자 XS: blob 개별 읽기', 'GET', F('blobs/2026112410150001'), undefined, true, 'frameXs');
+  await expect('액자 XS: 설정 읽기', 'GET', F('settings'), undefined, true, 'frameXs');
+  await expect('액자 XS: 기기 설정 읽기', 'GET', F('devices'), undefined, true, 'frameXs');
+  await expect('액자 XS: 본인 승인 상태 읽기', 'GET', F(`viewers/${UID.frameXs}`), undefined, true, 'frameXs');
+  await expect('액자 XS: 본인 하트비트', 'PUT', F('heartbeat/dev_xs000001'), { lastSeen: 1764000000000, appVersion: 'f0.1.0' }, true, 'frameXs');
+  await expect('액자 iPad: 본인 하트비트', 'PUT', F('heartbeat/dev_ipad0001'), { lastSeen: 1764000000000 }, true, 'frameIpad');
+  await expect('미등록 기기: 본인 등록 요청', 'PUT', F(`pending/${UID.stranger}`), { name: 'iPad mini', requestedAt: 1764000000000 }, true, 'stranger');
+  await expect('미등록 기기: 본인 요청 상태 읽기', 'GET', F(`pending/${UID.stranger}`), undefined, true, 'stranger');
+  await expect('업로더: 승인 대기 목록 읽기', 'GET', F('pending'), undefined, true);
+  await expect('업로더: 기기 승인(viewers 쓰기)', 'PUT', F(`viewers/${UID.stranger}`), { deviceId: 'dev_new00001', approvedAt: 1764000000000, approvedBy: '진세' }, true);
+  await expect('업로더: 승인 요청 삭제', 'DELETE', F(`pending/${UID.stranger}`), undefined, true);
+  await expect('업로더: 사진 삭제(index)', 'DELETE', F('index/2026112410160001'), undefined, true);
+  await expect('업로더: 푸시 구독 저장', 'PUT', `/push_subscriptions/${UID.jinse}/sub_abcdefgh`, { endpoint: 'https://web.push.apple.com/abc', p256dh: 'BKEY', auth: 'AUTH', createdAt: 1764000000000 }, true);
+  await expect('업로더: VAPID 공개키 읽기', 'GET', '/push_config/vapidPublic', undefined, true);
+
+  /* 거부 */
+  await expect('액자 XS: 사진 쓰기', 'PUT', F('index/2026112410170001'), idx(), false, 'frameXs');
+  await expect('액자 XS: blob 쓰기', 'PUT', F('blobs/2026112410170001'), blob(), false, 'frameXs');
+  await expect('액자 XS: 설정 변경', 'PUT', F('settings'), { offlineText: 'x', showWeather: false }, false, 'frameXs');
+  await expect('액자 XS: 다른 기기 하트비트', 'PUT', F('heartbeat/dev_ipad0001'), { lastSeen: 1764000000000 }, false, 'frameXs');
+  await expect('액자 XS: 기기 목록 전체 읽기', 'GET', F('viewers'), undefined, false, 'frameXs');
+  await expect('액자 XS: 자기 승인 쓰기', 'PUT', F(`viewers/${UID.frameXs}`), { deviceId: 'dev_xs000001', approvedAt: 2, approvedBy: '진세' }, false, 'frameXs');
+  await expect('액자 XS: 가족 주차 읽기', 'GET', '/parking_logs', undefined, false, 'frameXs');
+  await expect('액자 XS: 가족 가계부 읽기', 'GET', '/family_ledger', undefined, false, 'frameXs');
+  await expect('액자 XS: 가족 일정 읽기', 'GET', '/family_schedules', undefined, false, 'frameXs');
+  await expect('액자 XS: VAPID 공개키 읽기', 'GET', '/push_config/vapidPublic', undefined, false, 'frameXs');
+  await expect('업로더: blob 전체 일괄 읽기', 'GET', F('blobs'), undefined, false);
+  await expect('미등록 계정: index 읽기', 'GET', F('index'), undefined, false, 'stranger2');
+  await expect('미등록 계정: blob 읽기', 'GET', F('blobs/2026112410150001'), undefined, false, 'stranger2');
+  await expect('비로그인: index 읽기', 'GET', F('index'), undefined, false, 'anon');
+  await expect('미등록 계정: 남의 uid로 요청', 'PUT', F(`pending/${UID.jinse}`), { name: 'x', requestedAt: 1 }, false, 'stranger2');
+  await expect('미등록 계정: 다른 familyId 요청', 'PUT', `/frame/fam_aaaaaaaaaa/pending/${UID.stranger2}`, { name: 'x', requestedAt: 1 }, false, 'stranger2');
+  await expect('미등록 계정: 승인 대기 목록 읽기', 'GET', F('pending'), undefined, false, 'stranger2');
+  await expect('액자: blob 1MB 초과', 'PUT', F('blobs/2026112410180001'), blob({ ct: 'Q'.repeat(1000001) }), false);
+  await expect('액자: 잘못된 orient', 'PUT', F('index/2026112410180002'), idx({ orient: 'x' }), false);
+  await expect('액자: 잘못된 photoId', 'PUT', F('index/abc'), idx(), false);
+  await expect('액자: 잘못된 업로더명', 'PUT', F('index/2026112410180003'), idx({ by: '해커' }), false);
+  await expect('액자: 문구 80자 초과', 'PUT', F('settings'), { offlineText: 'x'.repeat(81), showWeather: false }, false);
+  await expect('액자: 잘못된 장소값', 'PUT', F('devices/dev_xs000001'), dev({ placement: '회사' }), false);
+  await expect('액자: 알림 기록 읽기', 'GET', F('alert'), undefined, false);
+  await expect('액자: 알림 기록 쓰기', 'PUT', F('alert/dev_xs000001'), { sentAt: 1 }, false);
+  await expect('푸시: 남의 구독 쓰기', 'PUT', `/push_subscriptions/${UID.jihye}/sub_abcdefgh`, { endpoint: 'https://x', p256dh: 'a', auth: 'b', createdAt: 1 }, false);
+  await expect('푸시: http 엔드포인트', 'PUT', `/push_subscriptions/${UID.jinse}/sub_bbbbbbbb`, { endpoint: 'http://x', p256dh: 'a', auth: 'b', createdAt: 1 }, false);
+  await expect('푸시: 액자 계정 구독', 'PUT', `/push_subscriptions/${UID.frameXs}/sub_abcdefgh`, { endpoint: 'https://x', p256dh: 'a', auth: 'b', createdAt: 1 }, false, 'frameXs');
+  await expect('푸시: VAPID 개인키 읽기', 'GET', '/push_config_private', undefined, false);
+  await expect('푸시: VAPID 공개키 쓰기', 'PUT', '/push_config/vapidPublic', 'x', false);
 
   const failed = results.filter((r) => !r.ok);
   results.forEach((r) => console.log(`${r.ok ? 'PASS' : 'FAIL'}  [${r.want}] ${r.name}  (HTTP ${r.status})`));
