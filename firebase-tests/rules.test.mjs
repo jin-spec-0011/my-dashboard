@@ -1,18 +1,50 @@
 /**
  * Firebase Realtime Database 보안 규칙 테스트 (에뮬레이터 전용)
  * 실행: firebase emulators:exec --only database "node firebase-tests/rules.test.mjs"
- * - 인증 없는 REST 요청 = 실제 앱 / iOS 단축어와 동일 조건 → 규칙이 적용됨
+ * - 모든 가족 데이터는 "로그인 + members/{uid} 등록자"만 읽기·쓰기 가능
+ * - 앱(Google 로그인)과 iOS 단축어(refresh token → id_token, ?auth=)는 가족 계정으로 요청
+ * - 에뮬레이터는 서명 없는 JWT(alg: none)를 ID 토큰으로 받아들임
  * - 하나라도 실패하면 exit 1 → 워크플로가 배포하지 않음
  */
 const HOST = process.env.FIREBASE_DATABASE_EMULATOR_HOST || '127.0.0.1:9000';
 const NS = 'gogo-manager-f0a68-default-rtdb';
+const PROJECT = 'gogo-manager-f0a68';
 
-const url = (path) => `http://${HOST}/${path.replace(/^\/+/, '')}.json?ns=${NS}`;
+const UID = {
+  jinse: 'uid_jinse_test',
+  jihye: 'uid_jihye_test',
+  stranger: 'uid_stranger_test'
+};
 
-async function req(method, path, body, owner = false) {
+const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+
+/* 에뮬레이터 전용 서명 없는 ID 토큰 */
+function idToken(uid) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'none', typ: 'JWT' };
+  const payload = {
+    iss: `https://securetoken.google.com/${PROJECT}`,
+    aud: PROJECT,
+    auth_time: now,
+    user_id: uid,
+    sub: uid,
+    iat: now,
+    exp: now + 3600,
+    firebase: { identities: {}, sign_in_provider: 'google.com' }
+  };
+  return `${b64url(header)}.${b64url(payload)}.`;
+}
+
+/* as: 'owner'(관리자) | 'anon'(비로그인) | 'jinse' | 'jihye' | 'stranger'(로그인했지만 미등록) */
+const url = (path, as) => {
+  const base = `http://${HOST}/${path.replace(/^\/+/, '')}.json?ns=${NS}`;
+  return UID[as] ? `${base}&auth=${encodeURIComponent(idToken(UID[as]))}` : base;
+};
+
+async function req(method, path, body, as = 'anon') {
   const headers = { 'Content-Type': 'application/json' };
-  if (owner) headers.Authorization = 'Bearer owner';
-  const res = await fetch(url(path), {
+  if (as === 'owner') headers.Authorization = 'Bearer owner';
+  const res = await fetch(url(path, as), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body)
@@ -22,15 +54,15 @@ async function req(method, path, body, owner = false) {
 }
 
 const results = [];
-async function expect(name, method, path, body, allowed) {
+async function expect(name, method, path, body, allowed, as = 'jinse') {
   let status = 0;
   try {
-    status = await req(method, path, body);
+    status = await req(method, path, body, as);
   } catch (e) {
     status = -1;
   }
   const ok = allowed ? status === 200 : (status === 401 || status === 403);
-  results.push({ ok, name, status, want: allowed ? 'ALLOW' : 'DENY' });
+  results.push({ ok, name: `${name} <${as}>`, status, want: allowed ? 'ALLOW' : 'DENY' });
 }
 
 const parking = (id, extra = {}) => Object.assign({
@@ -59,8 +91,9 @@ async function main() {
     private_schedules: { jinse: [{ id: 3, title: '비밀', date: '2026-10-30' }] },
     calendar_data: { 'calendar_goal_2026-10': '건강한 10월' },
     auth_pins: { jinse: 'a'.repeat(64) },
-    legacy_unknown: { x: 1 }
-  }, true);
+    legacy_unknown: { x: 1 },
+    members: { [UID.jinse]: 'jinse', [UID.jihye]: 'jihye' }
+  }, 'owner');
 
   /* ── 허용되어야 하는 동작 (앱 / 단축어) ── */
   await expect('주차 목록 읽기', 'GET', '/parking_logs', undefined, true);
@@ -73,10 +106,9 @@ async function main() {
   await expect('연속 일정 저장(endDate)', 'PUT', '/family_schedules', [{ id: 13, title: '여행', date: '2026-10-30', endDate: '2026-11-02', author: '가족' }], true);
   await expect('여행 배열 저장', 'PUT', '/family_trips', [{ id: 14, place: '강릉', date: '2026-10-28' }], true);
   await expect('비공개 일정(진세) 읽기', 'GET', '/private_schedules/jinse', undefined, true);
-  await expect('비공개 일정(지혜) 저장', 'PUT', '/private_schedules/jihye', [{ id: 15, title: '비밀', date: '2026-10-31' }], true);
-  await expect('PIN 해시 읽기', 'GET', '/auth_pins', undefined, true);
-  await expect('PIN 해시 저장(64자 hex)', 'PUT', '/auth_pins/jinse', 'b'.repeat(64), true);
-  await expect('PIN 초기화(삭제)', 'DELETE', '/auth_pins/jihye', undefined, true);
+  await expect('비공개 일정(지혜) 저장', 'PUT', '/private_schedules/jihye', [{ id: 15, title: '비밀', date: '2026-10-31' }], true, 'jihye');
+  await expect('가족 명단: 본인 항목 읽기', 'GET', `/members/${UID.jinse}`, undefined, true);
+  await expect('단축어(지혜 토큰) 주차 저장', 'PUT', '/parking_logs/20261028213000', parking(20261028213000, { author: '지혜' }), true, 'jihye');
   await expect('캘린더 목표/메모 읽기', 'GET', '/calendar_data', undefined, true);
   await expect('캘린더 목표 저장', 'PUT', '/calendar_data/calendar_goal_2026-11', '가족 여행', true);
   await expect('캘린더 메모 저장', 'PUT', '/calendar_data/calendar_memo_2026-11', '• 11-01 [가족] 여행', true);
@@ -107,7 +139,26 @@ async function main() {
   await expect('운행 기록 삭제', 'DELETE', '/trip_logs/20261113100000', undefined, true);
   await expect('계기판 기록 삭제', 'DELETE', '/odometer_logs/20261113120000', undefined, true);
 
-  /* ── 차단되어야 하는 동작 ── */
+  /* ── 차단: 비로그인 (토큰 없는 단축어·외부 접근) ── */
+  const familyPaths = ['/parking_logs', '/family_todos', '/family_stickies', '/family_ledger', '/family_schedules', '/family_trips', '/calendar_data', '/trip_pending', '/trip_logs', '/odometer_logs', '/maintenance_rules', '/maintenance_logs', '/private_schedules/jinse'];
+  for (const p of familyPaths) {
+    await expect(`비로그인 읽기 ${p}`, 'GET', p, undefined, false, 'anon');
+    await expect(`미등록 계정 읽기 ${p}`, 'GET', p, undefined, false, 'stranger');
+  }
+  await expect('비로그인 단축어 POST /parking_logs', 'POST', '/parking_logs', parking(20261028214000), false, 'anon');
+  await expect('비로그인 PUT /parking_logs/{id}', 'PUT', '/parking_logs/20261028214100', parking(20261028214100), false, 'anon');
+  await expect('미등록 계정 주차 저장', 'PUT', '/parking_logs/20261028214200', parking(20261028214200), false, 'stranger');
+  await expect('비로그인 가계부 덮어쓰기', 'PUT', '/family_ledger', [{ id: 99, amount: 1 }], false, 'anon');
+  await expect('비로그인 운행 저장', 'PUT', '/trip_logs/20261113160000', trip(20261113160000), false, 'anon');
+  await expect('비로그인 출발 기록', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: 36.6, lng: 127.4 }, false, 'anon');
+  await expect('비로그인 캘린더 저장', 'PUT', '/calendar_data/calendar_goal_2026-12', 'x', false, 'anon');
+  await expect('비공개 일정: 지혜가 진세 일정 읽기', 'GET', '/private_schedules/jinse', undefined, false, 'jihye');
+  await expect('비공개 일정: 진세가 지혜 일정 쓰기', 'PUT', '/private_schedules/jihye', [{ id: 18 }], false);
+  await expect('가족 명단: 다른 사람 항목 읽기', 'GET', `/members/${UID.jihye}`, undefined, false);
+  await expect('PIN(폐기): 읽기', 'GET', '/auth_pins', undefined, false);
+  await expect('PIN(폐기): 쓰기', 'PUT', '/auth_pins/jinse', 'b'.repeat(64), false);
+
+  /* ── 차단되어야 하는 동작 (가족 계정이어도 거부) ── */
   await expect('루트 전체 읽기', 'GET', '/', undefined, false);
   await expect('루트 전체 덮어쓰기', 'PUT', '/', { hacked: true }, false);
   await expect('루트 전체 삭제', 'DELETE', '/', undefined, false);
@@ -118,11 +169,9 @@ async function main() {
   await expect('메모: 5000자 초과', 'PUT', '/family_stickies', [{ id: 16, text: 'x'.repeat(6000) }], false);
   await expect('비공개 일정 전체 목록 읽기', 'GET', '/private_schedules', undefined, false);
   await expect('비공개 일정: 다른 사용자 경로', 'PUT', '/private_schedules/evil', [{ id: 17 }], false);
-  await expect('PIN: 평문 저장', 'PUT', '/auth_pins/jinse', '1234', false);
-  await expect('PIN: 다른 사용자 경로', 'PUT', '/auth_pins/evil', 'c'.repeat(64), false);
   await expect('캘린더: 잘못된 키', 'PUT', '/calendar_data/evil', 'x', false);
   await expect('가족 명단(members) 전체 읽기', 'GET', '/members', undefined, false);
-  await expect('가족 명단: 비로그인 개별 읽기', 'GET', '/members/someuid', undefined, false);
+  await expect('가족 명단: 비로그인 개별 읽기', 'GET', '/members/someuid', undefined, false, 'anon');
   await expect('가족 명단: 클라이언트 쓰기', 'PUT', '/members/someuid', 'jinse', false);
   await expect('출발 기록: 미등록 차량 키', 'PUT', '/trip_pending/k5', { startId: 20261113090000, lat: 36.6, lng: 127.4 }, false);
   await expect('출발 기록: 좌표 문자열', 'PUT', '/trip_pending/x1', { startId: 20261113090000, lat: '36.6', lng: 127.4 }, false);
