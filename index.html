@@ -21,6 +21,7 @@
 
   <link rel="stylesheet" href="css/style.css?v=20261031p">
   <link rel="stylesheet" href="css/mileage.css?v=20261113a">
+  <link rel="stylesheet" href="css/frame-admin.css?v=20261124a">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -150,6 +151,15 @@
           <div class="card-desc live-summary-box" id="summary-trip"><span class="summary-loading">여행 기록 확인 중...</span></div>
         </div>
       </div>
+      <div class="menu-card" onclick="App.router.go('frame')">
+        <div class="card-icon-wrap bg-indigo">🖼️</div>
+        <div class="card-text-wrap">
+          <div class="card-title-row">
+            <span class="card-title">가족 액자</span>
+          </div>
+          <div class="card-desc live-summary-box"><span class="summary-loading">사진 올리기 · 액자 기기 관리</span></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -239,6 +249,15 @@
       </div>
       <div id="logList" class="log-list"></div>
     </div>
+  </section>
+
+  <!-- 1-1. 🖼️ 가족 액자 (사진 업로드 · 키 · 기기 관리) — 내용은 js/frameUpload.js 가 렌더 -->
+  <section id="screen-frame" class="screen">
+    <div class="header-nav">
+      <button type="button" class="btn-back" onclick="App.frameAdmin.closeModal(); App.router.go('home')">← 홈으로</button>
+      <h2>🖼️ 가족 액자</h2>
+    </div>
+    <div id="frameRoot"><div class="empty-msg">액자 정보를 불러오는 중...</div></div>
   </section>
 
   <!-- 2-1. 🔧 차량 관리 (주행거리 · 정비 알림) — 내용은 js/mileage.js 가 렌더 -->
@@ -627,6 +646,14 @@
     </div>
   </div>
 
+  <!-- 🖼️ 가족 액자 모달 (키 QR · 키 등록 · 사진 미리보기) -->
+  <div id="frame-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <button type="button" class="modal-close-icon-btn" onclick="App.frameAdmin.closeModal()" title="닫기">✕</button>
+      <div class="modal-body modal-body-left" id="frameModalBody"></div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/app.js?v=20261113a"></script>
@@ -640,5 +667,7 @@
   <script src="js/memo.js?v=20261031p"></script>
   <script src="js/ledger.js?v=20261031p"></script>
   <script src="js/trip.js?v=20261031p"></script>
+  <script src="js/frame-config.js?v=20261124a"></script>
+  <script src="js/frameUpload.js?v=20261124a"></script>
 </body>
 </html>

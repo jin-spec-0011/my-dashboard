@@ -366,7 +366,7 @@ window.App = Object.assign(window.App || {}, {
   },
 
   router: {
-    screens: ['lock', 'home', 'parking', 'schedule', 'calendar', 'shopping', 'sticky', 'ledger', 'trip', 'vehicle'],
+    screens: ['lock', 'home', 'parking', 'schedule', 'calendar', 'shopping', 'sticky', 'ledger', 'trip', 'vehicle', 'frame'],
     go(screenName) {
       const name = this.screens.includes(screenName) ? screenName : 'home';
       if (name !== 'lock' && safeGet('gogo_auth_pass') !== 'true') {
@@ -392,6 +392,7 @@ window.App = Object.assign(window.App || {}, {
         if (name === 'ledger' && App.ledger) App.ledger.render(App.stores.ledger.getItems());
         if (name === 'trip' && App.trip) App.trip.renderList(App.stores.trips.getItems());
         if (name === 'vehicle' && App.mileage) App.mileage.render();
+        if (name === 'frame' && App.frameAdmin) App.frameAdmin.show();
       } catch (e) {
         console.error(`[Router] ${name} 렌더 오류`, e);
       }

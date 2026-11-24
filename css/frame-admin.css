@@ -1,0 +1,93 @@
+/* GOGO 스마트 매니저 - 가족 액자 관리 (css/frame-admin.css)
+   모바일 390px 기준 · style.css 카드/리스트 클래스 위에 덧씌움 */
+
+#frameRoot .card { margin-bottom: 12px; }
+
+.frame-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.frame-count { font-size: 12px; font-weight: 700; color: #2563eb; }
+
+.frame-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-sub);
+  margin: 4px 0 8px;
+}
+
+.frame-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+.frame-upload-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  cursor: pointer;
+}
+.frame-upload-btn input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.frame-disabled { opacity: 0.45; pointer-events: none; }
+
+.frame-st { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: #f1f5f9; }
+.frame-st-ok { color: #15803d; background: #dcfce7; }
+.frame-st-warn { color: #b45309; background: #fef3c7; }
+.frame-st-bad { color: #b91c1c; background: #fee2e2; }
+.frame-st-none { color: #64748b; }
+
+.frame-pending { border-color: #93c5fd; background: #eff6ff; }
+.frame-mini-btn { padding: 6px 10px; font-size: 12px; width: auto; flex-shrink: 0; }
+
+.frame-device {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px;
+  margin-top: 8px;
+  background: #f8fafc;
+}
+.frame-device-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; margin-bottom: 8px; }
+
+.frame-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.frame-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-sub); font-weight: 700; min-width: 0; }
+.frame-grid .memo-text-input { width: 100%; min-width: 0; }
+
+.frame-checks { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: #334155; }
+.frame-checks label { display: inline-flex; align-items: center; gap: 4px; }
+
+.frame-qr-box {
+  width: 100%;
+  max-width: 260px;
+  margin: 8px auto;
+  background: #ffffff;
+  padding: 8px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.frame-qr-box svg { width: 100%; height: auto; display: block; }
+
+.frame-key-text { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 11px; word-break: break-all; }
+
+.frame-scan-box { margin: 8px 0; text-align: center; }
+.frame-scan-box video { width: 100%; max-width: 320px; border-radius: 10px; background: #000; }
+
+.frame-preview { margin: 8px 0; text-align: center; font-size: 12px; color: var(--text-sub); }
+.frame-preview img { max-width: 100%; max-height: 60vh; border-radius: 8px; }
+
+#frame-modal .modal-card { max-height: 90vh; overflow-y: auto; }
