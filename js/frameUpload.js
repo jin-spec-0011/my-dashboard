@@ -38,7 +38,9 @@ App.frameAdmin = (function () {
     lastStamp: '',
     seq: 0,
     scanStream: null,
-    scanTimer: null
+    scanTimer: null,
+    pushStatus: '',
+    pushBusy: false
   };
 
   /* ── 공용 ── */
@@ -726,6 +728,62 @@ App.frameAdmin = (function () {
     }
   }
 
+  /* ── 끊김 알림 (Web Push 구독) ── */
+  async function refreshPush() {
+    if (!App.webpush) { state.pushStatus = 'no-push'; return; }
+    try {
+      state.pushStatus = await App.webpush.status();
+    } catch (e) {
+      state.pushStatus = 'off';
+    }
+  }
+
+  async function togglePush() {
+    if (!App.webpush || state.pushBusy) return;
+    state.pushBusy = true;
+    render();
+    try {
+      if (state.pushStatus === 'on') {
+        await App.webpush.disable();
+        toast('🔕 이 폰의 끊김 알림을 껐습니다.');
+      } else {
+        await App.webpush.enable();
+        toast('🔔 끊김 알림을 켰습니다.');
+      }
+    } catch (e) {
+      console.warn('[Frame] 알림 설정 실패', e);
+      toast('⚠️ ' + (e && e.message ? e.message : '알림 설정 실패'));
+    } finally {
+      state.pushBusy = false;
+      await refreshPush();
+      render();
+    }
+  }
+
+  function renderPushCard() {
+    const st = state.pushStatus;
+    const map = {
+      on: '<span class="frame-st frame-st-ok">이 폰 알림 켜짐</span>',
+      off: '<span class="frame-st frame-st-none">꺼짐</span>',
+      'need-home-screen': '<span class="frame-st frame-st-warn">홈 화면 앱 필요</span>',
+      denied: '<span class="frame-st frame-st-bad">알림 차단됨</span>',
+      'no-push': '<span class="frame-st frame-st-bad">미지원</span>',
+      'no-sw': '<span class="frame-st frame-st-bad">미지원</span>'
+    };
+    const note = {
+      'need-home-screen': 'Safari 공유 버튼 → 홈 화면에 추가 → 홈 화면의 GOGO 앱에서 켜세요 (iOS 16.4 이상).',
+      denied: '설정 → 알림 → GOGO매니저에서 알림을 허용한 뒤 다시 누르세요.',
+      'no-push': '이 브라우저는 웹 푸시를 지원하지 않습니다.',
+      'no-sw': '이 브라우저는 웹 푸시를 지원하지 않습니다.'
+    }[st] || `'끊김 알림'이 켜진 액자가 ${CFG.staleAlertMin}분 이상 연결이 끊기면 이 폰으로 알림이 옵니다 (15분 간격 확인).`;
+    const canToggle = st === 'on' || st === 'off' || st === 'denied';
+    return `<div class="card form-card">
+      <div class="frame-card-title">🔔 끊김 알림 ${map[st] || ''}</div>
+      <p class="frame-note">${esc(note)}</p>
+      ${canToggle ? `<button type="button" class="${st === 'on' ? 'btn-prof' : 'btn-save'}" ${state.pushBusy ? 'disabled' : ''} onclick="App.frameAdmin.togglePush()">${state.pushBusy ? '⏳ 처리 중' : (st === 'on' ? '🔕 알림 끄기' : '🔔 끊김 알림 받기')}</button>` : ''}
+    </div>`;
+  }
+
   /* ── 모달 ── */
   function openModal() {
     const m = document.getElementById('frame-modal');
@@ -887,13 +945,14 @@ App.frameAdmin = (function () {
     }
     const active = document.activeElement;
     if (active && root.contains(active) && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName) && active.type !== 'file') return;
-    root.innerHTML = renderKeyCard() + renderUploadCard() + renderDevicesCard() + renderSettingsCard();
+    root.innerHTML = renderKeyCard() + renderUploadCard() + renderDevicesCard() + renderPushCard() + renderSettingsCard();
   }
 
   async function show() {
     try {
       attach();
       if (!state.keyLoaded) await loadKey();
+      await refreshPush();
     } catch (e) {
       console.warn('[Frame] 초기화 실패', e);
     }
@@ -903,6 +962,6 @@ App.frameAdmin = (function () {
   return {
     show, render, createKey, showKeyQr, copyKey, openImport, submitImport, startScan, forgetKey,
     uploadFiles, deletePhoto, previewPhoto, approveDevice, rejectDevice, saveDevice, removeDevice,
-    saveOfflineText, closeModal, openCard, makeCard
+    saveOfflineText, closeModal, openCard, makeCard, togglePush
   };
 })();
