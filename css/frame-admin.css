@@ -91,3 +91,14 @@
 .frame-preview img { max-width: 100%; max-height: 60vh; border-radius: 8px; }
 
 #frame-modal .modal-card { max-height: 90vh; overflow-y: auto; }
+
+.frame-card-print {
+  margin: 10px auto 0;
+  max-width: 280px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+.frame-card-caption { font-size: 11px; color: #334155; margin-top: 4px; }

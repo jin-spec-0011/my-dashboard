@@ -127,10 +127,12 @@ App.frameAdmin = (function () {
   function idbOpen() {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) { reject(new Error('IndexedDB 미지원')); return; }
-      const req = indexedDB.open(IDB_NAME, 1);
+      /* frame.js 와 같은 DB · 같은 버전 (버전 불일치 시 VersionError) */
+      const req = indexedDB.open(IDB_NAME, 2);
       req.onupgradeneeded = () => {
         const d = req.result;
         if (!d.objectStoreNames.contains(IDB_STORE)) d.createObjectStore(IDB_STORE);
+        if (!d.objectStoreNames.contains('blobs')) d.createObjectStore('blobs');
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error || new Error('IndexedDB 열기 실패'));
@@ -672,6 +674,58 @@ App.frameAdmin = (function () {
     }
   }
 
+  /* ── QR 복구 카드 (액자 계정 + 키) ── */
+  function openCard(deviceId) {
+    if (!DEV_RE.test(String(deviceId))) return;
+    if (!state.key || !state.key.exportable) { toast('⚠️ QR 카드는 키를 만든 진세 폰에서만 만들 수 있습니다.'); return; }
+    const name = (state.devices[deviceId] || {}).name || deviceId;
+    const body = document.getElementById('frameModalBody');
+    if (!body) return;
+    body.innerHTML = `
+      <h3>🪪 QR 복구 카드 — ${esc(name)}</h3>
+      <p class="frame-note">이 기기의 <b>액자 전용 계정</b> 이메일·비밀번호를 입력하세요. 입력값은 저장하지 않고 QR에만 담깁니다.</p>
+      <input type="email" id="frameCardEmail" class="memo-text-input" placeholder="frame 계정 이메일" autocapitalize="none">
+      <input type="password" id="frameCardPass" class="memo-text-input" placeholder="비밀번호">
+      <div class="frame-btn-row">
+        <button type="button" class="btn-save" onclick="App.frameAdmin.makeCard('${deviceId}')">카드 만들기</button>
+        <button type="button" class="btn-prof" onclick="App.frameAdmin.closeModal()">닫기</button>
+      </div>
+      <div id="frameCardOut"></div>`;
+    openModal();
+  }
+
+  async function makeCard(deviceId) {
+    if (!DEV_RE.test(String(deviceId))) return;
+    const email = String((document.getElementById('frameCardEmail') || {}).value || '').trim();
+    const pass = String((document.getElementById('frameCardPass') || {}).value || '');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || pass.length < 6) { toast('⚠️ 이메일과 비밀번호(6자 이상)를 확인하세요.'); return; }
+    if (!confirm('⚠️ 이 QR에는 액자 계정 비밀번호와 사진 암호화 키가 들어갑니다.\n인쇄 후 화면 캡처는 바로 지우고, 카드는 액자 거치대 뒷면에만 보관하세요.\n계속할까요?')) return;
+    const out = document.getElementById('frameCardOut');
+    try {
+      const raw = new Uint8Array(await crypto.subtle.exportKey('raw', state.key.key));
+      const payload = JSON.stringify({ t: 'gogo-frame-card', v: 1, fid: CFG.familyId, e: email, p: pass, keyId: state.key.keyId, k: b64urlFromBytes(raw) });
+      raw.fill(0);
+      const qrcode = await loadScript(QR_LIB, 'qrcode');
+      const qr = qrcode(0, 'M');
+      qr.addData(payload);
+      qr.make();
+      const name = (state.devices[deviceId] || {}).name || deviceId;
+      if (out) {
+        out.innerHTML = `<div class="frame-card-print">
+          <div class="frame-qr-box">${qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true })}</div>
+          <div class="frame-card-caption">GOGO 액자 복구 카드 · ${esc(name)}</div>
+          <div class="frame-card-caption">액자 화면 [QR 카드 대기] → 이 카드를 화면 위 카메라에</div>
+        </div>
+        <p class="frame-note">이 화면을 캡처해 명함 크기로 인쇄·라미네이팅하세요. 인쇄 후 캡처 파일은 삭제하세요.</p>`;
+      }
+      const passEl = document.getElementById('frameCardPass');
+      if (passEl) passEl.value = '';
+    } catch (e) {
+      console.warn('[Frame] 카드 생성 실패', e);
+      if (out) out.innerHTML = '<p class="frame-note">⚠️ QR을 만들지 못했습니다 (네트워크 확인).</p>';
+    }
+  }
+
   /* ── 모달 ── */
   function openModal() {
     const m = document.getElementById('frame-modal');
@@ -784,6 +838,7 @@ App.frameAdmin = (function () {
         </div>
         <div class="frame-btn-row">
           <button type="button" class="btn-save" onclick="App.frameAdmin.saveDevice('${id}')">💾 저장</button>
+          ${state.key && state.key.exportable ? `<button type="button" class="btn-prof" onclick="App.frameAdmin.openCard('${id}')">🪪 QR 카드</button>` : ''}
           <button type="button" class="btn-prof" onclick="App.frameAdmin.removeDevice('${id}')">등록 해제</button>
         </div>
       </div>`;
@@ -792,7 +847,7 @@ App.frameAdmin = (function () {
     return `<div class="card form-card">
       <div class="frame-card-title">📺 액자 기기</div>
       ${pendingRows ? `<div class="log-list">${pendingRows}</div>` : ''}
-      ${deviceRows || '<div class="empty-msg">등록된 액자 기기가 없습니다. 액자 기기에서 frame.html 로그인 후 여기서 승인하세요.</div>'}
+      ${deviceRows || '<div class="empty-msg">등록된 액자 기기가 없습니다. 액자 기기 Safari에서 …/my-dashboard/frame.html 을 열어 로그인한 뒤 여기서 승인하세요.</div>'}
     </div>`;
   }
 
@@ -848,6 +903,6 @@ App.frameAdmin = (function () {
   return {
     show, render, createKey, showKeyQr, copyKey, openImport, submitImport, startScan, forgetKey,
     uploadFiles, deletePhoto, previewPhoto, approveDevice, rejectDevice, saveDevice, removeDevice,
-    saveOfflineText, closeModal
+    saveOfflineText, closeModal, openCard, makeCard
   };
 })();
