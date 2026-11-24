@@ -1,0 +1,41 @@
+name: VAPID Setup (Web Push 키 1회 생성)
+
+# 수동 실행 전용 — 액자 끊김 알림(Web Push)용 키 쌍을 만들어 Firebase에 저장
+# - 개인키는 로그에 출력하지 않음 (공개 저장소)
+# - 키가 이미 있으면 force=true 가 아닌 한 아무것도 바꾸지 않음
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '기존 키 교체 (모든 알림 구독을 다시 해야 함)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vapid-setup
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 저장소 불러오기
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install --quiet --disable-pip-version-check "firebase-admin==6.*" "cryptography>=42"
+
+      - name: 키 생성·저장
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FORCE: ${{ inputs.force }}
+        run: python .github/scripts/vapid_setup.py

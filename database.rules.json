@@ -11,44 +11,62 @@
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
       "$id": {
         ".validate": "newData.hasChild('id')",
-        "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "photoBase64": { ".validate": "newData.isString() && newData.val().length <= 500000" },
-        "photo": { ".validate": "newData.isString() && newData.val().length <= 500000" }
+        "text": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "photoBase64": {
+          ".validate": "newData.isString() && newData.val().length <= 500000"
+        },
+        "photo": {
+          ".validate": "newData.isString() && newData.val().length <= 500000"
+        }
       }
     },
     "family_todos": {
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
-      "$i": { ".validate": "newData.hasChild('id')" }
+      "$i": {
+        ".validate": "newData.hasChild('id')"
+      }
     },
     "family_stickies": {
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
       "$i": {
         ".validate": "newData.hasChild('id')",
-        "text": { ".validate": "newData.isString() && newData.val().length <= 5000" }
+        "text": {
+          ".validate": "newData.isString() && newData.val().length <= 5000"
+        }
       }
     },
     "family_ledger": {
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
-      "$i": { ".validate": "newData.hasChild('id')" }
+      "$i": {
+        ".validate": "newData.hasChild('id')"
+      }
     },
     "family_schedules": {
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
-      "$i": { ".validate": "newData.hasChild('id')" }
+      "$i": {
+        ".validate": "newData.hasChild('id')"
+      }
     },
     "family_trips": {
       ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": "auth != null && root.child('members').child(auth.uid).exists()",
-      "$i": { ".validate": "newData.hasChild('id')" }
+      "$i": {
+        ".validate": "newData.hasChild('id')"
+      }
     },
     "private_schedules": {
       "$user": {
         ".read": "auth != null && ($user === 'jinse' || $user === 'jihye') && root.child('members').child(auth.uid).val() === $user",
         ".write": "auth != null && ($user === 'jinse' || $user === 'jihye') && root.child('members').child(auth.uid).val() === $user",
-        "$i": { ".validate": "newData.hasChild('id')" }
+        "$i": {
+          ".validate": "newData.hasChild('id')"
+        }
       }
     },
     "calendar_data": {
@@ -124,6 +142,76 @@
           ".validate": "newData.isString() && newData.val().length <= 100"
         }
       }
+    },
+    "frame": {
+      "$fid": {
+        "index": {
+          ".read": "auth != null && ((root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye') || root.child('frame').child($fid).child('viewers').child(auth.uid).exists())",
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+          "$photoId": {
+            ".validate": "$photoId.matches(/^[0-9]{16}$/) && newData.hasChildren(['createdAt', 'bytes', 'keyId', 'orient', 'w', 'h', 'by']) && newData.child('bytes').isNumber() && newData.child('bytes').val() > 0 && newData.child('bytes').val() <= 1000000 && (newData.child('orient').val() === 'p' || newData.child('orient').val() === 'l') && newData.child('w').isNumber() && newData.child('h').isNumber() && newData.child('keyId').isString() && newData.child('keyId').val().length <= 10 && (newData.child('by').val() === '진세' || newData.child('by').val() === '지혜')"
+          }
+        },
+        "blobs": {
+          "$photoId": {
+            ".read": "auth != null && ((root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye') || root.child('frame').child($fid).child('viewers').child(auth.uid).exists())",
+            ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+            ".validate": "$photoId.matches(/^[0-9]{16}$/) && newData.hasChildren(['iv', 'ct', 'keyId']) && newData.child('iv').isString() && newData.child('iv').val().length <= 32 && newData.child('ct').isString() && newData.child('ct').val().length <= 1000000 && newData.child('keyId').isString()"
+          }
+        },
+        "settings": {
+          ".read": "auth != null && ((root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye') || root.child('frame').child($fid).child('viewers').child(auth.uid).exists())",
+          ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+          ".validate": "newData.hasChildren(['offlineText', 'showWeather']) && newData.child('offlineText').isString() && newData.child('offlineText').val().length <= 80 && newData.child('showWeather').isBoolean()"
+        },
+        "devices": {
+          ".read": "auth != null && ((root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye') || root.child('frame').child($fid).child('viewers').child(auth.uid).exists())",
+          "$deviceId": {
+            ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+            ".validate": "$deviceId.matches(/^dev_[a-z0-9]{8}$/) && newData.hasChildren(['name', 'placement', 'infoBar', 'nightStart', 'nightEnd', 'watch', 'qrCard']) && newData.child('name').isString() && newData.child('name').val().length <= 40 && (newData.child('placement').val() === '미정' || newData.child('placement').val() === '본가' || newData.child('placement').val() === '집') && newData.child('infoBar').isBoolean() && newData.child('watch').isBoolean() && newData.child('qrCard').isBoolean() && newData.child('nightStart').isString() && newData.child('nightStart').val().matches(/^[0-2][0-9]:[0-5][0-9]$/) && newData.child('nightEnd').isString() && newData.child('nightEnd').val().matches(/^[0-2][0-9]:[0-5][0-9]$/)"
+          }
+        },
+        "viewers": {
+          ".read": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+            ".validate": "newData.hasChildren(['deviceId', 'approvedAt', 'approvedBy']) && newData.child('deviceId').isString() && newData.child('deviceId').val().matches(/^dev_[a-z0-9]{8}$/) && newData.child('approvedAt').isNumber()"
+          }
+        },
+        "pending": {
+          ".read": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && $fid === 'fam_t2hoijplai' && (auth.uid === $uid || (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye'))",
+            ".validate": "newData.hasChildren(['name', 'requestedAt']) && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 40 && newData.child('requestedAt').isNumber()"
+          }
+        },
+        "heartbeat": {
+          ".read": "auth != null && ((root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye') || root.child('frame').child($fid).child('viewers').child(auth.uid).exists())",
+          "$deviceId": {
+            ".write": "auth != null && root.child('frame').child($fid).child('viewers').child(auth.uid).child('deviceId').val() === $deviceId",
+            ".validate": "newData.hasChildren(['lastSeen']) && newData.child('lastSeen').isNumber() && newData.child('lastSeen').val() <= now"
+          }
+        },
+        "alert": {
+          ".read": false,
+          ".write": false
+        }
+      }
+    },
+    "push_subscriptions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+        "$subId": {
+          ".validate": "$subId.matches(/^[A-Za-z0-9_-]{8,64}$/) && newData.hasChildren(['endpoint', 'p256dh', 'auth', 'createdAt']) && newData.child('endpoint').isString() && newData.child('endpoint').val().beginsWith('https://') && newData.child('endpoint').val().length <= 1000 && newData.child('p256dh').isString() && newData.child('p256dh').val().length <= 200 && newData.child('auth').isString() && newData.child('auth').val().length <= 100"
+        }
+      }
+    },
+    "push_config": {
+      ".read": "auth != null && (root.child('members').child(auth.uid).val() === 'jinse' || root.child('members').child(auth.uid).val() === 'jihye')",
+      ".write": false
     }
   }
 }
