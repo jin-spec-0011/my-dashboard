@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>GOGO 가족 액자</title>
+  <link rel="manifest" href="frame-manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GOGO액자">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="stylesheet" href="css/frame.css?v=20261124a">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+  <!-- 사진 무대: 레이어 2장 교차 (크로스페이드) -->
+  <div id="stage" class="stage">
+    <div class="layer" id="layerA"></div>
+    <div class="layer" id="layerB"></div>
+    <div id="infoBar" class="info-bar">
+      <span id="infoDate"></span>
+      <span id="infoTime"></span>
+      <span id="infoNet" class="info-net"></span>
+      <span id="infoWeather" class="info-weather"></span>
+    </div>
+    <div id="nightShade" class="night-shade"></div>
+  </div>
+
+  <!-- 안내 화면 (로그인 · 등록 대기 · 키 입력 · 끊김) -->
+  <div id="panel" class="panel">
+    <div class="panel-card" id="panelCard">
+      <div class="panel-msg">🖼️ GOGO 가족 액자 준비 중...</div>
+    </div>
+  </div>
+
+  <video id="scanVideo" class="scan-video" playsinline muted></video>
+
+  <script src="js/frame-config.js?v=20261124a"></script>
+  <script src="js/frame.js?v=20261124a"></script>
+</body>
+</html>
