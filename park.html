@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>GOGO 주차 입력</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="GOGO주차">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="stylesheet" href="css/park.css?v=20261125a">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+  <main class="park-wrap" id="parkApp" hidden>
+    <header class="park-header">
+      <h1>🚗 주차 입력</h1>
+      <span class="park-user" id="parkUser"></span>
+    </header>
+
+    <div class="park-pending" id="parkPending" hidden></div>
+
+    <section class="park-card">
+      <h2>차량</h2>
+      <div class="btn-row" id="carGroup">
+        <button type="button" class="btn-opt" data-value="X1">⚪ X1</button>
+        <button type="button" class="btn-opt" data-value="엑센트">⚫ 엑센트</button>
+      </div>
+    </section>
+
+    <section class="park-card">
+      <h2>위치</h2>
+      <div class="btn-row" id="typeGroup">
+        <button type="button" class="btn-opt" data-value="indoor">🅿️ 지하</button>
+        <button type="button" class="btn-opt" data-value="outdoor">🌳 야외</button>
+      </div>
+    </section>
+
+    <section class="park-card" id="indoorSection">
+      <h2>층</h2>
+      <div class="btn-row" id="floorGroup">
+        <button type="button" class="btn-opt" data-value="B1">B1</button>
+        <button type="button" class="btn-opt" data-value="B2">B2</button>
+        <button type="button" class="btn-opt" data-value="B3">B3</button>
+      </div>
+
+      <h2 class="mt">구역</h2>
+      <div class="chip-row" id="recentChips"></div>
+      <div class="slot-row">
+        <label class="slot-field">
+          <span>번호</span>
+          <select id="slotNum" aria-label="구역 번호"></select>
+        </label>
+        <label class="slot-field">
+          <span>열</span>
+          <select id="slotCol" aria-label="구역 알파벳"></select>
+        </label>
+        <div class="slot-preview" id="slotPreview">-</div>
+      </div>
+    </section>
+
+    <section class="park-card" id="outdoorSection" hidden>
+      <h2>GPS</h2>
+      <div class="gps-status" id="gpsStatus">📍 위치 확인 전</div>
+      <button type="button" class="btn-sub" id="btnGps">🔄 위치 다시 받기</button>
+      <h2 class="mt">메모 (선택)</h2>
+      <input type="text" id="outdoorMemo" maxlength="20" placeholder="예: 정문 옆 (비우면 GPS)" autocomplete="off">
+    </section>
+
+    <button type="button" class="btn-save" id="btnSave">📌 저장</button>
+
+    <div class="park-result" id="parkResult" hidden></div>
+
+    <a class="park-link" href="index.html#parking">📋 주차 기록 전체 보기</a>
+  </main>
+
+  <div class="park-toast" id="parkToast" role="status" aria-live="polite"></div>
+
+  <script src="js/park.js?v=20261125a"></script>
+  <script src="js/gauth.js?v=20261125a"></script>
+  <script>
+    window.addEventListener('load', function () {
+      try {
+        App.park.boot();
+      } catch (e) {
+        console.error('[Park] 부팅 실패', e);
+        alert('⚠️ 주차 입력 화면을 불러오지 못했습니다. 새로고침해주세요.');
+      }
+    });
+  </script>
+</body>
+</html>
