@@ -201,3 +201,17 @@ html, body {
   z-index: 100000;
 }
 .park-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.park-result div { white-space: pre-line; }
+.btn-cancel {
+  margin-top: 10px;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: #92400e;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
