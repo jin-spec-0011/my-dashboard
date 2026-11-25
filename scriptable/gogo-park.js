@@ -74,12 +74,30 @@ function cleanMemo(v) {
 }
 
 /* ── 입력 → 레코드 ──────────────────────────────────── */
-function readInput() {
-  let p = args.shortcutParameter;
-  if (typeof p === 'string') {
-    try { p = JSON.parse(p); } catch (e) { p = null; }
+/* 단축어 입력: Parameter(사전) 우선, 없으면 Texts(사전이 JSON 텍스트로 전달됨)에서 찾음 */
+function toObject(v) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if (!t.startsWith('{')) return null;
+    try {
+      const o = JSON.parse(t);
+      return o && typeof o === 'object' && !Array.isArray(o) ? o : null;
+    } catch (e) {
+      return null;
+    }
   }
-  return p && typeof p === 'object' ? p : null;
+  return null;
+}
+
+function readInput() {
+  const candidates = [args.shortcutParameter];
+  if (Array.isArray(args.plainTexts)) candidates.push(...args.plainTexts);
+  for (const c of candidates) {
+    const o = toObject(c);
+    if (o && (o.car !== undefined || o.floor !== undefined || o.slot !== undefined || o.type !== undefined)) return o;
+  }
+  return null;
 }
 
 async function askInputInApp() {
