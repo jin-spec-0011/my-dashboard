@@ -1,0 +1,203 @@
+/* GOGO 스마트 매니저 - 주차 입력 전용 페이지 (park.html) */
+:root {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --sub: #64748b;
+  --line: #e2e8f0;
+  --primary: #2563eb;
+  --primary-soft: #dbeafe;
+  --ok: #059669;
+  --warn: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #f1f5f9;
+    --sub: #94a3b8;
+    --line: #334155;
+    --primary: #3b82f6;
+    --primary-soft: #1e3a8a;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Noto Color Emoji", sans-serif;
+  font-size: 16px;
+}
+
+.park-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 24px);
+}
+
+.park-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.park-header h1 { font-size: 20px; margin: 0; }
+.park-user { font-size: 13px; color: var(--sub); }
+
+.park-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+.park-card h2 {
+  font-size: 13px;
+  color: var(--sub);
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.park-card h2.mt { margin-top: 14px; }
+
+.btn-row { display: flex; gap: 8px; }
+.btn-opt {
+  flex: 1;
+  min-height: 52px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-opt.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 0; }
+.chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+.slot-row { display: flex; gap: 8px; align-items: flex-end; }
+.slot-field { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--sub); }
+.slot-field select,
+#outdoorMemo {
+  width: 100%;
+  min-height: 52px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  background: var(--card);
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+#outdoorMemo { font-size: 16px; font-weight: 500; }
+.slot-preview {
+  flex: 1;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.gps-status { white-space: pre-line; font-size: 14px; margin-bottom: 8px; line-height: 1.5; word-break: break-all; }
+.btn-sub {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn-save {
+  width: 100%;
+  min-height: 60px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 800;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.btn-save:disabled { opacity: 0.55; }
+
+.park-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.park-result {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+}
+.park-result.ok { background: #d1fae5; color: #065f46; }
+.park-result.wait { background: #fef3c7; color: #92400e; }
+.park-result.err { background: #fee2e2; color: #991b1b; }
+
+.park-link {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  color: var(--primary);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.park-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  max-width: 90vw;
+  text-align: center;
+  z-index: 100000;
+}
+.park-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
