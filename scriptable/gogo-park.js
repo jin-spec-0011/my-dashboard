@@ -20,6 +20,11 @@ const FLOORS = ['B1', 'B2', 'B3'];
 const GPS_TIMEOUT_MS = 12000;
 const QUEUE_FILE = 'gogo-park-queue.json';
 
+/* 단축어에서 값이 들어왔으면 true → 창(Alert) 대신 알림 사용
+   (새 Run Script 동작은 config.runsInApp 이 true 여도 창을 띄울 수 없음) */
+let FROM_SHORTCUT = false;
+function interactive() { return config.runsInApp && !FROM_SHORTCUT; }
+
 /* Phase 1 멀티테넌트 전환 시 여기만 'families/{fid}/parking_logs' 로 변경 */
 const PARKING_PATH = 'parking_logs';
 
@@ -143,7 +148,7 @@ async function buildRecord(input, author) {
 
 /* ── 인증 ─────────────────────────────────────────── */
 async function askToken() {
-  if (!config.runsInApp) throw new Error('토큰이 없습니다. Scriptable 앱에서 이 스크립트를 1회 실행해 토큰을 등록하세요.');
+  if (!interactive()) throw new Error('토큰이 없습니다. Scriptable 앱에서 이 스크립트를 1회 실행해 토큰을 등록하세요.');
   const a = new Alert();
   a.title = 'GOGO 토큰 등록';
   a.message = 'GOGO 앱 🔑 단축어 토큰을 붙여넣으세요.\n(iOS 키체인에만 저장)';
@@ -282,7 +287,8 @@ async function notify(title, body) {
 /* ── 실행 ─────────────────────────────────────────── */
 async function main() {
   let input = readInput();
-  if (!input && config.runsInApp) input = await askInputInApp();
+  FROM_SHORTCUT = Boolean(input);
+  if (!input && interactive()) input = await askInputInApp();
   if (!input) return '⏹ 입력이 없어 종료했습니다.';
 
   let auth;
@@ -325,13 +331,18 @@ try {
   result = `⚠️ 주차 저장 실패: ${e.message}`;
 }
 console.log(result);
-if (!config.runsInApp) await notify('GOGO 주차', result);
-else {
-  const a = new Alert();
-  a.title = 'GOGO 주차';
-  a.message = result;
-  a.addAction('확인');
-  await a.present();
+if (interactive()) {
+  try {
+    const a = new Alert();
+    a.title = 'GOGO 주차';
+    a.message = result;
+    a.addAction('확인');
+    await a.present();
+  } catch (e) {
+    await notify('GOGO 주차', result);
+  }
+} else {
+  await notify('GOGO 주차', result);
 }
 Script.setShortcutOutput(result);
 Script.complete();
