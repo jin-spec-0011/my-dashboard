@@ -95,10 +95,38 @@ function toObject(v) {
   return null;
 }
 
+/* 새 Run Script 동작은 Input 목록을 배열로 넘김 → 배열·중첩 배열·JSON 문자열 모두 탐색 */
+function collectCandidates() {
+  const out = [];
+  const push = (v, depth) => {
+    if (v === undefined || v === null || depth > 3) return;
+    if (Array.isArray(v)) { v.forEach((x) => push(x, depth + 1)); return; }
+    out.push(v);
+  };
+  push(args.shortcutParameter, 0);
+  push(args.plainTexts, 0);
+  return out;
+}
+
+function hasAnyShortcutInput() {
+  const p = args.shortcutParameter;
+  const hasParam = p !== undefined && p !== null && !(Array.isArray(p) && p.length === 0) && p !== '';
+  const hasTexts = Array.isArray(args.plainTexts) && args.plainTexts.length > 0;
+  return hasParam || hasTexts;
+}
+
+function describeInput() {
+  const p = args.shortcutParameter;
+  const kind = p === null || p === undefined ? '없음' : (Array.isArray(p) ? `배열 ${p.length}개` : typeof p);
+  const sample = (() => {
+    try { return JSON.stringify(p).slice(0, 60); } catch (e) { return String(p).slice(0, 60); }
+  })();
+  const texts = Array.isArray(args.plainTexts) ? args.plainTexts.length : 0;
+  return `Parameter: ${kind} ${sample} / Texts: ${texts}개`;
+}
+
 function readInput() {
-  const candidates = [args.shortcutParameter];
-  if (Array.isArray(args.plainTexts)) candidates.push(...args.plainTexts);
-  for (const c of candidates) {
+  for (const c of collectCandidates()) {
     const o = toObject(c);
     if (o && (o.car !== undefined || o.floor !== undefined || o.slot !== undefined || o.type !== undefined)) return o;
   }
@@ -287,7 +315,8 @@ async function notify(title, body) {
 /* ── 실행 ─────────────────────────────────────────── */
 async function main() {
   let input = readInput();
-  FROM_SHORTCUT = Boolean(input);
+  FROM_SHORTCUT = Boolean(input) || hasAnyShortcutInput();
+  if (!input && FROM_SHORTCUT) return `⚠️ 단축어 값을 읽지 못했습니다 (${describeInput()})`;
   if (!input && interactive()) input = await askInputInApp();
   if (!input) return '⏹ 입력이 없어 종료했습니다.';
 
