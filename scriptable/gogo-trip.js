@@ -25,6 +25,11 @@ const RECONNECT_KEEP_MS = 30 * 60 * 1000;      // 30분 이내 재연결은 같�
 const STALE_PENDING_MS = 18 * 3600 * 1000;      // 18시간 지난 출발 정보는 무효
 const QUEUE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;  // 대기열 7일 보관
 
+/* 단축어에서 값이 들어왔으면 true → 창(Alert) 대신 알림 사용
+   (새 Run Script 동작은 config.runsInApp 이 true 여도 창을 띄울 수 없음) */
+let FROM_SHORTCUT = false;
+function interactive() { return config.runsInApp && !FROM_SHORTCUT; }
+
 /* Phase 1 멀티테넌트 전환 시 여기만 'families/{fid}/...' 로 변경 */
 const PATHS = { pending: 'trip_pending', trips: 'trip_logs' };
 
@@ -136,7 +141,7 @@ function netError(msg) {
 }
 
 async function askSecret(title, message, placeholder, check) {
-  if (!config.runsInApp) {
+  if (!interactive()) {
     const err = new Error(`${title} 필요 — Scriptable 앱에서 이 스크립트를 1회 실행해 등록하세요.`);
     err.needSetup = true;
     throw err;
@@ -477,7 +482,8 @@ async function inAppMenu() {
 
 async function main() {
   let input = readInput();
-  if (!input && config.runsInApp) input = await inAppMenu();
+  FROM_SHORTCUT = Boolean(input);
+  if (!input && interactive()) input = await inAppMenu();
   if (!input) return { text: '⏹ 입력이 없어 종료했습니다.', notes: [] };
 
   if (input.reset === 'kakao') {
@@ -510,13 +516,20 @@ try {
 const summary = [out.text].concat(out.notes || []).join('\n');
 console.log(summary);
 
-if (config.runsInApp) {
-  const a = new Alert();
-  a.title = 'GOGO 주행 기록';
-  a.message = summary;
-  a.addAction('확인');
-  await a.present();
-} else if (out.notes && out.notes.length) {
+let shown = false;
+if (interactive()) {
+  try {
+    const a = new Alert();
+    a.title = 'GOGO 주행 기록';
+    a.message = summary;
+    a.addAction('확인');
+    await a.present();
+    shown = true;
+  } catch (e) {
+    shown = false;
+  }
+}
+if (!shown && out.notes && out.notes.length) {
   try {
     const n = new Notification();
     n.title = 'GOGO 주행 기록';
